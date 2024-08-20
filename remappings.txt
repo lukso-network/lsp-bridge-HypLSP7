@@ -1,2 +1,2 @@
-@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/
+@/=node_modules/@
 forge-std/=node_modules/forge-std/
