@@ -2,10 +2,9 @@
 pragma solidity >=0.8.19;
 
 // modules
-import { LSP7DigitalAssetInitAbstract, LSP7DigitalAssetCore } from "@lukso/lsp7-contracts/contracts/LSP7DigitalAssetInitAbstract.sol";
+import { LSP7DigitalAssetInitAbstract } from "@lukso/lsp7-contracts/contracts/LSP7DigitalAssetInitAbstract.sol";
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import { OwnableUnset } from "@erc725/smart-contracts/contracts/custom/OwnableUnset.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /**
  * @title LSP7 version of the Hyperlane ERC20 Token Router
@@ -13,11 +12,6 @@ import { OwnableUnset } from "@erc725/smart-contracts/contracts/custom/OwnableUn
  */
 contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
     uint8 private immutable _decimals;
-
-    modifier onlyOwner() virtual override(OwnableUnset, OwnableUpgradeable) {
-        _checkOwner();
-        _;
-    }
 
     constructor(uint8 __decimals, address _mailbox) TokenRouter(_mailbox) {
         _decimals = __decimals;
@@ -52,7 +46,7 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
          });
 
         // mints initial supply to deployer
-        LSP7DigitalAssetCore._mint({ to: msg.sender, amount: _totalSupply, force: true, data: "" });
+        LSP7DigitalAssetInitAbstract._mint({ to: msg.sender, amount: _totalSupply, force: true, data: "" });
 
         // Initializes the Hyperlane router
         _MailboxClient_initialize(_hook, _interchainSecurityModule, _owner);
@@ -66,32 +60,18 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
         public
         view
         virtual
-        override(TokenRouter, LSP7DigitalAssetCore)
+        override(TokenRouter, LSP7DigitalAssetInitAbstract)
         returns (uint256)
     {
-        return LSP7DigitalAssetCore.balanceOf(_account);
-    }
-
-    function owner() public view virtual override(OwnableUnset, OwnableUpgradeable) returns (address) {
-        return OwnableUpgradeable.owner();
-    }
-
-    function renounceOwnership() public virtual override(OwnableUnset, OwnableUpgradeable) onlyOwner {
-        OwnableUpgradeable.renounceOwnership();
-    }
-
-    function transferOwnership(address newOwner) public virtual override(OwnableUnset, OwnableUpgradeable) onlyOwner {
-        OwnableUpgradeable.transferOwnership(newOwner);
+        return LSP7DigitalAssetInitAbstract.balanceOf(_account);
     }
 
     /**
      * @dev Burns `_amount` of token from `msg.sender` balance.
      * @inheritdoc TokenRouter
      */
-    function _transferFromSender(
-        uint256 _amount
-    ) internal override returns (bytes memory) {
-        LSP7DigitalAssetCore._burn(msg.sender, _amount, "");
+    function _transferFromSender(uint256 _amount) internal override returns (bytes memory) {
+        LSP7DigitalAssetInitAbstract._burn(msg.sender, _amount, "");
         return bytes(""); // no metadata
     }
 
@@ -103,11 +83,11 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
         address _recipient,
         uint256 _amount,
         bytes calldata // no metadata
-    ) internal virtual override {
-        LSP7DigitalAssetCore._mint(_recipient, _amount, true, "");
-    }
-
-     function _checkOwner() internal view override(OwnableUnset, OwnableUpgradeable) {
-        OwnableUpgradeable._checkOwner();
+    )
+        internal
+        virtual
+        override
+    {
+        LSP7DigitalAssetInitAbstract._mint(_recipient, _amount, true, "");
     }
 }
