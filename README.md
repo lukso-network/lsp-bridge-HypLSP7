@@ -26,9 +26,9 @@ The flow for bridging tokens is generally as follow:
 1. User transfer ERC20 tokens to [`HypERC20Collateral`]. This locks the tokens in the collateral contract.
 2. `HypERC20Collateral` contract call [`Mailbox`] to pass the message.
 3. The `Mailbox` calls:
-   3.1. the default Hook (created by Hyperlane),
-   3.2. and the Hashi Hook (created by CCIA team).
-4. Hashi Hook dispatch the token relaying message from `Yaho` contracts.
+   - 3.1. the default Hook (created by Hyperlane),
+   - 3.2. and the Hashi Hook (created by CCIA team).
+5. Hashi Hook dispatch the token relaying message from `Yaho` contracts.
 
 > In the architecture diagram above:
 > - The `Yaho` contracts handle the dispatching and batching of messages across chains.
@@ -46,8 +46,8 @@ The flow for bridging tokens is generally as follow:
 **on LUKSO chain**
 
 8. When [`Mailbox.process(...)`](https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/3d116132b87d36af9576d6b116f31a53d680db4a/solidity/contracts/Mailbox.sol#L188-L197) is called, it will:
-  8.1. check with Multisig ISM (includes Hashi ISM), whether the message is signed by validators & verified by Hashi ISM.
-  8.2. If so, it will mint [HypLSP7](./src/HypLSP7.sol) tokens to the receiver.
+  - 8.1. check with Multisig ISM (includes Hashi ISM), whether the message is signed by validators & verified by Hashi ISM.
+  - 8.2. If so, it will mint [HypLSP7](./src/HypLSP7.sol) tokens to the receiver.
 
 
 ### LUKSO -> Ethereum
@@ -70,8 +70,8 @@ The flow for bridging tokens is generally as follow:
 **on Ethereum chain**
 
 5. When `Mailbox.process()` is called:
-   5.1. it will check with Multisig ISM (includes Hashi ISM), whether the message is signed by validators & verified by Hashi ISM.
-   5.2. If so, it will unlock ERC20 token to the receiver on the Ethereum chain.
+   - 5.1. it will check with Multisig ISM (includes Hashi ISM), whether the message is signed by validators & verified by Hashi ISM.
+   - 5.2. If so, it will unlock ERC20 token to the receiver on the Ethereum chain.
 
 
 
