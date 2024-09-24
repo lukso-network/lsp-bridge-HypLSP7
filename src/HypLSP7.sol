@@ -6,6 +6,9 @@ import { LSP7DigitalAssetInitAbstract } from "@lukso/lsp7-contracts/contracts/LS
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
+// libraries
+import { TokenMessageForLSP7 } from "./TokenMessageForLSP7.sol";
+
 /**
  * @title LSP7 version of the Hyperlane ERC20 Token Router
  * @dev https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/main/solidity/contracts/token/HypERC20.sol
@@ -89,5 +92,26 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
         override
     {
         LSP7DigitalAssetInitAbstract._mint(_recipient, _amount, true, "");
+    }
+
+    function _transferRemote(
+        uint32 _destination,
+        bytes32 _recipient,
+        uint256 _amountOrId,
+        uint256 _value,
+        bytes memory _hookMetadata,
+        address _hook
+    )
+        internal
+        virtual
+        override(TokenRouter)
+        returns (bytes32 messageId)
+    {
+        bytes memory _tokenMetadata = _transferFromSender(_amountOrId);
+        bytes memory _tokenMessage = TokenMessageForLSP7.format(_recipient, _amountOrId, _tokenMetadata);
+
+        messageId = _Router_dispatch(_destination, _value, _tokenMessage, _hookMetadata, _hook);
+
+        emit SentTransferRemote(_destination, _recipient, _amountOrId);
     }
 }
