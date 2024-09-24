@@ -11,6 +11,11 @@
 
 ## Architecture & Workflow
 
+The flow for bridging tokens is generally as follow:
+
+- if the token is originally from ETH, the token is locked on ETHEREUM, and minted on LUKSO.
+- if the token is originally from LUKSO, the token is burnt on LUKSO, minted on ETHEREUM.
+
 ### Ethereum -> LUKSO
 
 ![Ethereum to LUKSO bridge flow](./assets/flow-ethereum-lukso-hashi-bridge.png)
@@ -79,8 +84,8 @@
 
 ### Relevant links & resources
 
-- [Architecture diagrams](https://hackmd.io/WXwzLS5TS4q_G3C7w2DkiA)
 - [Cross Chain Alliance - Hashi](https://crosschain-alliance.gitbook.io/hashi)
+- [Hyperlane smart contracts monorepo](https://github.com/hyperlane-xyz/hyperlane-monorepo)
 
 ## Getting Started
 
