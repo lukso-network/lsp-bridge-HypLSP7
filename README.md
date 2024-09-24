@@ -11,29 +11,39 @@
 
 ## Architecture & Workflow
 
-### Ethereun -> LUKSO
+### Ethereum -> LUKSO
 
 ![Ethereum to LUKSO bridge flow](./assets/flow-ethereum-lukso-hashi-bridge.png)
 
 
 **on Ethereum chain**
 
-1. User transfer ERC20 token to Hyp Collateral contract. The token is locked in the collateral contract.
-2. Hyp Collateral contract call `Mailbox` to pass the message.
-3. `Mailbox` call Default Hook (created by Hyperlane) and Hashi Hook (created by CCIA team).
-4. Hashi Hook dispatch the token relaying message from Yaho contracts.
+1. User transfer ERC20 tokens to [`HypERC20Collateral`]. This locks the tokens in the collateral contract.
+2. `HypERC20Collateral` contract call [`Mailbox`] to pass the message.
+3. The `Mailbox` calls:
+   3.1. the default Hook (created by Hyperlane),
+   3.2. and the Hashi Hook (created by CCIA team).
+4. Hashi Hook dispatch the token relaying message from `Yaho` contracts.
+
+> In the architecture diagram above:
+> - The `Yaho` contracts handle the dispatching and batching of messages across chains.
+> - The `Yaru` contracts ensures that the messages are properly executed on the destination chain by calling relevant functions like `onMessage`.
+
+
 
 **Off chain**
 
-4. Hashi relayer (managed by CCIA team) will listen to event from Yaho contracts and request the reporter contracts to relay token relaying message.
-5. Hashi executor (managed by CCIA team) will listen to event from each Hashi adapter contracts and call Yaru.executeMessages. This step will check whether the Hashi adapters agree on a specify message id (a threshold number of hash is stored), and set the message Id to verified status.
-6. Validator (run by Hyperlane & LUKSO team) will sign the Merkle root when new dispatches happen in Mailbox.
-7. Hyperlane relayer (run by Hyperlane team) relays the message by calling Mailbox.process().
+5. Hashi relayer (managed by CCIA team) listen for events from `Yaho` contracts and request the reporter contracts to relay token relaying message.
+6. Hashi executor (managed by CCIA team) listen to event from each Hashi adapter contracts and call `Yaru.executeMessages`. **This step checks whether the Hashi adapters agree on a specify message id** (a threshold number of hash is stored), and set the message Id to verified status.
+7. Validator (run by Hyperlane & LUKSO team) will sign the Merkle root when new dispatches happen in Mailbox.
+8. Hyperlane relayer (run by Hyperlane team) relays the message by calling Mailbox.process().
 
 **on LUKSO chain**
 
-8. When `Mailbox.process()` is called, it will check with Multisig ISM (includes Hashi ISM), whether the message is signed by validators & verified by Hashi ISM. If so, it will mint hypERC20 token to the receiver.
-9. For compatibility, LSP7 wrapper need to be created to mint LSP7 token to the user.
+8. When [`Mailbox.process(...)`](https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/3d116132b87d36af9576d6b116f31a53d680db4a/solidity/contracts/Mailbox.sol#L188-L197) is called, it will:
+  8.1. check with Multisig ISM (includes Hashi ISM), whether the message is signed by validators & verified by Hashi ISM.
+  8.2. If so, it will mint [HypLSP7](./src/HypLSP7.sol) tokens to the receiver.
+
 
 ### LUKSO -> Ethereum
 
@@ -41,18 +51,22 @@
 
 **on LUKSO chain**
 
-1. User transfer LSP7 token to HypERC20 contract and the token is burn.
-2. HypERC20 contract call Mailbox to pass the message.
-3. Mailbox call Default Hook (created by Hyperlane) and Hashi Hook (created by CCIA team).
+> _Step 1 to 3 needs to be confirmed_
+
+1. User transfer LSP7 token to HypLSP7 contract and the tokens are burnt.
+2. HypLSP7 contract calls `Mailbox` to pass the message.
+3. `Mailbox` calls Default Hook (created by Hyperlane) and Hashi Hook (created by CCIA team).
 4. Hashi Hook dispatch the token relaying message from Yaho contracts.
 
 **Off chain**
 
-4. Off chain process remains the same as before, except there is no Light Client support for Hashi from LUKSO → Ethereum.
+4. Off chain process remains the same as before, _except there is no Light Client support for Hashi from LUKSO → Ethereum_.
 
 **on Ethereum chain**
 
-5. When `Mailbox.process()` is called, it will check with Multisig ISM (includes Hashi ISM), whether the message is signed by validators & verified by Hashi ISM. If so, it will unlock ERC20 token to the receiver.
+5. When `Mailbox.process()` is called:
+   5.1. it will check with Multisig ISM (includes Hashi ISM), whether the message is signed by validators & verified by Hashi ISM.
+   5.2. If so, it will unlock ERC20 token to the receiver on the Ethereum chain.
 
 
 
@@ -66,6 +80,7 @@
 ### Relevant links & resources
 
 - [Architecture diagrams](https://hackmd.io/WXwzLS5TS4q_G3C7w2DkiA)
+- [Cross Chain Alliance - Hashi](https://crosschain-alliance.gitbook.io/hashi)
 
 ## Getting Started
 
@@ -163,3 +178,7 @@ This template builds upon the frameworks and libraries mentioned above, so pleas
 For example, if you're interested in exploring Foundry in more detail, you should look at the
 [Foundry Book](https://book.getfoundry.sh/). In particular, you may be interested in reading the
 [Writing Tests](https://book.getfoundry.sh/forge/writing-tests.html) tutorial.
+
+
+[`HypERC20Collateral`]: https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%405.2.0/solidity/contracts/token/HypERC20Collateral.sol
+[`Mailbox`]: https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%405.2.0/solidity/contracts/Mailbox.sol
