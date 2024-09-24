@@ -1,49 +1,118 @@
-# Foundry Template [![Open in Gitpod][gitpod-badge]][gitpod] [![Github Actions][gha-badge]][gha] [![Foundry][foundry-badge]][foundry] [![License: MIT][license-badge]][license]
+# Hyperlane LSP7 version - `HypLSP7` [![Open in Gitpod][gitpod-badge]][gitpod] [![Github Actions][gha-badge]][gha] [![Foundry][foundry-badge]][foundry] [![License: MIT][license-badge]][license]
 
-[gitpod]: https://gitpod.io/#https://github.com/PaulRBerg/foundry-template
+[gitpod]: https://gitpod.io/#https://github.com/lukso-network/lsp-bridge-HypLSP7
 [gitpod-badge]: https://img.shields.io/badge/Gitpod-Open%20in%20Gitpod-FFB45B?logo=gitpod
-[gha]: https://github.com/PaulRBerg/foundry-template/actions
-[gha-badge]: https://github.com/PaulRBerg/foundry-template/actions/workflows/ci.yml/badge.svg
+[gha]: https://github.com/lukso-network/lsp-bridge-HypLSP7/actions
+[gha-badge]: https://github.com/lukso-network/lsp-bridge-HypLSP7/actions/workflows/ci.yml/badge.svg
 [foundry]: https://getfoundry.sh/
 [foundry-badge]: https://img.shields.io/badge/Built%20with-Foundry-FFDB1C.svg
 [license]: https://opensource.org/licenses/MIT
 [license-badge]: https://img.shields.io/badge/License-MIT-blue.svg
 
-A Foundry-based template for developing Solidity smart contracts, with sensible defaults.
+## Architecture & Workflow
 
-## What's Inside
+The flow for bridging tokens is generally as follow:
 
-- [Forge](https://github.com/foundry-rs/foundry/blob/master/forge): compile, test, fuzz, format, and deploy smart
-  contracts
-- [Forge Std](https://github.com/foundry-rs/forge-std): collection of helpful contracts and utilities for testing
-- [Prettier](https://github.com/prettier/prettier): code formatter for non-Solidity files
-- [Solhint](https://github.com/protofire/solhint): linter for Solidity code
+- if the token is originally from ETH, the token is locked on ETHEREUM, and minted on LUKSO.
+- if the token is originally from LUKSO, the token is burnt on LUKSO, minted on ETHEREUM.
+
+### Ethereum -> LUKSO
+
+![Ethereum to LUKSO bridge flow](./assets/flow-ethereum-lukso-hashi-bridge.png)
+
+
+**on Ethereum chain**
+
+1. User transfer ERC20 tokens to [`HypERC20Collateral`]. This locks the tokens in the collateral contract.
+2. `HypERC20Collateral` contract call [`Mailbox`] to pass the message.
+3. The `Mailbox` calls:
+   3.1. the default Hook (created by Hyperlane),
+   3.2. and the Hashi Hook (created by CCIA team).
+4. Hashi Hook dispatch the token relaying message from `Yaho` contracts.
+
+> In the architecture diagram above:
+> - The `Yaho` contracts handle the dispatching and batching of messages across chains.
+> - The `Yaru` contracts ensures that the messages are properly executed on the destination chain by calling relevant functions like `onMessage`.
+
+
+
+**Off chain**
+
+5. Hashi relayer (managed by CCIA team) listen for events from `Yaho` contracts and request the reporter contracts to relay token relaying message.
+6. Hashi executor (managed by CCIA team) listen to event from each Hashi adapter contracts and call `Yaru.executeMessages`. **This step checks whether the Hashi adapters agree on a specify message id** (a threshold number of hash is stored), and set the message Id to verified status.
+7. Validator (run by Hyperlane & LUKSO team) will sign the Merkle root when new dispatches happen in Mailbox.
+8. Hyperlane relayer (run by Hyperlane team) relays the message by calling Mailbox.process().
+
+**on LUKSO chain**
+
+8. When [`Mailbox.process(...)`](https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/3d116132b87d36af9576d6b116f31a53d680db4a/solidity/contracts/Mailbox.sol#L188-L197) is called, it will:
+  8.1. check with Multisig ISM (includes Hashi ISM), whether the message is signed by validators & verified by Hashi ISM.
+  8.2. If so, it will mint [HypLSP7](./src/HypLSP7.sol) tokens to the receiver.
+
+
+### LUKSO -> Ethereum
+
+![LUKSO to Ethereum bridge flow](./assets/flow-lukso-ethereum-hashi-bridge.png)
+
+**on LUKSO chain**
+
+> _Step 1 to 3 needs to be confirmed_
+
+1. User transfer LSP7 token to HypLSP7 contract and the tokens are burnt.
+2. HypLSP7 contract calls `Mailbox` to pass the message.
+3. `Mailbox` calls Default Hook (created by Hyperlane) and Hashi Hook (created by CCIA team).
+4. Hashi Hook dispatch the token relaying message from Yaho contracts.
+
+**Off chain**
+
+4. Off chain process remains the same as before, _except there is no Light Client support for Hashi from LUKSO → Ethereum_.
+
+**on Ethereum chain**
+
+5. When `Mailbox.process()` is called:
+   5.1. it will check with Multisig ISM (includes Hashi ISM), whether the message is signed by validators & verified by Hashi ISM.
+   5.2. If so, it will unlock ERC20 token to the receiver on the Ethereum chain.
+
+
+
+### Examples of bridged tokens
+
+- ETH -> LUKSO: https://explorer.hyperlane.xyz/message/0x53a383e32fdb68748c8af5c86be3669e58eadc377db2a9f420826cb9474dd55c
+
+- LUKSO -> ETH: https://explorer.hyperlane.xyz/message/0xf9c86a22e7b5584fc87a9d4ffc39f967a8745cd28b98ed2eaeb220c43996c4ca
+
+
+### Relevant links & resources
+
+- [Cross Chain Alliance - Hashi](https://crosschain-alliance.gitbook.io/hashi)
+- [Hyperlane smart contracts monorepo](https://github.com/hyperlane-xyz/hyperlane-monorepo)
 
 ## Getting Started
 
-Click the [`Use this template`](https://github.com/PaulRBerg/foundry-template/generate) button at the top of the page to
-create a new repository with this repo as the initial state.
-
-Or, if you prefer to install the template manually:
+This project is based on the Foundry template by PaulRBerg.
 
 ```sh
-$ mkdir my-project
-$ cd my-project
-$ forge init --template PaulRBerg/foundry-template
-$ bun install # install Solhint, Prettier, and other Node.js deps
+bun install # install Solhint, Prettier, and other Node.js deps
 ```
 
 If this is your first time with Foundry, check out the
 [installation](https://github.com/foundry-rs/foundry#installation) instructions.
 
-## Features
+### Installing Dependencies
 
-This template builds upon the frameworks and libraries mentioned above, so please consult their respective documentation
-for details about their specific features.
+Foundry typically uses git submodules to manage dependencies, but this template uses Node.js packages because
+[submodules don't scale](https://twitter.com/PaulRBerg/status/1736695487057531328).
 
-For example, if you're interested in exploring Foundry in more detail, you should look at the
-[Foundry Book](https://book.getfoundry.sh/). In particular, you may be interested in reading the
-[Writing Tests](https://book.getfoundry.sh/forge/writing-tests.html) tutorial.
+This is how to install dependencies:
+
+1. Install the dependency using your preferred package manager, e.g. `bun install dependency-name`
+   - Use this syntax to install from GitHub: `bun install github:username/repo-name`
+2. Add a remapping for the dependency in [remappings.txt](./remappings.txt), e.g.
+   `dependency-name=node_modules/dependency-name`
+
+Note that OpenZeppelin Contracts is pre-installed, so you can follow that as an example.
+
+
 
 ### Sensible Defaults
 
@@ -60,146 +129,61 @@ following files:
 └── remappings.txt
 ```
 
-### VSCode Integration
 
-This template is IDE agnostic, but for the best user experience, you may want to use it in VSCode alongside Nomic
-Foundation's [Solidity extension](https://marketplace.visualstudio.com/items?itemName=NomicFoundation.hardhat-solidity).
 
-For guidance on how to integrate a Foundry project in VSCode, please refer to this
-[guide](https://book.getfoundry.sh/config/vscode).
-
-### GitHub Actions
-
-This template comes with GitHub Actions pre-configured. Your contracts will be linted and tested on every push and pull
-request made to the `main` branch.
-
-You can edit the CI script in [.github/workflows/ci.yml](./.github/workflows/ci.yml).
-
-## Installing Dependencies
-
-Foundry typically uses git submodules to manage dependencies, but this template uses Node.js packages because
-[submodules don't scale](https://twitter.com/PaulRBerg/status/1736695487057531328).
-
-This is how to install dependencies:
-
-1. Install the dependency using your preferred package manager, e.g. `bun install dependency-name`
-   - Use this syntax to install from GitHub: `bun install github:username/repo-name`
-2. Add a remapping for the dependency in [remappings.txt](./remappings.txt), e.g.
-   `dependency-name=node_modules/dependency-name`
-
-Note that OpenZeppelin Contracts is pre-installed, so you can follow that as an example.
-
-## Writing Tests
-
-To write a new test contract, you start by importing `Test` from `forge-std`, and then you inherit it in your test
-contract. Forge Std comes with a pre-instantiated [cheatcodes](https://book.getfoundry.sh/cheatcodes/) environment
-accessible via the `vm` property. If you would like to view the logs in the terminal output, you can add the `-vvv` flag
-and use [console.log](https://book.getfoundry.sh/faq?highlight=console.log#how-do-i-use-consolelog).
-
-This template comes with an example test contract [Foo.t.sol](./test/Foo.t.sol)
 
 ## Usage
 
 This is a list of the most frequently needed commands.
 
-### Build
+### Build & Compile
 
-Build the contracts:
-
-```sh
-$ forge build
-```
-
-### Clean
-
-Delete the build artifacts and cache directories:
 
 ```sh
-$ forge clean
+# Build the contracts:
+forge build
+
+# Delete the build artifacts and cache directories:
+forge clean
+
+# Get a test coverage report:
+forge coverage
+
+# Format the contracts:
+forge fmt
+
+# Get a gas report:
+forge test --gas-report
+
+# Lint the contracts:
+bun run lint
+
+# Run the tests:
+forge test
+
+# Generate test coverage and output result to the terminal:
+bun run test:coverage
+
+# Generate test coverage with lcov report (you'll have to open the `./coverage/index.html` file in your browser,
+# to do so simply copy paste the path):
+bun run test:coverage:report
 ```
 
-### Compile
+### GitHub Actions
 
-Compile the contracts:
+This repository uses pre-configured GitHub Actions. The contracts are linted and tested on every push and pull requests.
 
-```sh
-$ forge build
-```
+You can edit the CI script in [.github/workflows/ci.yml](./.github/workflows/ci.yml).
 
-### Coverage
 
-Get a test coverage report:
+## Foundry Resources
 
-```sh
-$ forge coverage
-```
+This template builds upon the frameworks and libraries mentioned above, so please consult their respective documentation for details about their specific features.
 
-### Deploy
+For example, if you're interested in exploring Foundry in more detail, you should look at the
+[Foundry Book](https://book.getfoundry.sh/). In particular, you may be interested in reading the
+[Writing Tests](https://book.getfoundry.sh/forge/writing-tests.html) tutorial.
 
-Deploy to Anvil:
 
-```sh
-$ forge script script/Deploy.s.sol --broadcast --fork-url http://localhost:8545
-```
-
-For this script to work, you need to have a `MNEMONIC` environment variable set to a valid
-[BIP39 mnemonic](https://iancoleman.io/bip39/).
-
-For instructions on how to deploy to a testnet or mainnet, check out the
-[Solidity Scripting](https://book.getfoundry.sh/tutorials/solidity-scripting.html) tutorial.
-
-### Format
-
-Format the contracts:
-
-```sh
-$ forge fmt
-```
-
-### Gas Usage
-
-Get a gas report:
-
-```sh
-$ forge test --gas-report
-```
-
-### Lint
-
-Lint the contracts:
-
-```sh
-$ bun run lint
-```
-
-### Test
-
-Run the tests:
-
-```sh
-$ forge test
-```
-
-Generate test coverage and output result to the terminal:
-
-```sh
-$ bun run test:coverage
-```
-
-Generate test coverage with lcov report (you'll have to open the `./coverage/index.html` file in your browser, to do so
-simply copy paste the path):
-
-```sh
-$ bun run test:coverage:report
-```
-
-## Related Efforts
-
-- [abigger87/femplate](https://github.com/abigger87/femplate)
-- [cleanunicorn/ethereum-smartcontract-template](https://github.com/cleanunicorn/ethereum-smartcontract-template)
-- [foundry-rs/forge-template](https://github.com/foundry-rs/forge-template)
-- [FrankieIsLost/forge-template](https://github.com/FrankieIsLost/forge-template)
-
-## License
-
-This project is licensed under MIT.
+[`HypERC20Collateral`]: https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%405.2.0/solidity/contracts/token/HypERC20Collateral.sol
+[`Mailbox`]: https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%405.2.0/solidity/contracts/Mailbox.sol

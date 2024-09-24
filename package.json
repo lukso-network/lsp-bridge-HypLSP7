@@ -1,13 +1,16 @@
 {
-  "name": "@prb/foundry-template",
-  "description": "Foundry-based template for developing Solidity smart contracts",
+  "name": "@lukso-network/lsp-bridge-HypLSP7",
+  "description": "",
   "version": "1.0.0",
   "author": {
-    "name": "Paul Razvan Berg",
-    "url": "https://github.com/PaulRBerg"
+    "name": "lukso-network",
+    "url": "https://github.com/lukso-network"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.0.1"
+    "@erc725/smart-contracts-v8": "erc725-smart-contracts-v8-rc0.tgz",
+    "@hyperlane-xyz/core": "^5.0.0",
+    "@lukso/lsp4-contracts": "lukso-lsp4-contracts-0.16.0-rc.0.tgz",
+    "@lukso/lsp7-contracts": "lukso-lsp7-contracts-0.16.0-rc.0.tgz"
   },
   "devDependencies": {
     "forge-std": "github:foundry-rs/forge-std#v1.8.1",
