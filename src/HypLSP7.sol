@@ -6,8 +6,8 @@ import { LSP7DigitalAssetInitAbstract } from "@lukso/lsp7-contracts/contracts/LS
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-// libraries
-import { TokenMessageForLSP7 } from "./TokenMessageForLSP7.sol";
+// constants
+import { _LSP4_TOKEN_TYPE_TOKEN } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
 
 /**
  * @title LSP7 version of the Hyperlane ERC20 Token Router
@@ -25,6 +25,11 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
      * @param _totalSupply The initial supply of the token.
      * @param _name The name of the token.
      * @param _symbol The symbol of the token.
+     *
+     * @dev The `LSP4TokenType` is hardcoded to type `Token` (= `0`) as all ERC20 tokens are of token type 0.
+     * This aims to keep the number of parameters consistent between hyperc20 and hypLSP7, so that the code of off-chain
+     * agents that call this function
+     * does not need to be modifed to add an extra parameter that would be irrelevant.
      */
     function initialize(
         uint256 _totalSupply,
@@ -32,8 +37,7 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
         string memory _symbol,
         address _hook,
         address _interchainSecurityModule,
-        address _owner,
-        uint256 _lsp4TokenType
+        address _owner
     )
         external
         initializer
@@ -43,7 +47,7 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
             name_: _name,
             symbol_: _symbol,
             newOwner_: _owner,
-            lsp4TokenType_: _lsp4TokenType,
+            lsp4TokenType_: _LSP4_TOKEN_TYPE_TOKEN,
             isNonDivisible_: false // isNonDivisible set to `false` as will not be used anyway since decimals() is
                 // overriden
          });
@@ -92,26 +96,5 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
         override
     {
         LSP7DigitalAssetInitAbstract._mint(_recipient, _amount, true, "");
-    }
-
-    function _transferRemote(
-        uint32 _destination,
-        bytes32 _recipient,
-        uint256 _amountOrId,
-        uint256 _value,
-        bytes memory _hookMetadata,
-        address _hook
-    )
-        internal
-        virtual
-        override(TokenRouter)
-        returns (bytes32 messageId)
-    {
-        bytes memory _tokenMetadata = _transferFromSender(_amountOrId);
-        bytes memory _tokenMessage = TokenMessageForLSP7.format(_recipient, _amountOrId, _tokenMetadata);
-
-        messageId = _Router_dispatch(_destination, _value, _tokenMessage, _hookMetadata, _hook);
-
-        emit SentTransferRemote(_destination, _recipient, _amountOrId);
     }
 }
