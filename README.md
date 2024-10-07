@@ -9,12 +9,89 @@
 [license]: https://opensource.org/licenses/MIT
 [license-badge]: https://img.shields.io/badge/License-MIT-blue.svg
 
+This repo is the LSP7 version of the [`HypERC20`] and [`HypERC20Collateral`] of `@hyeperlane-xyz/core` package. They are used to bridge tokens between the Ethereum and LUKSO chains using the [Hashi Bridge](https://crosschain-alliance.gitbook.io/hashi).
+
 ## Architecture & Workflow
 
-The flow for bridging tokens is generally as follow:
+The flow for bridging tokens is generally as follow. If the token is originally from:
 
-- if the token is originally from ETH, the token is locked on ETHEREUM, and minted on LUKSO.
-- if the token is originally from LUKSO, the token is burnt on LUKSO, minted on ETHEREUM.
+### ETHEREUM -> LUKSO
+
+**scenario 1:** the ERC20 token initially exists on Ethereum and was deployed there (_e.g: DAI, USDC, etc...).
+
+The ERC20 token is locked on ETHEREUM, an HypLSP7 token is minted on LUKSO.
+
+```mermaid
+%% Ethereum -> LUKSO - Bridge an existing ERC20 on Ethereum to LUKSO
+%% example: DAI
+graph TD
+    subgraph Source_Chain_Ethereum[Ethereum]
+        User[User 👤] -->|transfer ➡️| ERC20
+        ERC20 -->|lock 🔒| HypERC20Collateral
+    end
+        HypERC20Collateral .->|Bridging| HypLSP7
+    subgraph Destination_Chain_LUKSO[LUKSO]
+        HypLSP7 -->|mint ⛏️| End_User
+        End_User[User 👤]
+    end
+```
+
+**scenario 2:** the token was migrated from LUKSO to Ethereum and an HypERC20 token contract was created as a wrapper on the Ethereum side.
+
+```mermaid
+%% Ethereum -> LUKSO - LSP7 token that was initially bridged from LUKSO
+%% example: Chillwhale
+graph TD
+    subgraph Source_Chain_Ethereum[Ethereum]
+        User[User 👤] -->|burn 🔥| HypERC20
+        HypERC20[HypERC20]
+    end
+        HypERC20[HypERC20] .->|bridging| HypLSP7Collateral
+    subgraph Destination_Chain_LUKSO[LUKSO]
+        HypLSP7Collateral -->|unlock 🔓 + transfer| LSP7
+    end
+```
+
+### LUKSO -> ETHEREUM
+
+- **scenario 3:** the LSP7 token was originally created and deployed on LUKSO.
+
+The LSP7 token is transferred to a `HypLSP7Collateral` contract on LUKSO where it is locked. The HypERC20 token on Ethereum is then minted for the user.
+
+```mermaid
+graph TD
+    subgraph Source_Chain_LUKSO[LUKSO]
+        User[User 👤] -->|transfer ➡️| LSP7
+        LSP7 -->|transfer + lock 🔒| HypLSP7Collateral
+    end
+        HypLSP7Collateral .->|bridging| HypERC20
+
+    subgraph Destination_Chain_Ethereum[Ethereum]
+        HypERC20 -->|mint ⛏️| End_User
+        End_User[User 👤]
+    end
+```
+
+- **scenario 4:** an ERC20 token was bridged from Ethereum to LUKSO and we want to bridge back to Ethereum.
+
+This HypLSP7 token is burnt on LUKSO, on Ethereum it is unlocked.
+
+```mermaid
+graph TD
+    subgraph Source_Chain_LUKSO[LUKSO]
+        User[User 👤] -->|burn 🔥| HypLSP7
+        HypLSP7[HypLSP7]
+    end
+        HypLSP7 .->|bridging| HypERC20Collateral
+
+    subgraph Destination_Chain_Ethereum[Ethereum]
+        HypERC20Collateral -->|unlock 🔓| LSP7
+        LSP7 -->|transfer ➡️| End_User[User 👤]
+    end
+```
+
+
+## Complete Diagrams
 
 ### Ethereum -> LUKSO
 
@@ -33,8 +110,6 @@ The flow for bridging tokens is generally as follow:
 > In the architecture diagram above:
 > - The `Yaho` contracts handle the dispatching and batching of messages across chains.
 > - The `Yaru` contracts ensures that the messages are properly executed on the destination chain by calling relevant functions like `onMessage`.
-
-
 
 **Off chain**
 
@@ -186,4 +261,5 @@ For example, if you're interested in exploring Foundry in more detail, you shoul
 
 
 [`HypERC20Collateral`]: https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%405.2.0/solidity/contracts/token/HypERC20Collateral.sol
+[`HypERC20`]: https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%405.2.0/solidity/contracts/token/HypERC20.sol
 [`Mailbox`]: https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%405.2.0/solidity/contracts/Mailbox.sol
