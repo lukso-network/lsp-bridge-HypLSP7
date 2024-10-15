@@ -2,19 +2,20 @@
 pragma solidity ^0.8.13;
 
 
-import "forge-std/Test.sol";
+import "forge-std/src/Test.sol";
 
-import {TypeCasts} from "@hyperlane-xyz/core/libs/TypeCasts.sol";
-import {TestMailbox} from "@hyperlane-xyz/core/test/TestMailbox.sol";
-import {ERC20Test} from "@hyperlane-xyz/core/test/ERC20Test.sol";
-import {TestPostDispatchHook} from "@hyperlane-xyz/core/test/TestPostDispatchHook.sol";
-import {TestInterchainGasPaymaster} from "@hyperlane-xyz/core/test/TestInterchainGasPaymaster.sol";
-import {GasRouter} from "@hyperlane-xyz/core/client/GasRouter.sol";
+import {TypeCasts} from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
+import {TestMailbox} from "@hyperlane-xyz/core/contracts/test/TestMailbox.sol";
+
+import {LSP7Mock} from "./LSP7Mock.sol";
+import {TestPostDispatchHook} from "@hyperlane-xyz/core/contracts/test/TestPostDispatchHook.sol";
+import {TestInterchainGasPaymaster} from "@hyperlane-xyz/core/contracts/test/TestInterchainGasPaymaster.sol";
+import {GasRouter} from "@hyperlane-xyz/core/contracts/client/GasRouter.sol";
 
 import {HypLSP7} from "../src/HypLSP7.sol";
-import {HypERC20Collateral} from "@hyperlane-xyz/core/token/HypERC20Collateral.sol";
-import {HypNative} from "@hyperlane-xyz/core/token/HypNative.sol";
-import {TokenRouter} from "@hyperlane-xyz/core/token/libs/TokenRouter.sol";
+import {HypLSP7Collateral} from "../src/HypLSP7Collateral.sol";
+import {HypNative} from "@hyperlane-xyz/core/contracts/token/HypNative.sol";
+import {TokenRouter} from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
 
 abstract contract HypTokenTest is Test {
     using TypeCasts for address;
@@ -27,10 +28,11 @@ abstract contract HypTokenTest is Test {
     uint256 internal constant TRANSFER_AMT = 100e18;
     string internal constant NAME = "HyperlaneInu";
     string internal constant SYMBOL = "HYP";
-    address internal constant ALICE = address(0x1);
-    address internal constant BOB = address(0x2);
+    address internal  ALICE = makeAddr("alice");
+    address internal  BOB = makeAddr("bob");
+    address internal  OWNER = makeAddr("owner");
 
-    ERC20Test internal primaryToken;
+    LSP7Mock internal primaryToken;
     TokenRouter internal localToken;
     HypLSP7 internal remoteToken;
     TestMailbox internal localMailbox;
@@ -54,7 +56,7 @@ abstract contract HypTokenTest is Test {
         localMailbox = new TestMailbox(ORIGIN);
         remoteMailbox = new TestMailbox(DESTINATION);
 
-        primaryToken = new ERC20Test(NAME, SYMBOL, TOTAL_SUPPLY, DECIMALS);
+        primaryToken = new LSP7Mock(NAME, SYMBOL, address(this), TOTAL_SUPPLY);
 
         noopHook = new TestPostDispatchHook();
         localMailbox.setDefaultHook(address(noopHook));
@@ -63,16 +65,28 @@ abstract contract HypTokenTest is Test {
         REQUIRED_VALUE = noopHook.quoteDispatch("", "");
 
         remoteToken = new HypLSP7(DECIMALS, address(remoteMailbox));
-        remoteToken.initialize(TOTAL_SUPPLY, NAME, SYMBOL);
-        remoteToken.enrollRemoteRouter(
-            ORIGIN,
-            address(localToken).addressToBytes32()
+
+        // todo: add owner
+        remoteToken.initialize(
+            TOTAL_SUPPLY,
+            NAME,
+            SYMBOL,
+            address(noopHook),
+            address(0),
+            OWNER
         );
+
+        // call as owner
+        vm.prank(OWNER);
+        remoteToken.enrollRemoteRouter(ORIGIN, address(localToken).addressToBytes32());
+
         igp = new TestInterchainGasPaymaster();
+
         vm.deal(ALICE, 125000);
     }
 
     function _enrollRemoteTokenRouter() internal {
+        vm.prank(OWNER);
         remoteToken.enrollRemoteRouter(
             ORIGIN,
             address(localToken).addressToBytes32()
@@ -84,15 +98,19 @@ abstract contract HypTokenTest is Test {
     }
 
     function _processTransfers(address _recipient, uint256 _amount) internal {
+
         vm.prank(address(remoteMailbox));
         remoteToken.handle(
             ORIGIN,
             address(localToken).addressToBytes32(),
             abi.encodePacked(_recipient.addressToBytes32(), _amount)
         );
+
     }
 
     function _setCustomGasConfig() internal {
+
+        vm.prank(OWNER);
         localToken.setHook(address(igp));
 
         TokenRouter.GasRouterConfig[]
@@ -101,7 +119,10 @@ abstract contract HypTokenTest is Test {
             domain: DESTINATION,
             gas: GAS_LIMIT
         });
+
+        vm.prank(OWNER);
         localToken.setDestinationGas(config);
+
     }
 
     function _performRemoteTransfer(
@@ -109,6 +130,7 @@ abstract contract HypTokenTest is Test {
         uint256 _amount
     ) internal {
         vm.prank(ALICE);
+
         localToken.transferRemote{value: _msgValue}(
             DESTINATION,
             BOB.addressToBytes32(),
@@ -116,6 +138,7 @@ abstract contract HypTokenTest is Test {
         );
 
         vm.expectEmit(true, true, false, true);
+
         emit ReceivedTransferRemote(ORIGIN, BOB.addressToBytes32(), _amount);
         _processTransfers(BOB, _amount);
 
@@ -128,7 +151,9 @@ abstract contract HypTokenTest is Test {
         uint256 _gasOverhead
     ) internal {
         uint256 ethBalance = ALICE.balance;
+
         _performRemoteTransfer(_msgValue + _gasOverhead, _amount);
+
         assertEq(ALICE.balance, ethBalance - REQUIRED_VALUE - _gasOverhead);
     }
 
@@ -152,103 +177,145 @@ abstract contract HypTokenTest is Test {
             abi.encodePacked(BOB.addressToBytes32(), TRANSFER_AMT)
         );
         uint256 gasAfter = gasleft();
-        console.log("Overhead gas usage: %d", gasBefore - gasAfter);
+
     }
 }
 
-contract HypERC20Test is HypTokenTest {
+contract HypLSP7Test is HypTokenTest {
     using TypeCasts for address;
-    HypERC20 internal erc20Token;
+    HypLSP7 internal lsp7Token;
+
+    address internal owner = makeAddr("owner");
 
     function setUp() public override {
         super.setUp();
 
-        localToken = new HypERC20(DECIMALS, address(localMailbox));
-        erc20Token = HypERC20(address(localToken));
+        localToken = new HypLSP7(DECIMALS, address(localMailbox));
+        lsp7Token = HypLSP7(payable(address(localToken)));
 
-        erc20Token.initialize(TOTAL_SUPPLY, NAME, SYMBOL);
 
-        erc20Token.enrollRemoteRouter(
+        vm.prank(owner);
+        lsp7Token.initialize(
+            TOTAL_SUPPLY,
+            NAME,
+            SYMBOL,
+            address(noopHook),
+            address(0),
+            owner
+        );
+
+
+        vm.prank(owner);
+        lsp7Token.enrollRemoteRouter(
             DESTINATION,
             address(remoteToken).addressToBytes32()
         );
-        erc20Token.transfer(ALICE, 1000e18);
+
+
+        // from, to, amount, force, data
+        vm.prank(owner);
+
+        lsp7Token.transfer(owner, ALICE, 1000e18, true, "");
+
 
         _enrollRemoteTokenRouter();
     }
 
     function testInitialize_revert_ifAlreadyInitialized() public {
         vm.expectRevert("Initializable: contract is already initialized");
-        erc20Token.initialize(TOTAL_SUPPLY, NAME, SYMBOL);
+        lsp7Token.initialize(
+            TOTAL_SUPPLY,
+            NAME,
+            SYMBOL,
+            address(noopHook),
+            address(0),
+            owner
+        );
     }
 
     function testTotalSupply() public {
-        assertEq(erc20Token.totalSupply(), TOTAL_SUPPLY);
+        assertEq(lsp7Token.totalSupply(), TOTAL_SUPPLY);
     }
 
     function testDecimals() public {
-        assertEq(erc20Token.decimals(), DECIMALS);
+        assertEq(lsp7Token.decimals(), DECIMALS);
     }
 
     function testLocalTransfers() public {
-        assertEq(erc20Token.balanceOf(ALICE), 1000e18);
-        assertEq(erc20Token.balanceOf(BOB), 0);
+        assertEq(lsp7Token.balanceOf(ALICE), 1000e18);
+        assertEq(lsp7Token.balanceOf(BOB), 0);
 
         vm.prank(ALICE);
-        erc20Token.transfer(BOB, 100e18);
-        assertEq(erc20Token.balanceOf(ALICE), 900e18);
-        assertEq(erc20Token.balanceOf(BOB), 100e18);
+        lsp7Token.transfer(ALICE, BOB, 100e18, true, "");
+        assertEq(lsp7Token.balanceOf(ALICE), 900e18);
+        assertEq(lsp7Token.balanceOf(BOB), 100e18);
     }
 
     function testRemoteTransfer() public {
+        vm.prank(owner);
         remoteToken.enrollRemoteRouter(
             ORIGIN,
             address(localToken).addressToBytes32()
         );
-        uint256 balanceBefore = erc20Token.balanceOf(ALICE);
+        uint256 balanceBefore = lsp7Token.balanceOf(ALICE);
+
         _performRemoteTransferWithEmit(REQUIRED_VALUE, TRANSFER_AMT, 0);
-        assertEq(erc20Token.balanceOf(ALICE), balanceBefore - TRANSFER_AMT);
+        assertEq(lsp7Token.balanceOf(ALICE), balanceBefore - TRANSFER_AMT);
     }
 
     function testRemoteTransfer_invalidAmount() public {
-        vm.expectRevert("ERC20: burn amount exceeds balance");
+        vm.expectRevert();
         _performRemoteTransfer(REQUIRED_VALUE, TRANSFER_AMT * 11);
-        assertEq(erc20Token.balanceOf(ALICE), 1000e18);
+        assertEq(lsp7Token.balanceOf(ALICE), 1000e18);
     }
 
     function testRemoteTransfer_withCustomGasConfig() public {
         _setCustomGasConfig();
 
-        uint256 balanceBefore = erc20Token.balanceOf(ALICE);
+        uint256 balanceBefore = lsp7Token.balanceOf(ALICE);
+
         _performRemoteTransferAndGas(
             REQUIRED_VALUE,
             TRANSFER_AMT,
             GAS_LIMIT * igp.gasPrice()
         );
-        assertEq(erc20Token.balanceOf(ALICE), balanceBefore - TRANSFER_AMT);
+
+        assertEq(lsp7Token.balanceOf(ALICE), balanceBefore - TRANSFER_AMT);
     }
 }
 
-contract HypERC20CollateralTest is HypTokenTest {
+contract HypLSP7CollateralTest is HypTokenTest {
     using TypeCasts for address;
-    HypERC20Collateral internal erc20Collateral;
+    HypLSP7Collateral internal lsp7Collateral;
+
+    address internal owner = makeAddr("owner");
 
     function setUp() public override {
         super.setUp();
 
-        localToken = new HypERC20Collateral(
+        localToken = new HypLSP7Collateral(
             address(primaryToken),
             address(localMailbox)
         );
-        erc20Collateral = HypERC20Collateral(address(localToken));
 
-        erc20Collateral.enrollRemoteRouter(
+
+        lsp7Collateral = HypLSP7Collateral(address(localToken));
+
+        lsp7Collateral.initialize(
+            address(noopHook),
+            address(0),
+            OWNER
+        );
+
+        vm.prank(owner);
+        lsp7Collateral.enrollRemoteRouter(
             DESTINATION,
             address(remoteToken).addressToBytes32()
         );
 
-        primaryToken.transfer(address(localToken), 1000e18);
-        primaryToken.transfer(ALICE, 1000e18);
+        primaryToken.transfer(address(this), address(localToken), 1000e18, true, "");
+
+        primaryToken.transfer(address(this), ALICE, 1000e18, true, "");
 
         _enrollRemoteTokenRouter();
     }
@@ -259,13 +326,14 @@ contract HypERC20CollateralTest is HypTokenTest {
         uint256 balanceBefore = localToken.balanceOf(ALICE);
 
         vm.prank(ALICE);
-        primaryToken.approve(address(localToken), TRANSFER_AMT);
+        primaryToken.authorizeOperator(address(localToken), TRANSFER_AMT, "");
+
         _performRemoteTransferWithEmit(REQUIRED_VALUE, TRANSFER_AMT, 0);
         assertEq(localToken.balanceOf(ALICE), balanceBefore - TRANSFER_AMT);
     }
 
     function testRemoteTransfer_invalidAllowance() public {
-        vm.expectRevert("ERC20: insufficient allowance");
+        vm.expectRevert();
         _performRemoteTransfer(REQUIRED_VALUE, TRANSFER_AMT);
         assertEq(localToken.balanceOf(ALICE), 1000e18);
     }
@@ -275,8 +343,10 @@ contract HypERC20CollateralTest is HypTokenTest {
 
         uint256 balanceBefore = localToken.balanceOf(ALICE);
 
+
         vm.prank(ALICE);
-        primaryToken.approve(address(localToken), TRANSFER_AMT);
+        // primaryToken.authorizeOperator(address(localToken), TRANSFER_AMT, "");
+        primaryToken.authorizeOperator(address(localToken), TRANSFER_AMT, "");
         _performRemoteTransferAndGas(
             REQUIRED_VALUE,
             TRANSFER_AMT,
@@ -290,12 +360,21 @@ contract HypNativeTest is HypTokenTest {
     using TypeCasts for address;
     HypNative internal nativeToken;
 
+    address internal owner = makeAddr("owner");
+
     function setUp() public override {
         super.setUp();
 
         localToken = new HypNative(address(localMailbox));
         nativeToken = HypNative(payable(address(localToken)));
 
+        nativeToken.initialize(
+            address(noopHook),
+            address(0),
+            OWNER
+        );
+
+        vm.prank(owner);
         nativeToken.enrollRemoteRouter(
             DESTINATION,
             address(remoteToken).addressToBytes32()
