@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 
-import "forge-std/src/Test.sol";
+import {Test} from "forge-std/src/Test.sol";
 
 import {TypeCasts} from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 import {TestMailbox} from "@hyperlane-xyz/core/contracts/test/TestMailbox.sol";
@@ -66,7 +66,6 @@ abstract contract HypTokenTest is Test {
 
         remoteToken = new HypLSP7(DECIMALS, address(remoteMailbox));
 
-        // todo: add owner
         remoteToken.initialize(
             TOTAL_SUPPLY,
             NAME,
@@ -76,7 +75,6 @@ abstract contract HypTokenTest is Test {
             OWNER
         );
 
-        // call as owner
         vm.prank(OWNER);
         remoteToken.enrollRemoteRouter(ORIGIN, address(localToken).addressToBytes32());
 
@@ -288,7 +286,6 @@ contract HypLSP7CollateralTest is HypTokenTest {
     using TypeCasts for address;
     HypLSP7Collateral internal lsp7Collateral;
 
-    address internal owner = makeAddr("owner");
 
     function setUp() public override {
         super.setUp();
@@ -307,7 +304,7 @@ contract HypLSP7CollateralTest is HypTokenTest {
             OWNER
         );
 
-        vm.prank(owner);
+        vm.prank(OWNER);
         lsp7Collateral.enrollRemoteRouter(
             DESTINATION,
             address(remoteToken).addressToBytes32()
@@ -319,8 +316,6 @@ contract HypLSP7CollateralTest is HypTokenTest {
 
         _enrollRemoteTokenRouter();
     }
-
-    function testInitialize_revert_ifAlreadyInitialized() public {}
 
     function testRemoteTransfer() public {
         uint256 balanceBefore = localToken.balanceOf(ALICE);
@@ -345,7 +340,6 @@ contract HypLSP7CollateralTest is HypTokenTest {
 
 
         vm.prank(ALICE);
-        // primaryToken.authorizeOperator(address(localToken), TRANSFER_AMT, "");
         primaryToken.authorizeOperator(address(localToken), TRANSFER_AMT, "");
         _performRemoteTransferAndGas(
             REQUIRED_VALUE,
@@ -360,7 +354,6 @@ contract HypNativeTest is HypTokenTest {
     using TypeCasts for address;
     HypNative internal nativeToken;
 
-    address internal owner = makeAddr("owner");
 
     function setUp() public override {
         super.setUp();
@@ -374,7 +367,7 @@ contract HypNativeTest is HypTokenTest {
             OWNER
         );
 
-        vm.prank(owner);
+        vm.prank(OWNER);
         nativeToken.enrollRemoteRouter(
             DESTINATION,
             address(remoteToken).addressToBytes32()
@@ -385,8 +378,6 @@ contract HypNativeTest is HypTokenTest {
 
         _enrollRemoteTokenRouter();
     }
-
-    function testInitialize_revert_ifAlreadyInitialized() public {}
 
     function testRemoteTransfer() public {
         _performRemoteTransferWithEmit(
