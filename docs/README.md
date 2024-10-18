@@ -26,8 +26,8 @@ graph TD
 **scenario 2:** the token was migrated from LUKSO to Ethereum and an HypERC20 token contract was created as a wrapper on
 the Ethereum side (_e.g: wrapped Chillwhale or wrapped FABS as HypERC20_).
 
-The user burn the wrapped token `HypERC20` on Ethereum, and the tokens are unlocked on the LUKSO side and transferred to
-the user.
+The user burns the wrapped token `HypERC20` on Ethereum, and the tokens are unlocked on the LUKSO side and transferred
+to the user.
 
 ```mermaid
 %% Ethereum -> LUKSO - LSP7 token that was initially bridged from LUKSO
@@ -47,7 +47,7 @@ graph TD
 
 - **scenario 3:** the LSP7 token was originally created and deployed on LUKSO (_e.g: Chillwhale, FABS, etc..._).
 
-The user transfer the LSP7 token to its `HypLSP7Collateral` contract on LUKSO where it is locked. The HypERC20 token on
+The user transfers the LSP7 token to its `HypLSP7Collateral` contract on LUKSO where it is locked. The HypERC20 token on
 Ethereum is then minted for the user.
 
 ```mermaid
@@ -89,7 +89,9 @@ graph TD
 >
 > - The `Yaho` contracts handle the dispatching and batching of messages across chains.
 > - The `Yaru` contracts ensures that the messages are properly executed on the destination chain by calling relevant
->   functions like `onMessage`.
+>   functions like `onMessage`. For more infos, see the
+>   [**Key Contracts**](https://crosschain-alliance.gitbook.io/hashi/api-and-smart-contracts/key-contracts) section on
+>   the Hashi Alliance docs.
 
 ### Ethereum -> LUKSO
 
@@ -101,7 +103,9 @@ graph TD
 **on Ethereum chain**
 
 1. User transfer ERC20 tokens to [`HypERC20Collateral`]. This locks the tokens in the collateral contract.
-2. `HypERC20Collateral` contract call [`Mailbox`] to pass the message.
+2. `HypERC20Collateral` contract calls [`Mailbox`] to pass the message via the `transferRemote(...)` function.
+   (Internally, the functions `__Router_dispatch(..) -> mailbox.dispatch(...)` are called to dispatch the message to the
+   mailbox).
 3. The `Mailbox` calls:
    - 3.1. the default Hook (created by Hyperlane),
    - 3.2. and the Hashi Hook (created by CCIA team).
@@ -115,7 +119,7 @@ graph TD
    `Yaru.executeMessages`. **This step checks whether the Hashi adapters agree on a specify message id** (a threshold
    number of hash is stored), and set the message Id to verified status.
 7. Validator (run by Hyperlane & LUKSO team) will sign the Merkle root when new dispatches happen in Mailbox.
-8. Hyperlane relayer (run by Hyperlane team) relays the message by calling Mailbox.process().
+8. Hyperlane relayer (run by Hyperlane team) relays the message by calling `Mailbox.process(...)`.
 
 **on LUKSO chain**
 
@@ -138,10 +142,10 @@ graph TD
 
 > _Step 1 to 3 needs to be confirmed_
 
-1. User transfer LSP7 token to HypLSP7 contract and the tokens are burnt.
+1. User transfers LSP7 token to HypLSP7 contract and the tokens are burnt.
 2. HypLSP7 contract calls `Mailbox` to pass the message.
 3. `Mailbox` calls Default Hook (created by Hyperlane) and Hashi Hook (created by CCIA team).
-4. Hashi Hook dispatch the token relaying message from Yaho contracts.
+4. Hashi Hook dispatches the token relaying message from Yaho contracts.
 
 **Off chain**
 
