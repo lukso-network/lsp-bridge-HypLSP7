@@ -3,16 +3,20 @@ pragma solidity ^0.8.13;
 
 import { Test } from "forge-std/src/Test.sol";
 
+/// Hyperlane testing environnement
+/// @dev See https://docs.hyperlane.xyz/docs/guides/developer-tips/unit-testing
 import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 import { TestMailbox } from "@hyperlane-xyz/core/contracts/test/TestMailbox.sol";
-import { LSP7Mock } from "./LSP7Mock.sol";
 import { TestPostDispatchHook } from "@hyperlane-xyz/core/contracts/test/TestPostDispatchHook.sol";
 import { TestInterchainGasPaymaster } from "@hyperlane-xyz/core/contracts/test/TestInterchainGasPaymaster.sol";
 import { GasRouter } from "@hyperlane-xyz/core/contracts/client/GasRouter.sol";
-import { HypLSP7 } from "../src/HypLSP7.sol";
-import { HypLSP7Collateral } from "../src/HypLSP7Collateral.sol";
 import { HypNative } from "@hyperlane-xyz/core/contracts/token/HypNative.sol";
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
+
+// Mocks + contracts to test
+import { LSP7Mock } from "./LSP7Mock.sol";
+import { HypLSP7 } from "../src/HypLSP7.sol";
+import { HypLSP7Collateral } from "../src/HypLSP7Collateral.sol";
 
 abstract contract HypTokenTest is Test {
     using TypeCasts for address;
@@ -21,14 +25,15 @@ abstract contract HypTokenTest is Test {
     uint32 internal constant DESTINATION = 12;
     uint8 internal constant DECIMALS = 18;
     uint256 internal constant TOTAL_SUPPLY = 1_000_000e18;
-    uint256 internal REQUIRED_VALUE; // initialized in setUp
     uint256 internal constant GAS_LIMIT = 10_000;
-    uint256 internal constant TRANSFER_AMT = 100e18;
+    uint256 internal constant TRANSFER_AMOUNT = 100e18;
     string internal constant NAME = "HyperlaneInu";
     string internal constant SYMBOL = "HYP";
+
     address internal ALICE = makeAddr("alice");
     address internal BOB = makeAddr("bob");
     address internal OWNER = makeAddr("owner");
+    uint256 internal REQUIRED_VALUE; // initialized in setUp
 
     LSP7Mock internal primaryToken;
     TokenRouter internal localToken;
@@ -125,7 +130,9 @@ abstract contract HypTokenTest is Test {
 
         uint256 gasBefore = gasleft();
         localToken.handle(
-            DESTINATION, address(remoteToken).addressToBytes32(), abi.encodePacked(BOB.addressToBytes32(), TRANSFER_AMT)
+            DESTINATION,
+            address(remoteToken).addressToBytes32(),
+            abi.encodePacked(BOB.addressToBytes32(), TRANSFER_AMOUNT)
         );
         uint256 gasAfter = gasleft();
     }
@@ -186,13 +193,13 @@ contract HypLSP7Test is HypTokenTest {
         remoteToken.enrollRemoteRouter(ORIGIN, address(localToken).addressToBytes32());
         uint256 balanceBefore = lsp7Token.balanceOf(ALICE);
 
-        _performRemoteTransferWithEmit(REQUIRED_VALUE, TRANSFER_AMT, 0);
-        assertEq(lsp7Token.balanceOf(ALICE), balanceBefore - TRANSFER_AMT);
+        _performRemoteTransferWithEmit(REQUIRED_VALUE, TRANSFER_AMOUNT, 0);
+        assertEq(lsp7Token.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
     }
 
     function testRemoteTransfer_invalidAmount() public {
         vm.expectRevert();
-        _performRemoteTransfer(REQUIRED_VALUE, TRANSFER_AMT * 11);
+        _performRemoteTransfer(REQUIRED_VALUE, TRANSFER_AMOUNT * 11);
         assertEq(lsp7Token.balanceOf(ALICE), 1000e18);
     }
 
@@ -201,9 +208,9 @@ contract HypLSP7Test is HypTokenTest {
 
         uint256 balanceBefore = lsp7Token.balanceOf(ALICE);
 
-        _performRemoteTransferAndGas(REQUIRED_VALUE, TRANSFER_AMT, GAS_LIMIT * igp.gasPrice());
+        _performRemoteTransferAndGas(REQUIRED_VALUE, TRANSFER_AMOUNT, GAS_LIMIT * igp.gasPrice());
 
-        assertEq(lsp7Token.balanceOf(ALICE), balanceBefore - TRANSFER_AMT);
+        assertEq(lsp7Token.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
     }
 }
 
@@ -235,15 +242,15 @@ contract HypLSP7CollateralTest is HypTokenTest {
         uint256 balanceBefore = localToken.balanceOf(ALICE);
 
         vm.prank(ALICE);
-        primaryToken.authorizeOperator(address(localToken), TRANSFER_AMT, "");
+        primaryToken.authorizeOperator(address(localToken), TRANSFER_AMOUNT, "");
 
-        _performRemoteTransferWithEmit(REQUIRED_VALUE, TRANSFER_AMT, 0);
-        assertEq(localToken.balanceOf(ALICE), balanceBefore - TRANSFER_AMT);
+        _performRemoteTransferWithEmit(REQUIRED_VALUE, TRANSFER_AMOUNT, 0);
+        assertEq(localToken.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
     }
 
     function testRemoteTransfer_invalidAllowance() public {
         vm.expectRevert();
-        _performRemoteTransfer(REQUIRED_VALUE, TRANSFER_AMT);
+        _performRemoteTransfer(REQUIRED_VALUE, TRANSFER_AMOUNT);
         assertEq(localToken.balanceOf(ALICE), 1000e18);
     }
 
@@ -253,9 +260,9 @@ contract HypLSP7CollateralTest is HypTokenTest {
         uint256 balanceBefore = localToken.balanceOf(ALICE);
 
         vm.prank(ALICE);
-        primaryToken.authorizeOperator(address(localToken), TRANSFER_AMT, "");
-        _performRemoteTransferAndGas(REQUIRED_VALUE, TRANSFER_AMT, GAS_LIMIT * igp.gasPrice());
-        assertEq(localToken.balanceOf(ALICE), balanceBefore - TRANSFER_AMT);
+        primaryToken.authorizeOperator(address(localToken), TRANSFER_AMOUNT, "");
+        _performRemoteTransferAndGas(REQUIRED_VALUE, TRANSFER_AMOUNT, GAS_LIMIT * igp.gasPrice());
+        assertEq(localToken.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
     }
 }
 
@@ -282,18 +289,18 @@ contract HypNativeTest is HypTokenTest {
     }
 
     function testRemoteTransfer() public {
-        _performRemoteTransferWithEmit(REQUIRED_VALUE, TRANSFER_AMT, TRANSFER_AMT);
+        _performRemoteTransferWithEmit(REQUIRED_VALUE, TRANSFER_AMOUNT, TRANSFER_AMOUNT);
     }
 
     function testRemoteTransfer_invalidAmount() public {
         vm.expectRevert("Native: amount exceeds msg.value");
-        _performRemoteTransfer(REQUIRED_VALUE + TRANSFER_AMT, TRANSFER_AMT * 10);
+        _performRemoteTransfer(REQUIRED_VALUE + TRANSFER_AMOUNT, TRANSFER_AMOUNT * 10);
         assertEq(localToken.balanceOf(ALICE), 1000e18);
     }
 
     function testRemoteTransfer_withCustomGasConfig() public {
         _setCustomGasConfig();
 
-        _performRemoteTransferAndGas(REQUIRED_VALUE, TRANSFER_AMT, TRANSFER_AMT + GAS_LIMIT * igp.gasPrice());
+        _performRemoteTransferAndGas(REQUIRED_VALUE, TRANSFER_AMOUNT, TRANSFER_AMOUNT + GAS_LIMIT * igp.gasPrice());
     }
 }
