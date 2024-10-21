@@ -9,16 +9,19 @@
 [license]: https://opensource.org/licenses/MIT
 [license-badge]: https://img.shields.io/badge/License-MIT-blue.svg
 
-This repo is the LSP7 version of the [`HypERC20`] and [`HypERC20Collateral`] of `@hyperlane-xyz/core` package. They are used to bridge tokens between the Ethereum and LUKSO chains using the [Hashi Bridge](https://crosschain-alliance.gitbook.io/hashi).
+This repo is the LSP7 version of the [`HypERC20`] and [`HypERC20Collateral`] of `@hyperlane-xyz/core` package. They are
+used to bridge tokens between the Ethereum and LUKSO chains using the
+[Hashi Bridge](https://crosschain-alliance.gitbook.io/hashi).
 
 For more details on the **architecture and bridging flow**, see the [**`docs/`**](./docs/README.md) folder.
 
 ### Examples of bridged tokens
 
-- ETH -> LUKSO: https://explorer.hyperlane.xyz/message/0x53a383e32fdb68748c8af5c86be3669e58eadc377db2a9f420826cb9474dd55c
+- ETH -> LUKSO:
+  https://explorer.hyperlane.xyz/message/0x53a383e32fdb68748c8af5c86be3669e58eadc377db2a9f420826cb9474dd55c
 
-- LUKSO -> ETH: https://explorer.hyperlane.xyz/message/0xf9c86a22e7b5584fc87a9d4ffc39f967a8745cd28b98ed2eaeb220c43996c4ca
-
+- LUKSO -> ETH:
+  https://explorer.hyperlane.xyz/message/0xf9c86a22e7b5584fc87a9d4ffc39f967a8745cd28b98ed2eaeb220c43996c4ca
 
 ## Getting Started
 
@@ -45,7 +48,6 @@ This is how to install dependencies:
 
 Note that OpenZeppelin Contracts is pre-installed, so you can follow that as an example.
 
-
 ### Sensible Defaults
 
 This template comes with a set of sensible default configurations for you to use. These defaults can be found in the
@@ -66,7 +68,6 @@ following files:
 This is a list of the most frequently needed commands.
 
 ### Build & Compile
-
 
 ```sh
 # Build the contracts:
@@ -100,18 +101,21 @@ bun run test:coverage:report
 
 ### GitHub Actions
 
-This repository uses pre-configured GitHub Actions. The contracts are linted and tested on every push and pull requests. You can edit the CI script in [.github/workflows/ci.yml](./.github/workflows/ci.yml).
-
+This repository uses pre-configured GitHub Actions. The contracts are linted and tested on every push and pull requests.
+You can edit the CI script in [.github/workflows/ci.yml](./.github/workflows/ci.yml).
 
 ## Foundry Resources
 
-This template builds upon the frameworks and libraries mentioned above, so please consult their respective documentation for details about their specific features.
+This template builds upon the frameworks and libraries mentioned above, so please consult their respective documentation
+for details about their specific features.
 
 For example, if you're interested in exploring Foundry in more detail, you should look at the
 [Foundry Book](https://book.getfoundry.sh/). In particular, you may be interested in reading the
 [Writing Tests](https://book.getfoundry.sh/forge/writing-tests.html) tutorial.
 
-
-[`HypERC20Collateral`]: https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%405.2.0/solidity/contracts/token/HypERC20Collateral.sol
-[`HypERC20`]: https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%405.2.0/solidity/contracts/token/HypERC20.sol
-[`Mailbox`]: https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%405.2.0/solidity/contracts/Mailbox.sol
+[`HypERC20Collateral`]:
+  https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%405.2.0/solidity/contracts/token/HypERC20Collateral.sol
+[`HypERC20`]:
+  https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%405.2.0/solidity/contracts/token/HypERC20.sol
+[`Mailbox`]:
+  https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%405.2.0/solidity/contracts/Mailbox.sol
