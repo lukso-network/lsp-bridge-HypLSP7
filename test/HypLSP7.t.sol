@@ -76,7 +76,7 @@ abstract contract HypTokenTest is Test {
         remoteToken.enrollRemoteRouter(ORIGIN, address(localToken).addressToBytes32());
     }
 
-    function _expectRemoteBalance(address _user, uint256 _balance) internal {
+    function _expectRemoteBalance(address _user, uint256 _balance) internal view {
         assertEq(remoteToken.balanceOf(_user), _balance);
     }
 
@@ -143,38 +143,35 @@ contract HypLSP7Test is HypTokenTest {
 
     HypLSP7 internal lsp7Token;
 
-    address internal owner = makeAddr("owner");
-
     function setUp() public override {
         super.setUp();
 
         localToken = new HypLSP7(DECIMALS, address(localMailbox));
         lsp7Token = HypLSP7(payable(address(localToken)));
 
-        vm.prank(owner);
-        lsp7Token.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), owner);
+        vm.prank(OWNER);
+        lsp7Token.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER);
 
-        vm.prank(owner);
+        vm.prank(OWNER);
         lsp7Token.enrollRemoteRouter(DESTINATION, address(remoteToken).addressToBytes32());
 
         // from, to, amount, force, data
-        vm.prank(owner);
-
-        lsp7Token.transfer(owner, ALICE, 1000e18, true, "");
+        vm.prank(OWNER);
+        lsp7Token.transfer(OWNER, ALICE, 1000e18, true, "");
 
         _enrollRemoteTokenRouter();
     }
 
     function testInitialize_revert_ifAlreadyInitialized() public {
         vm.expectRevert("Initializable: contract is already initialized");
-        lsp7Token.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), owner);
+        lsp7Token.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER);
     }
 
-    function testTotalSupply() public {
+    function testTotalSupply() public view {
         assertEq(lsp7Token.totalSupply(), TOTAL_SUPPLY);
     }
 
-    function testDecimals() public {
+    function testDecimals() public view {
         assertEq(lsp7Token.decimals(), DECIMALS);
     }
 
@@ -189,7 +186,7 @@ contract HypLSP7Test is HypTokenTest {
     }
 
     function testRemoteTransfer() public {
-        vm.prank(owner);
+        vm.prank(OWNER);
         remoteToken.enrollRemoteRouter(ORIGIN, address(localToken).addressToBytes32());
         uint256 balanceBefore = lsp7Token.balanceOf(ALICE);
 
