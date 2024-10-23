@@ -10,7 +10,9 @@
     "@erc725/smart-contracts-v8": "erc725-smart-contracts-v8-rc0.tgz",
     "@hyperlane-xyz/core": "^5.3.0",
     "@lukso/lsp4-contracts": "lukso-lsp4-contracts-0.16.0-rc.0.tgz",
-    "@lukso/lsp7-contracts": "lukso-lsp7-contracts-0.16.0-rc.0.tgz"
+    "@lukso/lsp7-contracts": "lukso-lsp7-contracts-0.16.0-rc.0.tgz",
+    "@lukso/lsp8-contracts": "lukso-lsp8-contracts-0.16.0-rc-0.tgz"
+
   },
   "devDependencies": {
     "forge-std": "github:foundry-rs/forge-std#v1.8.1",
