@@ -3,8 +3,6 @@ pragma solidity >=0.8.19;
 
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
 
-import { ILSP8IdentifiableDigitalAsset } from "@lukso/lsp8-contracts/contracts/ILSP8IdentifiableDigitalAsset.sol";
-
 import {LSP8IdentifiableDigitalAssetInitAbstract} from "@lukso/lsp8-contracts/contracts/LSP8IdentifiableDigitalAssetInitAbstract.sol";
 
 import { _LSP4_TOKEN_TYPE_TOKEN } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
@@ -47,7 +45,7 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter {
         public
         view
         virtual
-        override(TokenRouter, LSP8IdentifiableDigitalAssetInitAbstract, ILSP8IdentifiableDigitalAsset)
+        override(TokenRouter, LSP8IdentifiableDigitalAssetInitAbstract)
         returns (uint256)
     {
         return LSP8IdentifiableDigitalAssetInitAbstract.balanceOf(_account);
@@ -60,8 +58,8 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter {
     function _transferFromSender(
         uint256 _tokenId
     ) internal virtual override returns (bytes memory) {
-        require(ownerOf(_tokenId) == msg.sender, "!owner");
-        _burn(_tokenId, "");
+        require(tokenOwnerOf(bytes32(_tokenId)) == msg.sender, "!owner");
+        _burn(bytes32(_tokenId), "");
         return bytes(""); // no metadata
     }
 
@@ -74,6 +72,6 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter {
         uint256 _tokenId,
         bytes calldata // no metadata
     ) internal virtual override {
-        _mint(_recipient, _tokenId, true, "");
+        _mint(_recipient, bytes32(_tokenId), true, "");
     }
 }
