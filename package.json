@@ -13,7 +13,6 @@
     "@lukso/lsp7-contracts": "lukso-lsp7-contracts-0.16.0-rc.0.tgz",
     "@lukso/lsp8-contracts": "lukso-lsp8-contracts-0.16.0-rc-0.tgz",
     "@lukso/lsp17contractextension-contracts": "lukso-lsp17contractextension-contracts-0.16.0-rc.0.tgz"
-
   },
   "devDependencies": {
     "forge-std": "github:foundry-rs/forge-std#v1.8.1",
