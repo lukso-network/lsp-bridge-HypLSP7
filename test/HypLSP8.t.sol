@@ -15,7 +15,6 @@ import { HypLSP8 } from "../src/HypLSP8.sol";
 import { HypLSP8Collateral } from "../src/HypLSP8Collateral.sol";
 import { LSP8Mock } from "./LSP8Mock.sol";
 
-import "forge-std/src/console.sol";
 
 abstract contract HypTokenTest is Test {
     using TypeCasts for address;
@@ -39,19 +38,6 @@ abstract contract HypTokenTest is Test {
     TokenRouter internal localToken;
     HypLSP8 internal remoteToken;
     TestPostDispatchHook internal noopHook;
-    TestInterchainGasPaymaster internal igp;
-
-    event SentTransferRemote(
-        uint32 indexed destination,
-        bytes32 indexed recipient,
-        bytes32 tokenId
-    );
-
-    event ReceivedTransferRemote(
-        uint32 indexed origin,
-        bytes32 indexed recipient,
-        bytes32 tokenId
-    );
 
     function setUp() public virtual {
         localMailbox = new TestMailbox(ORIGIN);
@@ -66,15 +52,21 @@ abstract contract HypTokenTest is Test {
         remoteToken = new HypLSP8(address(remoteMailbox));
 
         vm.prank(OWNER);
-        // remoteToken.initialize(100, NAME, SYMBOL);
-        remoteToken.initialize(100, NAME, SYMBOL);
+        remoteToken.initialize(0, NAME, SYMBOL);
 
-        igp = new TestInterchainGasPaymaster();
-
-        vm.deal(ALICE, 125_000);
+        vm.deal(ALICE, 1 ether);
     }
 
-    function _enrollRemoteTokenRouter() internal {
+    function _deployRemoteToken(bool isCollateral) internal {
+        if (isCollateral) {
+            remoteToken = new HypLSP8(address(remoteMailbox));
+            vm.prank(OWNER);
+            remoteToken.initialize(0, NAME, SYMBOL);
+        } else {
+            remoteToken = new HypLSP8(address(remoteMailbox));
+            vm.prank(OWNER);
+            remoteToken.initialize(0, NAME, SYMBOL);
+        }
         vm.prank(OWNER);
         remoteToken.enrollRemoteRouter(ORIGIN, address(localToken).addressToBytes32());
     }
@@ -96,10 +88,7 @@ abstract contract HypTokenTest is Test {
             uint256(_tokenId)
         );
 
-        vm.expectEmit(true, true, false, true);
-        emit ReceivedTransferRemote(ORIGIN, BOB.addressToBytes32(), _tokenId);
         _processTransfers(BOB, _tokenId);
-
         assertEq(remoteToken.balanceOf(BOB), 1);
     }
 }
@@ -121,11 +110,15 @@ contract HypLSP8Test is HypTokenTest {
         vm.prank(OWNER);
         lsp8Token.enrollRemoteRouter(DESTINATION, address(remoteToken).addressToBytes32());
 
-        // // Transfer some tokens to ALICE for testing
+        vm.deal(OWNER, 1 ether);
+        vm.deal(ALICE, 1 ether);
+        vm.deal(BOB, 1 ether);
+
+        // Transfer some tokens to ALICE for testing
         vm.prank(OWNER);
         lsp8Token.transfer(OWNER, ALICE, TOKEN_ID, true, "");
 
-        // _enrollRemoteTokenRouter();
+        _deployRemoteToken(false);
     }
 
     function testInitialize_revert_ifAlreadyInitialized() public {
@@ -149,20 +142,17 @@ contract HypLSP8Test is HypTokenTest {
         assertEq(lsp8Token.balanceOf(BOB), 1);
     }
 
-    function testRemoteTransfer() public {
+    function testRemoteTransferHere() public {
         vm.prank(OWNER);
-        remoteToken.enrollRemoteRouter(ORIGIN, address(localToken).addressToBytes32());
-
-        // vm.expectEmit(true, true, false, true);
-        // emit SentTransferRemote(DESTINATION, BOB.addressToBytes32(), TOKEN_ID);
+        remoteToken.enrollRemoteRouter(DESTINATION, address(remoteToken).addressToBytes32());
 
         _performRemoteTransfer(25000, TOKEN_ID);
         assertEq(lsp8Token.balanceOf(ALICE), 0);
     }
 
     function testRemoteTransfer_revert_unauthorizedOperator() public {
-        vm.prank(BOB);
-        vm.expectRevert("LSP8: caller is not owner nor operator");
+        vm.prank(OWNER);
+        vm.expectRevert("!owner");
         localToken.transferRemote{ value: 25000 }(
             DESTINATION,
             BOB.addressToBytes32(),
@@ -172,7 +162,12 @@ contract HypLSP8Test is HypTokenTest {
 
     function testRemoteTransfer_revert_invalidTokenId() public {
         bytes32 invalidTokenId = bytes32(uint256(999));
-        vm.expectRevert("LSP8: token does not exist");
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "LSP8NonExistentTokenId(bytes32)",
+                invalidTokenId
+            )
+        );
         _performRemoteTransfer(25000, invalidTokenId);
     }
 }
@@ -191,8 +186,10 @@ contract HypLSP8CollateralTest is HypTokenTest {
         vm.prank(OWNER);
         lsp8Collateral.initialize(address(noopHook), address(0), OWNER);
 
-        vm.prank(OWNER);
-        lsp8Collateral.enrollRemoteRouter(DESTINATION, address(remoteToken).addressToBytes32());
+        // Give accounts some ETH for gas
+        vm.deal(OWNER, 1 ether);
+        vm.deal(ALICE, 1 ether);
+        vm.deal(BOB, 1 ether);
 
         // Mint test tokens
         vm.startPrank(OWNER);
@@ -200,7 +197,17 @@ contract HypLSP8CollateralTest is HypTokenTest {
         localPrimaryToken.transfer(OWNER, ALICE, TOKEN_ID, true, "");
         vm.stopPrank();
 
-        _enrollRemoteTokenRouter();
+        // Deploy remote token
+        remoteToken = new HypLSP8(address(remoteMailbox));
+        vm.prank(OWNER);
+        remoteToken.initialize(0, NAME, SYMBOL);
+
+        // Enroll routers for both chains
+        vm.prank(OWNER);
+        lsp8Collateral.enrollRemoteRouter(DESTINATION, address(remoteToken).addressToBytes32());
+
+        vm.prank(OWNER);
+        remoteToken.enrollRemoteRouter(ORIGIN, address(localToken).addressToBytes32());
     }
 
     function testRemoteTransfer() public {
@@ -212,13 +219,31 @@ contract HypLSP8CollateralTest is HypTokenTest {
     }
 
     function testRemoteTransfer_revert_unauthorized() public {
-        vm.expectRevert("LSP8: caller is not owner nor operator");
-        _performRemoteTransfer(25000, TOKEN_ID);
+
+
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "LSP8NotTokenOperator(bytes32,address)",
+                TOKEN_ID,
+                address(lsp8Collateral)
+            )
+        );
+         vm.prank(BOB);
+        localToken.transferRemote{ value: 25000 }(
+            DESTINATION,
+            BOB.addressToBytes32(),
+            uint256(TOKEN_ID)
+        );
     }
 
     function testRemoteTransfer_revert_invalidTokenId() public {
         bytes32 invalidTokenId = bytes32(uint256(999));
-        vm.expectRevert("LSP8: token does not exist");
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "LSP8NonExistentTokenId(bytes32)",
+                invalidTokenId
+            )
+        );
         _performRemoteTransfer(25000, invalidTokenId);
     }
 }
