@@ -15,7 +15,6 @@ import { HypLSP8 } from "../src/HypLSP8.sol";
 import { HypLSP8Collateral } from "../src/HypLSP8Collateral.sol";
 import { LSP8Mock } from "./LSP8Mock.sol";
 
-
 abstract contract HypTokenTest is Test {
     using TypeCasts for address;
 
@@ -74,19 +73,13 @@ abstract contract HypTokenTest is Test {
     function _processTransfers(address _recipient, bytes32 _tokenId) internal {
         vm.prank(address(remoteMailbox));
         remoteToken.handle(
-            ORIGIN,
-            address(localToken).addressToBytes32(),
-            abi.encodePacked(_recipient.addressToBytes32(), _tokenId)
+            ORIGIN, address(localToken).addressToBytes32(), abi.encodePacked(_recipient.addressToBytes32(), _tokenId)
         );
     }
 
     function _performRemoteTransfer(uint256 _msgValue, bytes32 _tokenId) internal {
         vm.prank(ALICE);
-        localToken.transferRemote{ value: _msgValue }(
-            DESTINATION,
-            BOB.addressToBytes32(),
-            uint256(_tokenId)
-        );
+        localToken.transferRemote{ value: _msgValue }(DESTINATION, BOB.addressToBytes32(), uint256(_tokenId));
 
         _processTransfers(BOB, _tokenId);
         assertEq(remoteToken.balanceOf(BOB), 1);
@@ -146,29 +139,20 @@ contract HypLSP8Test is HypTokenTest {
         vm.prank(OWNER);
         remoteToken.enrollRemoteRouter(DESTINATION, address(remoteToken).addressToBytes32());
 
-        _performRemoteTransfer(25000, TOKEN_ID);
+        _performRemoteTransfer(25_000, TOKEN_ID);
         assertEq(lsp8Token.balanceOf(ALICE), 0);
     }
 
     function testRemoteTransfer_revert_unauthorizedOperator() public {
         vm.prank(OWNER);
         vm.expectRevert("!owner");
-        localToken.transferRemote{ value: 25000 }(
-            DESTINATION,
-            BOB.addressToBytes32(),
-            uint256(TOKEN_ID)
-        );
+        localToken.transferRemote{ value: 25_000 }(DESTINATION, BOB.addressToBytes32(), uint256(TOKEN_ID));
     }
 
     function testRemoteTransfer_revert_invalidTokenId() public {
         bytes32 invalidTokenId = bytes32(uint256(999));
-        vm.expectRevert(
-            abi.encodeWithSignature(
-                "LSP8NonExistentTokenId(bytes32)",
-                invalidTokenId
-            )
-        );
-        _performRemoteTransfer(25000, invalidTokenId);
+        vm.expectRevert(abi.encodeWithSignature("LSP8NonExistentTokenId(bytes32)", invalidTokenId));
+        _performRemoteTransfer(25_000, invalidTokenId);
     }
 }
 
@@ -213,37 +197,22 @@ contract HypLSP8CollateralTest is HypTokenTest {
     function testRemoteTransfer() public {
         vm.prank(ALICE);
         localPrimaryToken.authorizeOperator(address(lsp8Collateral), TOKEN_ID, "");
-        _performRemoteTransfer(25000, TOKEN_ID);
+        _performRemoteTransfer(25_000, TOKEN_ID);
 
         assertEq(localPrimaryToken.tokenOwnerOf(TOKEN_ID), address(lsp8Collateral));
     }
 
     function testRemoteTransfer_revert_unauthorized() public {
-
-
         vm.expectRevert(
-            abi.encodeWithSignature(
-                "LSP8NotTokenOperator(bytes32,address)",
-                TOKEN_ID,
-                address(lsp8Collateral)
-            )
+            abi.encodeWithSignature("LSP8NotTokenOperator(bytes32,address)", TOKEN_ID, address(lsp8Collateral))
         );
-         vm.prank(BOB);
-        localToken.transferRemote{ value: 25000 }(
-            DESTINATION,
-            BOB.addressToBytes32(),
-            uint256(TOKEN_ID)
-        );
+        vm.prank(BOB);
+        localToken.transferRemote{ value: 25_000 }(DESTINATION, BOB.addressToBytes32(), uint256(TOKEN_ID));
     }
 
     function testRemoteTransfer_revert_invalidTokenId() public {
         bytes32 invalidTokenId = bytes32(uint256(999));
-        vm.expectRevert(
-            abi.encodeWithSignature(
-                "LSP8NonExistentTokenId(bytes32)",
-                invalidTokenId
-            )
-        );
-        _performRemoteTransfer(25000, invalidTokenId);
+        vm.expectRevert(abi.encodeWithSignature("LSP8NonExistentTokenId(bytes32)", invalidTokenId));
+        _performRemoteTransfer(25_000, invalidTokenId);
     }
 }

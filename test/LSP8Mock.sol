@@ -8,14 +8,11 @@ contract LSP8Mock is LSP8IdentifiableDigitalAsset {
         string memory name_,
         string memory symbol_,
         address owner_
-    ) LSP8IdentifiableDigitalAsset(name_, symbol_, owner_, 0, 0) {}
+    )
+        LSP8IdentifiableDigitalAsset(name_, symbol_, owner_, 0, 0)
+    { }
 
-    function mint(
-        address to,
-        bytes32 tokenId,
-        bool force,
-        bytes memory data
-    ) public {
+    function mint(address to, bytes32 tokenId, bool force, bytes memory data) public {
         _mint(to, tokenId, force, data);
     }
 
@@ -24,59 +21,40 @@ contract LSP8Mock is LSP8IdentifiableDigitalAsset {
         bytes32[] memory tokenIds,
         bool[] memory force,
         bytes[] memory data
-    ) public {
+    )
+        public
+    {
         require(
-            to.length == tokenIds.length &&
-            tokenIds.length == force.length &&
-            force.length == data.length,
+            to.length == tokenIds.length && tokenIds.length == force.length && force.length == data.length,
             "LSP8Mock: array length mismatch"
         );
 
-        for(uint256 i = 0; i < to.length; i++) {
+        for (uint256 i = 0; i < to.length; i++) {
             _mint(to[i], tokenIds[i], force[i], data[i]);
         }
     }
 
-    function mintIdRange(
-        address to,
-        uint256 startId,
-        uint256 amount,
-        bool force,
-        bytes memory data
-    ) public {
-        for(uint256 i = 0; i < amount; i++) {
+    function mintIdRange(address to, uint256 startId, uint256 amount, bool force, bytes memory data) public {
+        for (uint256 i = 0; i < amount; i++) {
             bytes32 tokenId = bytes32(startId + i);
             _mint(to, tokenId, force, data);
         }
     }
 
-    function burn(
-        bytes32 tokenId,
-        bytes memory data
-    ) public {
+    function burn(bytes32 tokenId, bytes memory data) public {
         _burn(tokenId, data);
     }
 
-    function burnBatch(
-        bytes32[] memory tokenIds,
-        bytes[] memory data
-    ) public {
-        require(
-            tokenIds.length == data.length,
-            "LSP8Mock: array length mismatch"
-        );
+    function burnBatch(bytes32[] memory tokenIds, bytes[] memory data) public {
+        require(tokenIds.length == data.length, "LSP8Mock: array length mismatch");
 
-        for(uint256 i = 0; i < tokenIds.length; i++) {
+        for (uint256 i = 0; i < tokenIds.length; i++) {
             _burn(tokenIds[i], data[i]);
         }
     }
 
-    function setData(
-        bytes32 tokenId,
-        bytes32 dataKey,
-        bytes memory dataValue
-    ) public {
-        _setData( dataKey, dataValue);
+    function setData(bytes32 tokenId, bytes32 dataKey, bytes memory dataValue) public {
+        _setData(dataKey, dataValue);
     }
 
     function transferBatch(
@@ -85,16 +63,17 @@ contract LSP8Mock is LSP8IdentifiableDigitalAsset {
         bytes32[] memory tokenIds,
         bool[] memory force,
         bytes[] memory data
-    ) public override {
+    )
+        public
+        override
+    {
         require(
-            from.length == to.length &&
-            to.length == tokenIds.length &&
-            tokenIds.length == force.length &&
-            force.length == data.length,
+            from.length == to.length && to.length == tokenIds.length && tokenIds.length == force.length
+                && force.length == data.length,
             "LSP8Mock: array length mismatch"
         );
 
-        for(uint256 i = 0; i < from.length; i++) {
+        for (uint256 i = 0; i < from.length; i++) {
             transfer(from[i], to[i], tokenIds[i], force[i], data[i]);
         }
     }
