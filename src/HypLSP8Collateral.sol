@@ -5,21 +5,22 @@ import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRoute
 
 import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMessage.sol";
 
-import { ILSP8IdentifiableDigitalAsset } from "@lukso/lsp8-contracts/contracts/ILSP8IdentifiableDigitalAsset.sol";
+import { ILSP8IdentifiableDigitalAsset as ILSP8 } from
+    "@lukso/lsp8-contracts/contracts/ILSP8IdentifiableDigitalAsset.sol";
 
 /**
  * @title Hyperlane LSP8 Token Collateral that wraps an existing LSP8 with remote transfer functionality.
  * @author Abacus Works
  */
 contract HypLSP8Collateral is TokenRouter {
-    ILSP8IdentifiableDigitalAsset public immutable wrappedToken;
+    ILSP8 public immutable wrappedToken;
 
     /**
      * @notice Constructor
      * @param lsp8 Address of the token to keep as collateral
      */
     constructor(address lsp8, address _mailbox) TokenRouter(_mailbox) {
-        wrappedToken = ILSP8IdentifiableDigitalAsset(lsp8);
+        wrappedToken = ILSP8(lsp8);
     }
 
     /**
@@ -33,7 +34,7 @@ contract HypLSP8Collateral is TokenRouter {
     }
 
     function ownerOf(uint256 _tokenId) external view returns (address) {
-        return ILSP8IdentifiableDigitalAsset(wrappedToken).tokenOwnerOf(bytes32(_tokenId));
+        return ILSP8(wrappedToken).tokenOwnerOf(bytes32(_tokenId));
     }
 
     /**
@@ -41,7 +42,7 @@ contract HypLSP8Collateral is TokenRouter {
      * @inheritdoc TokenRouter
      */
     function balanceOf(address _account) external view override returns (uint256) {
-        return ILSP8IdentifiableDigitalAsset(wrappedToken).balanceOf(_account);
+        return ILSP8(wrappedToken).balanceOf(_account);
     }
 
     /**

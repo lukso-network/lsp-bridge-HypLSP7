@@ -57,27 +57,6 @@ contract LSP8Mock is LSP8IdentifiableDigitalAsset {
         _setData(dataKey, dataValue);
     }
 
-    function transferBatch(
-        address[] memory from,
-        address[] memory to,
-        bytes32[] memory tokenIds,
-        bool[] memory force,
-        bytes[] memory data
-    )
-        public
-        override
-    {
-        require(
-            from.length == to.length && to.length == tokenIds.length && tokenIds.length == force.length
-                && force.length == data.length,
-            "LSP8Mock: array length mismatch"
-        );
-
-        for (uint256 i = 0; i < from.length; i++) {
-            transfer(from[i], to[i], tokenIds[i], force[i], data[i]);
-        }
-    }
-
     // Override for testing purposes - allows easy token ID verification
     function tokenURI(bytes32 tokenId) public pure returns (string memory) {
         return "TEST-BASE-URI";

@@ -48,24 +48,13 @@ abstract contract HypTokenTest is Test {
         localMailbox.setDefaultHook(address(noopHook));
         localMailbox.setRequiredHook(address(noopHook));
 
-        remoteToken = new HypLSP8(address(remoteMailbox));
-
-        vm.prank(OWNER);
-        remoteToken.initialize(0, NAME, SYMBOL);
-
         vm.deal(ALICE, 1 ether);
     }
 
-    function _deployRemoteToken(bool isCollateral) internal {
-        if (isCollateral) {
-            remoteToken = new HypLSP8(address(remoteMailbox));
-            vm.prank(OWNER);
-            remoteToken.initialize(0, NAME, SYMBOL);
-        } else {
-            remoteToken = new HypLSP8(address(remoteMailbox));
-            vm.prank(OWNER);
-            remoteToken.initialize(0, NAME, SYMBOL);
-        }
+    function _deployRemoteToken() internal {
+        remoteToken = new HypLSP8(address(remoteMailbox));
+        vm.prank(OWNER);
+        remoteToken.initialize(0, address(noopHook), address(0), OWNER, NAME, SYMBOL);
         vm.prank(OWNER);
         remoteToken.enrollRemoteRouter(ORIGIN, address(localToken).addressToBytes32());
     }
@@ -98,11 +87,12 @@ contract HypLSP8Test is HypTokenTest {
         lsp8Token = HypLSP8(payable(address(localToken)));
 
         vm.prank(OWNER);
-        lsp8Token.initialize(INITIAL_SUPPLY, NAME, SYMBOL);
+        lsp8Token.initialize(INITIAL_SUPPLY, address(noopHook), address(0), OWNER, NAME, SYMBOL);
 
         vm.prank(OWNER);
         lsp8Token.enrollRemoteRouter(DESTINATION, address(remoteToken).addressToBytes32());
 
+        // Give accounts some ETH for gas
         vm.deal(OWNER, 1 ether);
         vm.deal(ALICE, 1 ether);
         vm.deal(BOB, 1 ether);
@@ -111,12 +101,12 @@ contract HypLSP8Test is HypTokenTest {
         vm.prank(OWNER);
         lsp8Token.transfer(OWNER, ALICE, TOKEN_ID, true, "");
 
-        _deployRemoteToken(false);
+        _deployRemoteToken();
     }
 
     function testInitialize_revert_ifAlreadyInitialized() public {
         vm.expectRevert("Initializable: contract is already initialized");
-        lsp8Token.initialize(INITIAL_SUPPLY, NAME, SYMBOL);
+        lsp8Token.initialize(INITIAL_SUPPLY, address(noopHook), address(0), OWNER, NAME, SYMBOL);
     }
 
     function testTotalSupply() public {
@@ -181,17 +171,11 @@ contract HypLSP8CollateralTest is HypTokenTest {
         localPrimaryToken.transfer(OWNER, ALICE, TOKEN_ID, true, "");
         vm.stopPrank();
 
-        // Deploy remote token
-        remoteToken = new HypLSP8(address(remoteMailbox));
-        vm.prank(OWNER);
-        remoteToken.initialize(0, NAME, SYMBOL);
+        _deployRemoteToken();
 
         // Enroll routers for both chains
         vm.prank(OWNER);
         lsp8Collateral.enrollRemoteRouter(DESTINATION, address(remoteToken).addressToBytes32());
-
-        vm.prank(OWNER);
-        remoteToken.enrollRemoteRouter(ORIGIN, address(localToken).addressToBytes32());
     }
 
     function testRemoteTransfer() public {
