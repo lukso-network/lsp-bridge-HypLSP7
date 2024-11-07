@@ -109,11 +109,11 @@ contract HypLSP8Test is HypTokenTest {
         lsp8Token.initialize(INITIAL_SUPPLY, address(noopHook), address(0), OWNER, NAME, SYMBOL);
     }
 
-    function testTotalSupply() public {
+    function testTotalSupply() public view {
         assertEq(lsp8Token.totalSupply(), INITIAL_SUPPLY);
     }
 
-    function testTokenOwnerOf() public {
+    function testTokenOwnerOf() public view {
         assertEq(lsp8Token.tokenOwnerOf(TOKEN_ID), ALICE);
     }
 

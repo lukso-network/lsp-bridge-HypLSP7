@@ -19,6 +19,15 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter {
 
     /**
      * @notice Initializes the Hyperlane router, LSP8 metadata, and mints initial supply to deployer.
+     *
+     * @dev The `_mintAmount` parameter is mostly used for a brand new NFT that want to exists only as a warp route.
+     * In other words, the entire warp route is deployed with HypLSP8, and no HypLSP8Collateral.
+     * For existing NFT collections (e.g: Bored Apes, CloneX, etc...) that already exist on the source chain, set this
+     * to 0.
+     *
+     * This `_mintAmount` parameter can be used to create an  instantly bridgable NFT.
+     * By deploying the contract, mint the entire supply to themselves, and distribute.
+     *
      * @param _mintAmount The amount of NFTs to mint to `msg.sender`.
      * @param _name The name of the token.
      * @param _symbol The symbol of the token.
@@ -35,15 +44,13 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter {
         initializer
     {
         _MailboxClient_initialize(_hook, _interchainSecurityModule, _owner);
-        address owner = msg.sender;
-        _transferOwnership(owner);
 
         LSP8IdentifiableDigitalAssetInitAbstract._initialize(
-            _name, _symbol, owner, _LSP4_TOKEN_TYPE_TOKEN, _LSP8_TOKENID_FORMAT_NUMBER
+            _name, _symbol, _owner, _LSP4_TOKEN_TYPE_TOKEN, _LSP8_TOKENID_FORMAT_NUMBER
         );
 
         for (uint256 i = 0; i < _mintAmount; i++) {
-            _mint(owner, bytes32(i), true, "");
+            _mint(msg.sender, bytes32(i), true, "");
         }
     }
 
