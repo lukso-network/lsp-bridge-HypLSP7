@@ -1,0 +1,43 @@
+{
+  "name": "@lukso-network/lsp-bridge-HypLSP7",
+  "description": "",
+  "version": "1.0.0",
+  "author": {
+    "name": "lukso-network",
+    "url": "https://github.com/lukso-network"
+  },
+  "dependencies": {
+    "@erc725/smart-contracts-v8": "erc725-smart-contracts-v8-rc0.tgz",
+    "@hyperlane-xyz/core": "^5.3.0",
+    "@lukso/lsp4-contracts": "lukso-lsp4-contracts-0.16.0-rc.0.tgz",
+    "@lukso/lsp7-contracts": "lukso-lsp7-contracts-0.16.0-rc.0.tgz",
+    "@lukso/lsp8-contracts": "lukso-lsp8-contracts-0.16.0-rc-0.tgz",
+    "@lukso/lsp17contractextension-contracts": "lukso-lsp17contractextension-contracts-0.16.0-rc.0.tgz"
+  },
+  "devDependencies": {
+    "forge-std": "github:foundry-rs/forge-std#v1.8.1",
+    "prettier": "^3.0.0",
+    "solhint": "^3.6.2"
+  },
+  "keywords": [
+    "blockchain",
+    "ethereum",
+    "forge",
+    "foundry",
+    "smart-contracts",
+    "solidity",
+    "template"
+  ],
+  "private": true,
+  "scripts": {
+    "clean": "rm -rf cache out",
+    "build": "forge build",
+    "lint": "bun run lint:sol && bun run prettier:check",
+    "lint:sol": "forge fmt --check && bun solhint {script,src,test}/**/*.sol",
+    "prettier:check": "prettier --check \"**/*.{json,md,yml}\" --ignore-path \".prettierignore\"",
+    "prettier:write": "prettier --write \"**/*.{json,md,yml}\" --ignore-path \".prettierignore\"",
+    "test": "forge test",
+    "test:coverage": "forge coverage",
+    "test:coverage:report": "forge coverage --report lcov && genhtml lcov.info --branch-coverage --output-dir coverage"
+  }
+}
