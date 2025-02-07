@@ -1,41 +1,50 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity >=0.8.0;
 
-/// @dev Adjusted version of the TokenMessage library from Hyperlane
-/// to extract parameters from the calldata of an LSP7 transfer
-/// according to the `transfer(address,address,uint256,bool,bytes)` signature.
 /**
  * @title TokenMessage library for LSP7 calldatas
  * @author CJ42
- * @dev
+ *
+ * @dev Adjusted version of the TokenMessage library from Hyperlane to extract parameters from
+ * the calldata of an LSP7 transfer according to the `transfer(address,address,uint256,bool,bytes)` function signature.
  *
  * Example: for the following `transfer(...)` function call:
- *
- * from:    0x927aad446e3bf6eeb776387b3d7a89d8016fa54d (cj42)
- * to:      0x345b918b9e06faa7b0e56bd71ba418f31f47fed4 (yamen)
- * amount:  100000000000000000000 (= 100 tokens with 18 decimals)
- * force:   false
- * data:    0x
+ * ======================================================================================================================
+ * | Parameter  | Value in calldata                           | Description                                             |
+ * |------------|---------------------------------------------|---------------------------------------------------------|
+ * | from       | 0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe  | sender address bridging tokens from LUKSO.              |
+ * | to         | 0xBEeFbeefbEefbeEFbeEfbEEfBEeFbeEfBeEfBeef  | recipient address receiving bridged tokens on Ethereum. |
+ * | amount     | 100000000000000000000                       | represents 100 tokens with 18 decimals (in wei)         |
+ * | force      | true                                        | indicates whether the transfer should be forced.        |
+ * | data       | 0x                                          | additional data (empty in this case).                   |
+ * ======================================================================================================================
  *
  * The calldata will look as follow:
- * 0x760d9bba000000000000000000000000927aad446e3bf6eeb776387b3d7a89d8016fa54d000000000000000000000000345b918b9e06faa7b0e56bd71ba418f31f47fed40000000000000000000000000000000000000000000000056bc75e2d63100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000000
+ * 0x760d9bba000000000000000000000000cafecafecafecafecafecafecafecafecafecafe000000000000000000000000beefbeefbeefbeefbeefbeefbeefbeefbeefbeef0000000000000000000000000000000000000000000000056bc75e2d63100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000000
  *
- * 0x760d9bba                                                         -> bytes4 selector
- *   000000000000000000000000927aad446e3bf6eeb776387b3d7a89d8016fa54d -> address `from`
- *   000000000000000000000000345b918b9e06faa7b0e56bd71ba418f31f47fed4 -> address `to`
- *   0000000000000000000000000000000000000000000000056bc75e2d63100000 -> uint256 `amount`
- *   0000000000000000000000000000000000000000000000000000000000000000 -> bool `force`
- *   00000000000000000000000000000000000000000000000000000000000000a0 -> offset of bytes `data`
- *   0000000000000000000000000000000000000000000000000000000000000000 -> `data.length` = 0
+ *      0x760d9bba                                                         -> bytes4 selector
+ * (0)    000000000000000000000000cafecafecafecafecafecafecafecafecafecafe -> address `from`
+ * (32)   000000000000000000000000beefbeefbeefbeefbeefbeefbeefbeefbeefbeef -> address `to`
+ * (64)   0000000000000000000000000000000000000000000000056bc75e2d63100000 -> uint256 `amount` (`100` written in hex)
+ * (96)   0000000000000000000000000000000000000000000000000000000000000000 -> bool `force`
+ * (128)  00000000000000000000000000000000000000000000000000000000000000a0 -> offset of bytes `data`
+ * (160)  0000000000000000000000000000000000000000000000000000000000000000 -> `data.length` = 0
  *
- * Note: the offset of data is index starting from just after the bytes4 selector, where the data [length + value] is
- * located in the calldata (0xa0 = 160).
+ * Notes:
+ *
+ * The offset is the index in the calldata bytes string where each parameter.
+ * It is a number in the calldata bytes that starts at 0 "just after the bytes4 selector". For example:
+ *
+ * 1. `data[offset]` = index 0
+ * 2. `data[length + value]` = index 160
+ *
+ * Note also that the `to` address (recipient of the bridged tokens on the destination chain)
+ * could be either the same `from` address, or a different one.
  */
 library TokenMessageForLSP7 {
     function format(bytes32 _recipient, uint256 _amount, bytes memory _metadata) internal view returns (bytes memory) {
         return abi.encodePacked(
-            abi.encode(msg.sender), // TODO: which sender should be specified here? Should we add an
-                // extra parameter?
+            abi.encode(msg.sender),
             _recipient,
             _amount,
             abi.encode(true), // force param set to `true` by default
@@ -55,11 +64,5 @@ library TokenMessageForLSP7 {
         return message[128:];
     }
 }
-
-// 0x44c028fe
-//   0000000000000000000000000000000000000000000000000000000000000000
-//   0000000000000000000000005b8b0e44d4719f8a328470dccd3746bfc73d6b14
-//   0000000000000000000000000000000000000000000000000000000000000000
-//   0000000000000000000000000000000000000000000000000000000000000080
-//   00000000000000000000000000000000000000000000000000000000000000c4
-//   760d9bba000000000000000000000000927aad446e3bf6eeb776387b3d7a89d8016fa54d000000000000000000000000345b918b9e06faa7b0e56bd71ba418f31f47fed40000000000000000000000000000000000000000000000056bc75e2d63100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+// TODO: which sender should be specified here? Should we add an
+// extra parameter?
