@@ -8,7 +8,7 @@ pragma solidity >=0.8.0;
  * @dev Adjusted version of the TokenMessage library from Hyperlane to extract parameters from
  * the calldata of an LSP7 transfer according to the `transfer(address,address,uint256,bool,bytes)` function signature.
  *
- * Example: for the following `transfer(...)` function call:
+ * Example 1: for the following LSP7 `transfer(address,address,uint256,bool,bytes)` function call:
  * ======================================================================================================================
  * | Parameter  | Value in calldata                           | Description                                             |
  * |------------|---------------------------------------------|---------------------------------------------------------|
@@ -30,6 +30,30 @@ pragma solidity >=0.8.0;
  * (128)  00000000000000000000000000000000000000000000000000000000000000a0 -> offset of bytes `data`
  * (160)  0000000000000000000000000000000000000000000000000000000000000000 -> `data.length` = 0
  *
+ * ---
+ *
+ * Example 2: for the following LSP8 `transfer(address,address,bytes32,bool,bytes)` function call:
+ * ======================================================================================================================
+ * | Parameter  | Value in calldata                           | Description                                             |
+ * |------------|---------------------------------------------|---------------------------------------------------------|
+ * | from       | 0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe  | sender address bridging tokens from LUKSO.              |
+ * | to         | 0xBEeFbeefbEefbeEFbeEfbEEfBEeFbeEfBeEfBeef  | recipient address receiving bridged tokens on Ethereum. |
+ * | tokenId    | 123                                         | tokenId nb 123                                          |
+ * | force      | true                                        | indicates whether the transfer should be forced.        |
+ * | data       | 0x                                          | additional data (empty in this case).                   |
+ * ======================================================================================================================
+ *
+ * The calldata will look as follow:
+ * 0x511b6952000000000000000000000000cafecafecafecafecafecafecafecafecafecafe000000000000000000000000beefbeefbeefbeefbeefbeefbeefbeefbeefbeef7b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000000
+ *
+ *      0x511b6952                                                         -> bytes4 selector
+ * (0)    000000000000000000000000cafecafecafecafecafecafecafecafecafecafe -> address `from`
+ * (32)   000000000000000000000000beefbeefbeefbeefbeefbeefbeefbeefbeefbeef -> address `to`
+ * (64)   7b00000000000000000000000000000000000000000000000000000000000000 -> bytes32 `tokenId` (`123` written in hex)
+ * (96)   0000000000000000000000000000000000000000000000000000000000000000 -> bool `force`
+ * (128)  00000000000000000000000000000000000000000000000000000000000000a0 -> offset of bytes `data`
+ * (160)  0000000000000000000000000000000000000000000000000000000000000000 -> `data.length` = 0
+ *
  * Notes:
  *
  * The offset is the index in the calldata bytes string where each parameter.
@@ -41,7 +65,7 @@ pragma solidity >=0.8.0;
  * Note also that the `to` address (recipient of the bridged tokens on the destination chain)
  * could be either the same `from` address, or a different one.
  */
-library TokenMessageForLSP7 {
+library TokenMessageForLSP {
     function format(bytes32 _recipient, uint256 _amount, bytes memory _metadata) internal view returns (bytes memory) {
         return abi.encodePacked(
             abi.encode(msg.sender),
@@ -60,9 +84,11 @@ library TokenMessageForLSP7 {
         return uint256(bytes32(message[64:96]));
     }
 
+    function tokenId(bytes calldata message) internal pure returns (bytes32) {
+        return bytes32(message[64:96]);
+    }
+
     function metadata(bytes calldata message) internal pure returns (bytes calldata) {
         return message[128:];
     }
 }
-// TODO: which sender should be specified here? Should we add an
-// extra parameter?
