@@ -5,12 +5,17 @@ pragma solidity >=0.8.19;
 import { ILSP7DigitalAsset as ILSP7 } from "@lukso/lsp7-contracts/contracts/ILSP7DigitalAsset.sol";
 
 // Modules
+import { ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
 
 // Libraries
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
-contract HypLSP7Collateral is TokenRouter {
+// Constants
+import { _TYPEID_LSP7_TOKENOPERATOR } from "@lukso/lsp7-contracts/contracts/LSP7Constants.sol";
+import { _INTERFACEID_LSP1 } from "@lukso/lsp1-contracts/contracts/LSP1Constants.sol";
+
+contract HypLSP7Collateral is ERC165, TokenRouter {
     ILSP7 public immutable wrappedToken;
 
     /**
@@ -26,6 +31,7 @@ contract HypLSP7Collateral is TokenRouter {
         _MailboxClient_initialize(_hook, _interchainSecurityModule, _owner);
     }
 
+    // prettier-disable
     /**
      * @param typeId TypeId related to performing a bridge operation
      * @param data The `lsp1Data` sent by the function `authorizeOperator(address,uint256,bytes)` when the internal hook
@@ -49,15 +55,14 @@ contract HypLSP7Collateral is TokenRouter {
      * Tokens that authorize and dont call the universalReceiver on authorization, will get front-runned
      */
     function universalReceiver(bytes32 typeId, bytes calldata data) public returns (bytes memory) {
-        if (typeId == 0x386072cc5a58e61263b434c722725f21031cd06e7c552cfaa06db5de8a320dbc) {
+        if (typeId == _TYPEID_LSP7_TOKENOPERATOR) {
             // `authorizeOperator(address,uint256,bytes)` calldata (example)
             // --------------------
-            address from = address(uint160(uint256(bytes32(data[:32]))));
-
             // The `lsp1Data` sent by `authorizeOperator(...)` contains 3 arguments:
             // - address: msg.sender (user) -> 32 bytes
-            // - uint256: amount authorize -> 32 bytes
-            // - bytes: operatorNotificationData -> which contains the encoded transferRemote parameters
+            // - uint256: amount authorized -> 32 bytes
+            // - bytes: operatorNotificationData -> which contains the encoded transferRemote(...) parameters
+            address from = address(uint160(uint256(bytes32(data[:32]))));
 
             // if no data then revert
             if (uint256(bytes32(data[96:128])) == 0) revert("Authorization and Bridge must happen in the same tx");
@@ -72,6 +77,11 @@ contract HypLSP7Collateral is TokenRouter {
             uint32 destination = uint32(bytes4(data[132:136]));
             bytes32 recipient = bytes32(data[136:168]);
             uint256 amount = uint256(bytes32(data[168:200]));
+
+            // TODO: CHECK that the `amount` that was approved is the same as the amount being transferred.
+            // Should't be less, shouldn't be more, etc...
+
+            // TODO: allow for both function selectors (overloaded)
 
             // Check if it's a transferRemote call (0x81b4e8b4)
             if (executeSelectorToRun == 0x81b4e8b4) {
@@ -94,6 +104,13 @@ contract HypLSP7Collateral is TokenRouter {
             }
         }
         return abi.encodePacked(true);
+    }
+
+    /**
+     * @dev See {IERC165-supportsInterface}.
+     */
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == _INTERFACEID_LSP1 || super.supportsInterface(interfaceId);
     }
 
     function balanceOf(address _account) external view override returns (uint256) {
