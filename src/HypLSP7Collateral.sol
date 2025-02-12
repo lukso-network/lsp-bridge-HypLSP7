@@ -22,15 +22,16 @@ contract HypLSP7Collateral is TokenRouter {
         _MailboxClient_initialize(_hook, _interchainSecurityModule, _owner);
     }
 
-
-      /**
+    /**
      * @param typeId TypeId related to performing a bridge operation
-     * @param data The `lsp1Data` sent by the function `authorizeOperator(address,uint256,bytes)` when the internal hook below was triggered:
+     * @param data The `lsp1Data` sent by the function `authorizeOperator(address,uint256,bytes)` when the internal hook
+     * below was triggered:
      *
      * User --> calls `authorizeOperator(...)` on LSP7 token to bridge with parameters:
      *  | address: router contract
      *  | uint256: amount to bridge
-     *  | bytes: operatorNotificationData -> abi-encoded function call of `transferRemote(uint32 _destination, bytes32 _recipient, uint256 _amountOrId)`
+     *  | bytes: operatorNotificationData -> abi-encoded function call of `transferRemote(uint32 _destination, bytes32
+     * _recipient, uint256 _amountOrId)`
      *  V
      *
      * Triggered internally by the function `_notifyTokenOperator(...)` with lsp1Data
@@ -74,7 +75,7 @@ contract HypLSP7Collateral is TokenRouter {
                     destination,
                     recipient,
                     amount,
-                    0  // default value for _gasAmount
+                    0 // default value for _gasAmount
                 );
             } else {
                 revert("Invalid selector");
@@ -82,7 +83,7 @@ contract HypLSP7Collateral is TokenRouter {
 
             // making sure that there are no authorized amount left over and send it back to owner if that is the case
             uint256 remainingAuthorizedAmount = ILSP7(msg.sender).authorizedAmountFor(address(this), from);
-            if(remainingAuthorizedAmount != 0) {
+            if (remainingAuthorizedAmount != 0) {
                 ILSP7(msg.sender).transfer(from, address(this), remainingAuthorizedAmount, true, "");
                 uint256 remainingBalance = ILSP7(msg.sender).balanceOf(address(this));
                 ILSP7(msg.sender).transfer(address(this), from, remainingBalance, true, "");
