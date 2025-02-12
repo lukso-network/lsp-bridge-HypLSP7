@@ -78,19 +78,19 @@ abstract contract HypTokenTest is Test {
 contract HypLSP8Test is HypTokenTest {
     using TypeCasts for address;
 
-    HypLSP8 internal lsp8Token;
+    HypLSP8 internal hypLSP8Token;
 
     function setUp() public override {
         super.setUp();
 
         localToken = new HypLSP8(address(localMailbox));
-        lsp8Token = HypLSP8(payable(address(localToken)));
+        hypLSP8Token = HypLSP8(payable(address(localToken)));
 
         vm.prank(OWNER);
-        lsp8Token.initialize(INITIAL_SUPPLY, address(noopHook), address(0), OWNER, NAME, SYMBOL);
+        hypLSP8Token.initialize(INITIAL_SUPPLY, address(noopHook), address(0), OWNER, NAME, SYMBOL);
 
         vm.prank(OWNER);
-        lsp8Token.enrollRemoteRouter(DESTINATION, address(remoteToken).addressToBytes32());
+        hypLSP8Token.enrollRemoteRouter(DESTINATION, address(remoteToken).addressToBytes32());
 
         // Give accounts some ETH for gas
         vm.deal(OWNER, 1 ether);
@@ -99,30 +99,30 @@ contract HypLSP8Test is HypTokenTest {
 
         // Transfer some tokens to ALICE for testing
         vm.prank(OWNER);
-        lsp8Token.transfer(OWNER, ALICE, TOKEN_ID, true, "");
+        hypLSP8Token.transfer(OWNER, ALICE, TOKEN_ID, true, "");
 
         _deployRemoteToken();
     }
 
     function testInitialize_revert_ifAlreadyInitialized() public {
         vm.expectRevert("Initializable: contract is already initialized");
-        lsp8Token.initialize(INITIAL_SUPPLY, address(noopHook), address(0), OWNER, NAME, SYMBOL);
+        hypLSP8Token.initialize(INITIAL_SUPPLY, address(noopHook), address(0), OWNER, NAME, SYMBOL);
     }
 
     function testTotalSupply() public view {
-        assertEq(lsp8Token.totalSupply(), INITIAL_SUPPLY);
+        assertEq(hypLSP8Token.totalSupply(), INITIAL_SUPPLY);
     }
 
     function testTokenOwnerOf() public view {
-        assertEq(lsp8Token.tokenOwnerOf(TOKEN_ID), ALICE);
+        assertEq(hypLSP8Token.tokenOwnerOf(TOKEN_ID), ALICE);
     }
 
     function testLocalTransfer() public {
         vm.prank(ALICE);
-        lsp8Token.transfer(ALICE, BOB, TOKEN_ID, true, "");
-        assertEq(lsp8Token.tokenOwnerOf(TOKEN_ID), BOB);
-        assertEq(lsp8Token.balanceOf(ALICE), 0);
-        assertEq(lsp8Token.balanceOf(BOB), 1);
+        hypLSP8Token.transfer(ALICE, BOB, TOKEN_ID, true, "");
+        assertEq(hypLSP8Token.tokenOwnerOf(TOKEN_ID), BOB);
+        assertEq(hypLSP8Token.balanceOf(ALICE), 0);
+        assertEq(hypLSP8Token.balanceOf(BOB), 1);
     }
 
     function testRemoteTransferHere() public {
@@ -130,7 +130,7 @@ contract HypLSP8Test is HypTokenTest {
         remoteToken.enrollRemoteRouter(DESTINATION, address(remoteToken).addressToBytes32());
 
         _performRemoteTransfer(25_000, TOKEN_ID);
-        assertEq(lsp8Token.balanceOf(ALICE), 0);
+        assertEq(hypLSP8Token.balanceOf(ALICE), 0);
     }
 
     function testRemoteTransfer_revert_unauthorizedOperator() public {
