@@ -74,11 +74,10 @@ abstract contract HypTokenTest is Test {
         vm.prank(OWNER);
         // vm.expectEmit(address(pausableIsm));
         pausableIsm.registerCircuitBreaker(CIRCUIT_BREAKER);
-        
     }
 
     function _circuitBreakerPause() internal {
-        if(!pausableIsm.paused()) {
+        if (!pausableIsm.paused()) {
             vm.prank(CIRCUIT_BREAKER);
             pausableIsm.pause();
         }
@@ -87,12 +86,11 @@ abstract contract HypTokenTest is Test {
     }
 
     function _circuitBreakerUnpause() internal {
-        if(pausableIsm.paused()) {
+        if (pausableIsm.paused()) {
             vm.prank(OWNER);
             pausableIsm.unpause();
         }
         assertEq(pausableIsm.paused(), false);
-        
     }
 
     function _processTransfers(address _recipient, bytes32 _tokenId) internal {
@@ -105,7 +103,6 @@ abstract contract HypTokenTest is Test {
     function _performRemoteTransfer(uint256 _msgValue, bytes32 _tokenId) internal {
         vm.prank(ALICE);
         localToken.transferRemote{ value: _msgValue }(DESTINATION, BOB.addressToBytes32(), uint256(_tokenId));
-
         _processTransfers(BOB, _tokenId);
         assertEq(remoteToken.balanceOf(BOB), 1);
     }
@@ -121,45 +118,36 @@ abstract contract HypTokenTest is Test {
         uint32 _destinationDomain,
         bytes32 _recipient,
         bytes memory _messageBody // uses memory instead of calldata ftw
-    ) internal pure returns (bytes memory) {
-        return
-            abi.encodePacked(
-                _version,
-                _nonce,
-                _originDomain,
-                _sender,
-                _destinationDomain,
-                _recipient,
-                _messageBody
-            );
+    )
+        internal
+        pure
+        returns (bytes memory)
+    {
+        return abi.encodePacked(_version, _nonce, _originDomain, _sender, _destinationDomain, _recipient, _messageBody);
     }
 
     function _prepareProcessCall(bytes32 _tokenId) internal returns (bytes memory) {
         // ============== WTF IS THIS ? ===========================
         // To test whether the ISM is Paused we must call
         // Mailbox.process(_metadata, _message) on the destination side
-        // calling remoteToken.handle() finalizes the cross chain transfer 
+        // calling remoteToken.handle() finalizes the cross chain transfer
         // and is only called if the ISM::verify() function returns true
         // so that method cannot be used here
-        bytes memory _tokenMessage = TokenMessage.format(
-            BOB.addressToBytes32(),
-            uint256(_tokenId),
-            ""
-        );
-        
+        bytes memory _tokenMessage = TokenMessage.format(BOB.addressToBytes32(), uint256(_tokenId), "");
         bytes32 remoteTokenAddress = address(remoteToken).addressToBytes32();
         bytes32 localRouter = remoteToken.routers(ORIGIN);
         bytes32 localTokenAddress = address(localToken).addressToBytes32();
         assertEq(localRouter, localTokenAddress);
 
+        // solhint-disable-line no-spaces-before-semicolon
         bytes memory message = _formatMessage(
-            3,                          // _version
-            1,                          // _nonce
-            ORIGIN,                     // _originDomain
-            localTokenAddress,                // _sender is the Router of ORIGIN
-            DESTINATION,                // _destinationDomain
-            remoteTokenAddress,         // _recipient is the remote HypLSP7
-            _tokenMessage               //_messageBody IS instructions on how much to send to what address
+            3, // _version
+            1, // _nonce
+            ORIGIN, // _originDomain
+            localTokenAddress, // _sender is the Router of ORIGIN
+            DESTINATION, // _destinationDomain
+            remoteTokenAddress, // _recipient is the remote HypLSP7
+            _tokenMessage //_messageBody IS instructions on how much to send to what address
         );
 
         return message;
@@ -167,27 +155,19 @@ abstract contract HypTokenTest is Test {
 
     function _performRemoteTransferPauseRevert(uint256 _msgValue, bytes32 _tokenId) internal {
         _circuitBreakerPause();
-        
         vm.prank(ALICE);
-        
         localToken.transferRemote{ value: _msgValue }(DESTINATION, BOB.addressToBytes32(), uint256(_tokenId));
-        
         bytes memory _message = _prepareProcessCall(_tokenId);
-
         vm.expectRevert("Pausable: paused");
         remoteMailbox.process("", _message); // we don't need metadata
     }
 
     function _performRemoteTransferNoPause(uint256 _msgValue, bytes32 _tokenId) internal {
         _circuitBreakerUnpause();
-
         vm.prank(ALICE);
         localToken.transferRemote{ value: _msgValue }(DESTINATION, BOB.addressToBytes32(), uint256(_tokenId));
-        
         bytes memory _message = _prepareProcessCall(_tokenId);
-
         remoteMailbox.process("", _message); // we don't need metadata
-        
     }
 }
 
@@ -263,13 +243,10 @@ contract HypLSP8Test is HypTokenTest {
     }
 
     function testRemoteTransfer_paused() public {
-
         _performRemoteTransferPauseRevert(25_000, TOKEN_ID);
-
     }
 
     function testRemoteTransfer_unpaused() public {
-        
         _performRemoteTransferNoPause(25_000, TOKEN_ID);
     }
 }
@@ -335,8 +312,6 @@ contract HypLSP8CollateralTest is HypTokenTest {
         vm.prank(ALICE);
         localPrimaryToken.authorizeOperator(address(lsp8Collateral), TOKEN_ID, "");
         _performRemoteTransferPauseRevert(25_000, TOKEN_ID);
-        
-
     }
 
     function testRemoteTransferIsmCollateral_unpaused() public {
