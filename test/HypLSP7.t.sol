@@ -20,6 +20,7 @@ import { LSP7Mock } from "./LSP7Mock.sol";
 import { HypLSP7 } from "../src/HypLSP7.sol";
 import { HypLSP7Collateral } from "../src/HypLSP7Collateral.sol";
 import { PausableIsm } from "../src/ISM/PausableISM.sol";
+import { PausableHook } from "../src/ISM/PausableHook.sol";
 
 abstract contract HypTokenTest is Test {
     using TypeCasts for address;
@@ -47,6 +48,7 @@ abstract contract HypTokenTest is Test {
     TestPostDispatchHook internal noopHook;
     TestInterchainGasPaymaster internal igp;
 
+    PausableHook internal pausableHook;
     PausableIsm internal pausableIsm;
 
     event SentTransferRemote(uint32 indexed destination, bytes32 indexed recipient, uint256 amount);
@@ -63,6 +65,7 @@ abstract contract HypTokenTest is Test {
         localMailbox.setDefaultHook(address(noopHook));
         localMailbox.setRequiredHook(address(noopHook));
 
+        pausableHook = new PausableHook(OWNER);
         pausableIsm = new PausableIsm(OWNER);
 
         REQUIRED_VALUE = noopHook.quoteDispatch("", "");
@@ -93,21 +96,44 @@ abstract contract HypTokenTest is Test {
         pausableIsm.registerCircuitBreaker(CIRCUIT_BREAKER);
     }
 
-    function _circuitBreakerPause() internal {
+    // Setting this as a different function because the hook interferes with other tests
+    function _setupPausableHook() internal {
+        localMailbox.setRequiredHook(address(pausableHook));
+
+        vm.prank(OWNER);
+        pausableHook.registerCircuitBreaker(CIRCUIT_BREAKER);
+    }
+
+    function _circuitBreakerPauseIsm() internal {
         if (!pausableIsm.paused()) {
             vm.prank(CIRCUIT_BREAKER);
             pausableIsm.pause();
         }
-
         assertEq(pausableIsm.paused(), true);
     }
 
-    function _circuitBreakerUnpause() internal {
+    function _circuitBreakerUnpauseIsm() internal {
         if (pausableIsm.paused()) {
             vm.prank(OWNER);
             pausableIsm.unpause();
         }
         assertEq(pausableIsm.paused(), false);
+    }
+
+    function _circuitBreakerPauseHook() internal {
+        if (!pausableHook.paused()) {
+            vm.prank(CIRCUIT_BREAKER);
+            pausableHook.pause();
+        }
+        assertEq(pausableHook.paused(), true);
+    }
+
+    function _circuitBreakerUnpauseHook() internal {
+        if (pausableHook.paused()) {
+            vm.prank(OWNER);
+            pausableHook.unpause();
+        }
+        assertEq(pausableHook.paused(), false);
     }
 
     function _expectRemoteBalance(address _user, uint256 _balance) internal view {
@@ -245,7 +271,7 @@ abstract contract HypTokenTest is Test {
     }
 
     function _performRemoteTransferPauseRevert(uint256 _msgValue, uint256 _amount) internal {
-        _circuitBreakerPause();
+        _circuitBreakerPauseIsm();
         vm.prank(ALICE);
         localToken.transferRemote{ value: _msgValue }(DESTINATION, BOB.addressToBytes32(), _amount);
         emit ReceivedTransferRemote(ORIGIN, BOB.addressToBytes32(), _amount);
@@ -257,7 +283,7 @@ abstract contract HypTokenTest is Test {
     }
 
     function _performRemoteTransferNoPause(uint256 _msgValue, uint256 _amount) internal {
-        _circuitBreakerUnpause();
+        _circuitBreakerUnpauseIsm();
 
         assertEq(remoteToken.balanceOf(BOB), 0);
 
@@ -270,6 +296,20 @@ abstract contract HypTokenTest is Test {
 
         remoteMailbox.process("", _message); // we don't need metadata
         assertEq(remoteToken.balanceOf(BOB), _amount);
+    }
+
+    function _performRemoteTransferWithPausedHook(uint256 _msgValue, uint256 _amount) internal {
+        _setupPausableHook();
+        _circuitBreakerPauseHook();
+
+        assertEq(remoteToken.balanceOf(BOB), 0);
+        uint256 aliceBalance = localToken.balanceOf(ALICE);
+
+        vm.expectRevert("Pausable: paused");
+        vm.prank(ALICE);
+        localToken.transferRemote{ value: _msgValue }(DESTINATION, BOB.addressToBytes32(), _amount);
+
+        assertEq(aliceBalance, localToken.balanceOf(ALICE));
     }
 }
 
@@ -353,6 +393,10 @@ contract HypLSP7Test is HypTokenTest {
     function testRemoteTransfer_unpaused() public {
         _performRemoteTransferNoPause(REQUIRED_VALUE, TRANSFER_AMOUNT);
     }
+
+    function testRemoteTransfer_pausedHook() public {
+        _performRemoteTransferWithPausedHook(REQUIRED_VALUE, TRANSFER_AMOUNT);
+    }
 }
 
 contract HypLSP7CollateralTest is HypTokenTest {
@@ -420,16 +464,6 @@ contract HypLSP7CollateralTest is HypTokenTest {
         _performRemoteTransferPauseRevert(REQUIRED_VALUE, TRANSFER_AMOUNT);
     }
 
-    // function testRemoteTransferCollateral_pausedHook() public {
-    //     uint256 balanceBefore = localToken.balanceOf(ALICE);
-
-    //     vm.prank(ALICE);
-    //     primaryToken.authorizeOperator(address(localToken), TRANSFER_AMOUNT, "");
-    //     _performRemoteTransferPauseRevert(REQUIRED_VALUE, TRANSFER_AMOUNT);
-    //     // ensure that Hook reverts and prevents transfer of ALICE's funds
-    //     assertEq(localToken.balanceOf(ALICE), balanceBefore);
-    // }
-
     function testRemoteTransferIsmCollateral_unpaused() public {
         uint256 balanceBefore = localToken.balanceOf(ALICE);
 
@@ -437,6 +471,14 @@ contract HypLSP7CollateralTest is HypTokenTest {
         primaryToken.authorizeOperator(address(localToken), TRANSFER_AMOUNT, "");
 
         _performRemoteTransferNoPause(REQUIRED_VALUE, TRANSFER_AMOUNT);
+        uint256 balanceAfter = localToken.balanceOf(ALICE);
+        assertEq(balanceAfter, balanceBefore - TRANSFER_AMOUNT);
+    }
+
+    function testRemoteTransferCollateral_pausedHook() public {
+        vm.prank(ALICE);
+        primaryToken.authorizeOperator(address(localToken), TRANSFER_AMOUNT, "");
+        _performRemoteTransferWithPausedHook(REQUIRED_VALUE, TRANSFER_AMOUNT);
     }
 }
 
@@ -511,5 +553,9 @@ contract HypNativeTest is HypTokenTest {
 
     function testRemoteTransfer_unpaused() public {
         _performRemoteTransferNoPause(REQUIRED_VALUE + TRANSFER_AMOUNT, TRANSFER_AMOUNT);
+    }
+
+    function testRemoteTransfer_pausedHook() public {
+        _performRemoteTransferWithPausedHook(REQUIRED_VALUE + TRANSFER_AMOUNT, TRANSFER_AMOUNT);
     }
 }

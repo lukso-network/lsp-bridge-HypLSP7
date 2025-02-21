@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import { Test } from "forge-std/src/Test.sol";
+import { console } from "forge-std/src/console.sol";
 
 import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 import { TestMailbox } from "@hyperlane-xyz/core/contracts/test/TestMailbox.sol";
@@ -17,6 +18,7 @@ import { HypLSP8 } from "../src/HypLSP8.sol";
 import { HypLSP8Collateral } from "../src/HypLSP8Collateral.sol";
 import { LSP8Mock } from "./LSP8Mock.sol";
 import { PausableIsm } from "../src/ISM/PausableISM.sol";
+import { PausableHook } from "../src/ISM/PausableHook.sol";
 
 abstract contract HypTokenTest is Test {
     using TypeCasts for address;
@@ -42,6 +44,7 @@ abstract contract HypTokenTest is Test {
     HypLSP8 internal remoteToken;
     TestPostDispatchHook internal noopHook;
 
+    PausableHook internal pausableHook;
     PausableIsm internal pausableIsm;
 
     function setUp() public virtual {
@@ -54,6 +57,7 @@ abstract contract HypTokenTest is Test {
         localMailbox.setDefaultHook(address(noopHook));
         localMailbox.setRequiredHook(address(noopHook));
 
+        pausableHook = new PausableHook(OWNER);
         pausableIsm = new PausableIsm(OWNER);
 
         vm.deal(ALICE, 1 ether);
@@ -76,21 +80,44 @@ abstract contract HypTokenTest is Test {
         pausableIsm.registerCircuitBreaker(CIRCUIT_BREAKER);
     }
 
-    function _circuitBreakerPause() internal {
+    // Setting this as a different function because the hook interferes with other tests
+    function _setupPausableHook() internal {
+        localMailbox.setRequiredHook(address(pausableHook));
+
+        vm.prank(OWNER);
+        pausableHook.registerCircuitBreaker(CIRCUIT_BREAKER);
+    }
+
+    function _circuitBreakerPauseIsm() internal {
         if (!pausableIsm.paused()) {
             vm.prank(CIRCUIT_BREAKER);
             pausableIsm.pause();
         }
-
         assertEq(pausableIsm.paused(), true);
     }
 
-    function _circuitBreakerUnpause() internal {
+    function _circuitBreakerUnpauseIsm() internal {
         if (pausableIsm.paused()) {
             vm.prank(OWNER);
             pausableIsm.unpause();
         }
         assertEq(pausableIsm.paused(), false);
+    }
+
+    function _circuitBreakerPauseHook() internal {
+        if (!pausableHook.paused()) {
+            vm.prank(CIRCUIT_BREAKER);
+            pausableHook.pause();
+        }
+        assertEq(pausableHook.paused(), true);
+    }
+
+    function _circuitBreakerUnpauseHook() internal {
+        if (pausableHook.paused()) {
+            vm.prank(OWNER);
+            pausableHook.unpause();
+        }
+        assertEq(pausableHook.paused(), false);
     }
 
     function _processTransfers(address _recipient, bytes32 _tokenId) internal {
@@ -154,7 +181,7 @@ abstract contract HypTokenTest is Test {
     }
 
     function _performRemoteTransferPauseRevert(uint256 _msgValue, bytes32 _tokenId) internal {
-        _circuitBreakerPause();
+        _circuitBreakerPauseIsm();
         vm.prank(ALICE);
         localToken.transferRemote{ value: _msgValue }(DESTINATION, BOB.addressToBytes32(), uint256(_tokenId));
         bytes memory _message = _prepareProcessCall(_tokenId);
@@ -163,7 +190,7 @@ abstract contract HypTokenTest is Test {
     }
 
     function _performRemoteTransferNoPause(uint256 _msgValue, bytes32 _tokenId) internal {
-        _circuitBreakerUnpause();
+        _circuitBreakerUnpauseIsm();
         vm.prank(ALICE);
         localToken.transferRemote{ value: _msgValue }(DESTINATION, BOB.addressToBytes32(), uint256(_tokenId));
         bytes memory _message = _prepareProcessCall(_tokenId);
@@ -249,6 +276,20 @@ contract HypLSP8Test is HypTokenTest {
     function testRemoteTransfer_unpaused() public {
         _performRemoteTransferNoPause(25_000, TOKEN_ID);
     }
+
+    function testRemoteTransfer_pausedHook() public {
+        _setupPausableHook();
+        _circuitBreakerPauseHook();
+
+        address prevOwner = hypLSP8Token.tokenOwnerOf(TOKEN_ID);
+
+        vm.expectRevert("Pausable: paused");
+        vm.prank(ALICE);
+        localToken.transferRemote{ value: 25_000 }(DESTINATION, BOB.addressToBytes32(), uint256(TOKEN_ID));
+
+        address postOwner = hypLSP8Token.tokenOwnerOf(TOKEN_ID);
+        assertEq(prevOwner, postOwner);
+    }
 }
 
 contract HypLSP8CollateralTest is HypTokenTest {
@@ -323,5 +364,22 @@ contract HypLSP8CollateralTest is HypTokenTest {
         _performRemoteTransferNoPause(25_000, TOKEN_ID);
         assertEq(localPrimaryToken.tokenOwnerOf(TOKEN_ID), address(localToken));
         assertEq(remoteToken.tokenOwnerOf(TOKEN_ID), BOB);
+    }
+
+    function testRemoteTransferCollateral_pausedHook() public {
+        vm.prank(ALICE);
+        localPrimaryToken.authorizeOperator(address(lsp8Collateral), TOKEN_ID, "");
+
+        _setupPausableHook();
+        _circuitBreakerPauseHook();
+
+        address prevOwner = localPrimaryToken.tokenOwnerOf(TOKEN_ID);
+
+        vm.expectRevert("Pausable: paused");
+        vm.prank(ALICE);
+        localToken.transferRemote{ value: 25_000 }(DESTINATION, BOB.addressToBytes32(), uint256(TOKEN_ID));
+
+        address postOwner = localPrimaryToken.tokenOwnerOf(TOKEN_ID);
+        assertEq(prevOwner, postOwner);
     }
 }
