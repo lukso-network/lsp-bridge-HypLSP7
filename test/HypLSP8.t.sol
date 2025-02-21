@@ -16,7 +16,7 @@ import { Message } from "@hyperlane-xyz/core/contracts/libs/Message.sol";
 import { HypLSP8 } from "../src/HypLSP8.sol";
 import { HypLSP8Collateral } from "../src/HypLSP8Collateral.sol";
 import { LSP8Mock } from "./LSP8Mock.sol";
-import { PausableIsm } from "../src/ism/PausableISM.sol";
+import { PausableIsm } from "../src/ISM/PausableISM.sol";
 
 abstract contract HypTokenTest is Test {
     using TypeCasts for address;

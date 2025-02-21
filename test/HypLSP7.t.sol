@@ -19,7 +19,7 @@ import { Message } from "@hyperlane-xyz/core/contracts/libs/Message.sol";
 import { LSP7Mock } from "./LSP7Mock.sol";
 import { HypLSP7 } from "../src/HypLSP7.sol";
 import { HypLSP7Collateral } from "../src/HypLSP7Collateral.sol";
-import { PausableIsm } from "../src/ism/PausableISM.sol";
+import { PausableIsm } from "../src/ISM/PausableISM.sol";
 
 abstract contract HypTokenTest is Test {
     using TypeCasts for address;
