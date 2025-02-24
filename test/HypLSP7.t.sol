@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import { Test } from "forge-std/src/Test.sol";
+import { console } from "forge-std/src/console.sol";
 
 /// Hyperlane testing environnement
 /// @dev See https://docs.hyperlane.xyz/docs/guides/developer-tips/unit-testing
@@ -12,7 +13,7 @@ import { TestInterchainGasPaymaster } from "@hyperlane-xyz/core/contracts/test/T
 import { GasRouter } from "@hyperlane-xyz/core/contracts/client/GasRouter.sol";
 import { HypNative } from "@hyperlane-xyz/core/contracts/token/HypNative.sol";
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
-import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMessage.sol";
+// import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMessage.sol";
 import { Message } from "@hyperlane-xyz/core/contracts/libs/Message.sol";
 
 // Mocks + contracts to test
@@ -21,6 +22,8 @@ import { HypLSP7 } from "../src/HypLSP7.sol";
 import { HypLSP7Collateral } from "../src/HypLSP7Collateral.sol";
 import { PausableIsm } from "../src/ISM/PausableISM.sol";
 import { PausableHook } from "../src/ISM/PausableHook.sol";
+import { BadAddyIsm } from "../src/ISM/BadAddyISM.sol";
+import { TokenMessageForLSP } from "../src/TokenMessageForLSP.sol";
 
 abstract contract HypTokenTest is Test {
     using TypeCasts for address;
@@ -38,6 +41,7 @@ abstract contract HypTokenTest is Test {
     address internal BOB = makeAddr("bob");
     address internal OWNER = makeAddr("owner");
     address internal CIRCUIT_BREAKER = makeAddr("circuit_breaker");
+    address internal BAD_ADDR = makeAddr("bad_addr");
     uint256 internal REQUIRED_VALUE; // initialized in setUp
 
     LSP7Mock internal primaryToken;
@@ -50,6 +54,7 @@ abstract contract HypTokenTest is Test {
 
     PausableHook internal pausableHook;
     PausableIsm internal pausableIsm;
+    BadAddyIsm internal badaddyIsm;
 
     event SentTransferRemote(uint32 indexed destination, bytes32 indexed recipient, uint256 amount);
 
@@ -67,6 +72,7 @@ abstract contract HypTokenTest is Test {
 
         pausableHook = new PausableHook(OWNER);
         pausableIsm = new PausableIsm(OWNER);
+        badaddyIsm = new BadAddyIsm(OWNER);
 
         REQUIRED_VALUE = noopHook.quoteDispatch("", "");
 
@@ -134,6 +140,16 @@ abstract contract HypTokenTest is Test {
             pausableHook.unpause();
         }
         assertEq(pausableHook.paused(), false);
+    }
+
+    function _setupBadAddressIsm() internal {
+        remoteToken.setInterchainSecurityModule(address(badaddyIsm));
+        vm.prank(OWNER);
+        badaddyIsm.registerCircuitBreaker(CIRCUIT_BREAKER);
+
+        vm.prank(CIRCUIT_BREAKER);
+        // vm.expectEmit();
+        badaddyIsm.blockAddress(BAD_ADDR);
     }
 
     function _expectRemoteBalance(address _user, uint256 _balance) internal view {
@@ -243,15 +259,21 @@ abstract contract HypTokenTest is Test {
         return abi.encodePacked(_version, _nonce, _originDomain, _sender, _destinationDomain, _recipient, _messageBody);
     }
 
-    function _prepareProcessCall(uint256 _amount) internal returns (bytes memory) {
+    function _prepareProcessCall(uint256 _amount, address _from, address _to) internal returns (bytes memory) {
         // ============== WTF IS THIS ? ===========================
         // To test whether the ISM is Paused we must call
         // Mailbox.process(_metadata, _message) on the destination side
         // calling remoteToken.handle() finalizes the cross chain transfer
         // and is only called if the ISM::verify() function returns true
         // so that method cannot be used here
-        bytes memory _tokenMessage = TokenMessage.format(BOB.addressToBytes32(), _amount, "");
-
+        vm.prank(_from, true); // needed because .format() sets sender to msg.sender
+        bytes memory _tokenMessage = TokenMessageForLSP.format(_to.addressToBytes32(), _amount, "");
+        console.log("Msg.sender");
+        console.log(msg.sender);
+        // vm.stopPrank();
+        console.log("From");
+        console.log(_from);
+        // console.log(_tokenMessage);
         bytes32 remoteTokenAddress = address(remoteToken).addressToBytes32();
         bytes32 localRouter = remoteToken.routers(ORIGIN);
         bytes32 localTokenAddress = address(localToken).addressToBytes32();
@@ -276,7 +298,7 @@ abstract contract HypTokenTest is Test {
         localToken.transferRemote{ value: _msgValue }(DESTINATION, BOB.addressToBytes32(), _amount);
         emit ReceivedTransferRemote(ORIGIN, BOB.addressToBytes32(), _amount);
 
-        bytes memory _message = _prepareProcessCall(_amount);
+        bytes memory _message = _prepareProcessCall(_amount, ALICE, BOB);
 
         vm.expectRevert("Pausable: paused");
         remoteMailbox.process("", _message); // we don't need metadata
@@ -292,7 +314,7 @@ abstract contract HypTokenTest is Test {
 
         emit ReceivedTransferRemote(ORIGIN, BOB.addressToBytes32(), _amount);
 
-        bytes memory _message = _prepareProcessCall(_amount);
+        bytes memory _message = _prepareProcessCall(_amount, ALICE, BOB);
 
         remoteMailbox.process("", _message); // we don't need metadata
         assertEq(remoteToken.balanceOf(BOB), _amount);
@@ -311,6 +333,33 @@ abstract contract HypTokenTest is Test {
 
         assertEq(aliceBalance, localToken.balanceOf(ALICE));
     }
+
+    function _performRemoteTransferFromBlockedAddress(uint256 _msgValue, uint256 _amount) internal {
+        vm.prank(OWNER);
+        _setupBadAddressIsm();
+        vm.prank(BAD_ADDR);
+        localToken.transferRemote{ value: _msgValue }(DESTINATION, BOB.addressToBytes32(), _amount);
+        emit ReceivedTransferRemote(ORIGIN, BOB.addressToBytes32(), _amount);
+
+        bytes memory _message = _prepareProcessCall(_amount, BAD_ADDR, BOB);
+        console.log("Bad ADDY");
+        console.log(BAD_ADDR);
+        vm.expectRevert("!blocked");
+        remoteMailbox.process("", _message); // we don't need metadata
+    }
+
+    // function _performRemoteTransferToBlockedAddress(uint256 _msgValue, uint256 _amount) internal {
+    //     vm.prank(OWNER);
+    //     _setupBadAddressIsm();
+    //     vm.prank(ALICE);
+    //     localToken.transferRemote{ value: _msgValue }(DESTINATION, BAD_ADDR.addressToBytes32(), _amount);
+    //     emit ReceivedTransferRemote(ORIGIN, BOB.addressToBytes32(), _amount);
+
+    //     bytes memory _message = _prepareProcessCall(_amount, ALICE, BAD_ADDR);
+
+    //     vm.expectRevert("!blocked");
+    //     remoteMailbox.process("", _message); // we don't need metadata
+    // }
 }
 
 contract HypLSP7Test is HypTokenTest {
@@ -397,6 +446,16 @@ contract HypLSP7Test is HypTokenTest {
     function testRemoteTransfer_pausedHook() public {
         _performRemoteTransferWithPausedHook(REQUIRED_VALUE, TRANSFER_AMOUNT);
     }
+
+    function testRemoteTransfer_blockedFrom() public {
+        vm.prank(OWNER);
+        hypLSP7Token.transfer(OWNER, BAD_ADDR, 1000e18, true, "");
+        _performRemoteTransferFromBlockedAddress(REQUIRED_VALUE, TRANSFER_AMOUNT);
+    }
+
+    // function testRemoteTransfer_blockedTo() public {
+    //     _performRemoteTransferToBlockedAddress(REQUIRED_VALUE, TRANSFER_AMOUNT);
+    // }
 }
 
 contract HypLSP7CollateralTest is HypTokenTest {

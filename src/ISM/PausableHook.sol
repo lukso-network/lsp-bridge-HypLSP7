@@ -21,8 +21,8 @@ import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 
 import { CircuitBreakerAdapter } from "./CircuitBreakerAdapter.sol";
 
-contract PausableHook is AbstractPostDispatchHook, Ownable, Pausable, CircuitBreakerAdapter {
-    constructor(address owner) Ownable() Pausable() {
+contract PausableHook is AbstractPostDispatchHook, Pausable, CircuitBreakerAdapter {
+    constructor(address owner) CircuitBreakerAdapter() Pausable() {
         _transferOwnership(owner);
     }
 
