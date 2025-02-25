@@ -65,13 +65,8 @@ pragma solidity >=0.8.0;
  * Note also that the `to` address (recipient of the bridged tokens on the destination chain)
  * could be either the same `from` address, or a different one.
  */
-
-import { console } from "forge-std/src/console.sol";
-
 library TokenMessageForLSP {
     function format(bytes32 _recipient, uint256 _amount, bytes memory _metadata) internal view returns (bytes memory) {
-        console.log("TokenLSP msg.sender");
-        console.log(msg.sender);
         return abi.encodePacked(
             abi.encode(msg.sender),
             _recipient,

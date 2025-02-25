@@ -2,7 +2,6 @@
 pragma solidity ^0.8.13;
 
 import { Test } from "forge-std/src/Test.sol";
-import { console } from "forge-std/src/console.sol";
 
 import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 import { TestMailbox } from "@hyperlane-xyz/core/contracts/test/TestMailbox.sol";
@@ -11,7 +10,6 @@ import { TestInterchainGasPaymaster } from "@hyperlane-xyz/core/contracts/test/T
 import { GasRouter } from "@hyperlane-xyz/core/contracts/client/GasRouter.sol";
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
 import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMessage.sol";
-import { Message } from "@hyperlane-xyz/core/contracts/libs/Message.sol";
 
 // Mock + contracts to test
 import { HypLSP8 } from "../src/HypLSP8.sol";
@@ -19,6 +17,8 @@ import { HypLSP8Collateral } from "../src/HypLSP8Collateral.sol";
 import { LSP8Mock } from "./LSP8Mock.sol";
 import { PausableIsm } from "../src/ISM/PausableISM.sol";
 import { PausableHook } from "../src/ISM/PausableHook.sol";
+import { BadAddyIsm } from "../src/ISM/BadAddyISM.sol";
+import { BadAddyHook } from "../src/ISM/BadAddyHook.sol";
 
 abstract contract HypTokenTest is Test {
     using TypeCasts for address;
@@ -31,6 +31,7 @@ abstract contract HypTokenTest is Test {
     address internal BOB = makeAddr("bob");
     address internal OWNER = makeAddr("owner");
     address internal CIRCUIT_BREAKER = makeAddr("circuit_breaker");
+    address internal BAD_ADDR = makeAddr("bad_addr");
     uint32 internal constant ORIGIN = 11;
     uint32 internal constant DESTINATION = 22;
     bytes32 internal constant TOKEN_ID = bytes32(uint256(1));
@@ -46,6 +47,8 @@ abstract contract HypTokenTest is Test {
 
     PausableHook internal pausableHook;
     PausableIsm internal pausableIsm;
+    BadAddyIsm internal badaddyIsm;
+    BadAddyHook internal badaddyHook;
 
     function setUp() public virtual {
         localMailbox = new TestMailbox(ORIGIN);
@@ -59,6 +62,8 @@ abstract contract HypTokenTest is Test {
 
         pausableHook = new PausableHook(OWNER);
         pausableIsm = new PausableIsm(OWNER);
+        badaddyIsm = new BadAddyIsm(OWNER);
+        badaddyHook = new BadAddyHook(OWNER);
 
         vm.deal(ALICE, 1 ether);
     }
@@ -80,12 +85,33 @@ abstract contract HypTokenTest is Test {
         pausableIsm.registerCircuitBreaker(CIRCUIT_BREAKER);
     }
 
+    function _setupBadAddressIsm() internal {
+        remoteToken.setInterchainSecurityModule(address(badaddyIsm));
+        vm.prank(OWNER);
+        badaddyIsm.registerCircuitBreaker(CIRCUIT_BREAKER);
+
+        vm.prank(CIRCUIT_BREAKER);
+        // vm.expectEmit();
+        badaddyIsm.blockAddress(BAD_ADDR);
+    }
+
     // Setting this as a different function because the hook interferes with other tests
     function _setupPausableHook() internal {
         localMailbox.setRequiredHook(address(pausableHook));
 
         vm.prank(OWNER);
         pausableHook.registerCircuitBreaker(CIRCUIT_BREAKER);
+    }
+
+    function _setupBadAddyHook() internal {
+        localMailbox.setRequiredHook(address(badaddyHook));
+
+        vm.prank(OWNER);
+        badaddyHook.registerCircuitBreaker(CIRCUIT_BREAKER);
+
+        vm.prank(CIRCUIT_BREAKER);
+        // vm.expectEmit();
+        badaddyHook.blockAddress(BAD_ADDR);
     }
 
     function _circuitBreakerPauseIsm() internal {
@@ -153,14 +179,14 @@ abstract contract HypTokenTest is Test {
         return abi.encodePacked(_version, _nonce, _originDomain, _sender, _destinationDomain, _recipient, _messageBody);
     }
 
-    function _prepareProcessCall(bytes32 _tokenId) internal returns (bytes memory) {
+    function _prepareProcessCall(bytes32 _tokenId, address _to) internal returns (bytes memory) {
         // ============== WTF IS THIS ? ===========================
         // To test whether the ISM is Paused we must call
         // Mailbox.process(_metadata, _message) on the destination side
         // calling remoteToken.handle() finalizes the cross chain transfer
         // and is only called if the ISM::verify() function returns true
         // so that method cannot be used here
-        bytes memory _tokenMessage = TokenMessage.format(BOB.addressToBytes32(), uint256(_tokenId), "");
+        bytes memory _tokenMessage = TokenMessage.format(_to.addressToBytes32(), uint256(_tokenId), "");
         bytes32 remoteTokenAddress = address(remoteToken).addressToBytes32();
         bytes32 localRouter = remoteToken.routers(ORIGIN);
         bytes32 localTokenAddress = address(localToken).addressToBytes32();
@@ -184,7 +210,7 @@ abstract contract HypTokenTest is Test {
         _circuitBreakerPauseIsm();
         vm.prank(ALICE);
         localToken.transferRemote{ value: _msgValue }(DESTINATION, BOB.addressToBytes32(), uint256(_tokenId));
-        bytes memory _message = _prepareProcessCall(_tokenId);
+        bytes memory _message = _prepareProcessCall(_tokenId, BOB);
         vm.expectRevert("Pausable: paused");
         remoteMailbox.process("", _message); // we don't need metadata
     }
@@ -193,7 +219,7 @@ abstract contract HypTokenTest is Test {
         _circuitBreakerUnpauseIsm();
         vm.prank(ALICE);
         localToken.transferRemote{ value: _msgValue }(DESTINATION, BOB.addressToBytes32(), uint256(_tokenId));
-        bytes memory _message = _prepareProcessCall(_tokenId);
+        bytes memory _message = _prepareProcessCall(_tokenId, BOB);
         remoteMailbox.process("", _message); // we don't need metadata
     }
 }
@@ -219,6 +245,7 @@ contract HypLSP8Test is HypTokenTest {
         vm.deal(OWNER, 1 ether);
         vm.deal(ALICE, 1 ether);
         vm.deal(BOB, 1 ether);
+        vm.deal(BAD_ADDR, 1 ether);
 
         // Transfer some tokens to ALICE for testing
         vm.prank(OWNER);
@@ -290,6 +317,31 @@ contract HypLSP8Test is HypTokenTest {
         address postOwner = hypLSP8Token.tokenOwnerOf(TOKEN_ID);
         assertEq(prevOwner, postOwner);
     }
+
+    function testRemoteTransferLSP8_blockedFrom() public {
+        vm.prank(OWNER);
+        hypLSP8Token.transfer(OWNER, BAD_ADDR, bytes32(uint256(2)), true, "");
+        // _performRemoteTransferFromBlockedAddress(25_000, uint256(2));
+
+        _setupBadAddyHook();
+        vm.prank(BAD_ADDR, BAD_ADDR); // pranking tx.origin
+        vm.expectRevert("!blocked");
+        localToken.transferRemote{ value: 25_000 }(DESTINATION, BOB.addressToBytes32(), uint256(2));
+    }
+
+    function testRemoteTransfer_blockedTo() public {
+        // _performRemoteTransferToBlockedAddress(25_000, TOKEN_ID);
+
+        vm.prank(OWNER);
+        _setupBadAddressIsm();
+        vm.prank(ALICE);
+        localToken.transferRemote{ value: 25_000 }(DESTINATION, BAD_ADDR.addressToBytes32(), uint256(TOKEN_ID));
+
+        bytes memory _message = _prepareProcessCall(TOKEN_ID, BAD_ADDR);
+
+        vm.expectRevert("!blocked");
+        remoteMailbox.process("", _message); // we don't need metadata
+    }
 }
 
 contract HypLSP8CollateralTest is HypTokenTest {
@@ -310,6 +362,7 @@ contract HypLSP8CollateralTest is HypTokenTest {
         vm.deal(OWNER, 1 ether);
         vm.deal(ALICE, 1 ether);
         vm.deal(BOB, 1 ether);
+        vm.deal(BAD_ADDR, 1 ether);
 
         // Mint test tokens
         vm.startPrank(OWNER);
@@ -381,5 +434,43 @@ contract HypLSP8CollateralTest is HypTokenTest {
 
         address postOwner = localPrimaryToken.tokenOwnerOf(TOKEN_ID);
         assertEq(prevOwner, postOwner);
+    }
+
+    function testRemoteTransferLSP8Collateral_blockedFrom() public {
+        bytes32 tokenId = bytes32(uint256(2));
+        vm.prank(OWNER);
+        localPrimaryToken.mint(BAD_ADDR, tokenId, true, "");
+        vm.prank(BAD_ADDR);
+        localPrimaryToken.authorizeOperator(address(localToken), tokenId, "");
+        // _performRemoteTransferFromBlockedAddress(25_000, tokenId);
+
+        _setupBadAddyHook();
+        vm.prank(BAD_ADDR, BAD_ADDR); // pranking tx.origin
+        vm.expectRevert("!blocked");
+        localToken.transferRemote{ value: 25_000 }(DESTINATION, BOB.addressToBytes32(), uint256(tokenId));
+
+        assertEq(localPrimaryToken.tokenOwnerOf(tokenId), address(BAD_ADDR));
+    }
+
+    function testRemoteTransferLSP8Collateral_blockedTo() public {
+        bytes32 tokenId = bytes32(uint256(3));
+
+        vm.prank(OWNER);
+        localPrimaryToken.mint(ALICE, tokenId, true, "");
+
+        vm.prank(ALICE);
+        localPrimaryToken.authorizeOperator(address(localToken), tokenId, "");
+        // _performRemoteTransferToBlockedAddress(25_000, tokenId);
+
+        vm.prank(OWNER);
+        _setupBadAddressIsm();
+
+        vm.prank(ALICE);
+        localToken.transferRemote{ value: 25_000 }(DESTINATION, BAD_ADDR.addressToBytes32(), uint256(tokenId));
+
+        bytes memory _message = _prepareProcessCall(tokenId, BAD_ADDR);
+
+        vm.expectRevert("!blocked");
+        remoteMailbox.process("", _message); // we don't need metadata
     }
 }

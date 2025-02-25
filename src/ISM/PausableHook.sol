@@ -16,7 +16,6 @@ pragma solidity >=0.8.0;
 import { IPostDispatchHook } from "@hyperlane-xyz/core/contracts/interfaces/hooks/IPostDispatchHook.sol";
 import { AbstractPostDispatchHook } from "@hyperlane-xyz/core/contracts/hooks/libs/AbstractPostDispatchHook.sol";
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 
 import { CircuitBreakerAdapter } from "./CircuitBreakerAdapter.sol";
@@ -36,11 +35,9 @@ contract PausableHook is AbstractPostDispatchHook, Pausable, CircuitBreakerAdapt
         _unpause();
     }
 
-    // ============ External Functions ============
-
     /// @inheritdoc IPostDispatchHook
     function hookType() external pure override returns (uint8) {
-        return uint8(IPostDispatchHook.Types.PAUSABLE);
+        return uint8(IPostDispatchHook.Types.UNUSED);
     }
 
     // ============ Internal functions ============

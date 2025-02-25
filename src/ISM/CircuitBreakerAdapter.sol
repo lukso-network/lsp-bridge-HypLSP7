@@ -12,7 +12,7 @@ abstract contract CircuitBreakerAdapter is AccessControl, Ownable {
     // The role given only to Circuit Breaker
     bytes32 public constant CIRCUIT_BREAKER_ROLE = keccak256("CIRCUIT_BREAKER_ROLE");
 
-    constructor() Ownable() {}
+    constructor() Ownable() { }
 
     modifier isCircuitBreakerOrOwner() {
         require(hasRole(CIRCUIT_BREAKER_ROLE, msg.sender) || owner() == msg.sender, "!no");
