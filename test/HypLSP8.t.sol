@@ -76,7 +76,6 @@ abstract contract HypTokenTest is Test {
         remoteToken.setInterchainSecurityModule(address(pausableIsm));
 
         vm.prank(OWNER);
-        // vm.expectEmit(address(pausableIsm));
         pausableIsm.registerCircuitBreaker(CIRCUIT_BREAKER);
     }
 
@@ -158,7 +157,7 @@ abstract contract HypTokenTest is Test {
         // To test whether the ISM is Paused we must call
         // Mailbox.process(_metadata, _message) on the destination side
         // calling remoteToken.handle() finalizes the cross chain transfer
-        // and is only called if the ISM::verify() function returns true
+        // and is only called if the ISM.verify() function returns true
         // so that method cannot be used here
         bytes memory _tokenMessage = TokenMessage.format(BOB.addressToBytes32(), uint256(_tokenId), "");
         bytes32 remoteTokenAddress = address(remoteToken).addressToBytes32();

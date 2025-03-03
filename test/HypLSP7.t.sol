@@ -74,9 +74,6 @@ abstract contract HypTokenTest is Test {
 
         remoteToken.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER);
 
-        // vm.prank(OWNER);
-        // remoteToken.enrollRemoteRouter(ORIGIN, address(localToken).addressToBytes32());
-
         igp = new TestInterchainGasPaymaster();
 
         vm.deal(ALICE, 125_000);
@@ -92,7 +89,6 @@ abstract contract HypTokenTest is Test {
         remoteToken.setInterchainSecurityModule(address(pausableIsm));
 
         vm.prank(OWNER);
-        // vm.expectEmit(address(pausableIsm));
         pausableIsm.registerCircuitBreaker(CIRCUIT_BREAKER);
     }
 
@@ -248,7 +244,7 @@ abstract contract HypTokenTest is Test {
         // To test whether the ISM is Paused we must call
         // Mailbox.process(_metadata, _message) on the destination side
         // calling remoteToken.handle() finalizes the cross chain transfer
-        // and is only called if the ISM::verify() function returns true
+        // and is only called if the ISM.verify() function returns true
         // so that method cannot be used here
         bytes memory _tokenMessage = TokenMessage.format(BOB.addressToBytes32(), _amount, "");
 

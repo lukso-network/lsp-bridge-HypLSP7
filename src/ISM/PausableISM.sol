@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity >=0.8.0;
 
+/*
+ __         __  __     __  __     ______     ______    
+/\ \       /\ \/\ \   /\ \/ /    /\  ___\   /\  __ \   
+\ \ \____  \ \ \_\ \  \ \  _"-.  \ \___  \  \ \ \/\ \  
+ \ \_____\  \ \_____\  \ \_\ \_\  \/\_____\  \ \_____\ 
+  \/_____/   \/_____/   \/_/\/_/   \/_____/   \/_____/                                                      
+*/
+
 // ============ External Imports ============
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
