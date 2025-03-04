@@ -4,7 +4,6 @@ pragma solidity >=0.8.19;
 // modules
 import { LSP7DigitalAssetInitAbstract } from "@lukso/lsp7-contracts/contracts/LSP7DigitalAssetInitAbstract.sol";
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
-import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 // constants
 import { _LSP4_TOKEN_TYPE_TOKEN } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
@@ -14,6 +13,7 @@ import { _LSP4_TOKEN_TYPE_TOKEN } from "@lukso/lsp4-contracts/contracts/LSP4Cons
  * @dev https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/main/solidity/contracts/token/HypERC20.sol
  */
 contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
+    // solhint-disable-next-line immutable-vars-naming
     uint8 private immutable _decimals;
 
     constructor(uint8 __decimals, address _mailbox) TokenRouter(_mailbox) {

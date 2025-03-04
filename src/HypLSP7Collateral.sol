@@ -11,6 +11,7 @@ import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRoute
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 contract HypLSP7Collateral is TokenRouter {
+    // solhint-disable-next-line immutable-vars-naming
     ILSP7 public immutable wrappedToken;
 
     /**
@@ -18,6 +19,7 @@ contract HypLSP7Collateral is TokenRouter {
      * @param lsp7_ Address of the token to keep as collateral
      */
     constructor(address lsp7_, address mailbox_) TokenRouter(mailbox_) {
+        // solhint-disable-next-line custom-errors
         require(Address.isContract(lsp7_), "HypLSP7Collateral: invalid token");
         wrappedToken = ILSP7(lsp7_);
     }
