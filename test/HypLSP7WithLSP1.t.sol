@@ -198,25 +198,7 @@ contract HypLSP7CollateralWithLSP1Test is HypTokenTest {
             "transferRemote(uint32,bytes32,uint256)", DESTINATION, BOB.addressToBytes32(), TRANSFER_AMOUNT
         );
 
-        console.log("ALICE: ", ALICE);
-        console.log("BOB: ", BOB);
-        console.log("lsp7Collateral: ", address(lsp7Collateral));
-        console.log("primaryToken: ", address(primaryToken));
-        console.log("localToken: ", address(localToken));
-
-        // ALICE:  0x328809Bc894f92807417D2dAD6b7C998c1aFdac6
-        // BOB:  0x1D96F2f6BeF1202E4Ce1Ff6Dad0c2CB002861d3e
-        // lsp7Collateral:  0x1d1499e622D69689cdf9004d05Ec547d650Ff211
-        // primaryToken:  0xF62849F9A0B5Bf2913b396098F7c7019b51A820a
-        // localToken:  0x1d1499e622D69689cdf9004d05Ec547d650Ff211
-        // destination:  12
-        // 0x0000000000000000000000001d96f2f6bef1202e4ce1ff6dad0c2cb002861d3e
-        // amount:  100000000000000000000
-        // msg.value:  0
-        // remainingAuthorizedAmount:  0
-
         vm.prank(ALICE);
-        // primaryToken.authorizeOperator(address(localToken), TRANSFER_AMOUNT, transferRemoteCalldata);
         primaryToken.authorizeOperator(address(lsp7Collateral), TRANSFER_AMOUNT, transferRemoteCalldata);
 
         // _performRemoteTransferWithEmit(REQUIRED_VALUE, TRANSFER_AMOUNT, 0);

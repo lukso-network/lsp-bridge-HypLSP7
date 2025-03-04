@@ -59,14 +59,19 @@ contract HypLSP7CollateralWithLSP1 is ERC165, TokenRouter {
     function universalReceiver(bytes32 typeId, bytes calldata data) public payable returns (bytes memory) {
         if (typeId == _TYPEID_LSP7_TOKENOPERATOR) {
             // 0x000000000000000000000000328809bc894f92807417d2dad6b7c998c1afdac6 -> msg.sender
-            //   0000000000000000000000000000000000000000000000056bc75e2d63100000 -> authorized amount (100 with 18 decimals in hex)
+            //   0000000000000000000000000000000000000000000000056bc75e2d63100000 -> authorized amount (100 with 18
+            // decimals in hex)
             //   0000000000000000000000000000000000000000000000000000000000000060 -> operatorNotificationData
             //   0000000000000000000000000000000000000000000000000000000000000064
-            //   81b4e8b4                                                         -> transferRemote(uint32,bytes32,uint256) selector
-            //   000000000000000000000000000000000000000000000000000000000000000c -> destination (= chainId, here 12 in hex)
+            //   81b4e8b4                                                         ->
+            // transferRemote(uint32,bytes32,uint256) selector
+            //   000000000000000000000000000000000000000000000000000000000000000c -> destination (= chainId, here 12 in
+            // hex)
             //   0000000000000000000000001d96f2f6bef1202e4ce1ff6dad0c2cb002861d3e -> recipient address
-            //   0000000000000000000000000000000000000000000000056bc75e2d63100000 -> amount to transfer (100 with 18 decimals in hex)
-            //   00000000000000000000000000000000000000000000000000000000         -> remaining padded to do 32 bytes words
+            //   0000000000000000000000000000000000000000000000056bc75e2d63100000 -> amount to transfer (100 with 18
+            // decimals in hex)
+            //   00000000000000000000000000000000000000000000000000000000         -> remaining padded to do 32 bytes
+            // words
 
             // `authorizeOperator(address,uint256,bytes)` calldata (example)
             // --------------------
@@ -87,11 +92,6 @@ contract HypLSP7CollateralWithLSP1 is ERC165, TokenRouter {
             bytes32 recipient = bytes32(data[164:196]);
             uint256 amount = uint256(bytes32(data[196:228]));
 
-            console.log("destination: ", destination);
-            console.logBytes32(recipient);
-            console.log("amount: ", amount);
-            console.log("msg.value: ", msg.value);
-
             // Check if it's a transferRemote call (0x81b4e8b4)
             if (executeSelectorToRun == 0x81b4e8b4) {
                 require(msg.sender == address(wrappedToken), "transferRemote only possible from wrappedToken");
@@ -106,14 +106,17 @@ contract HypLSP7CollateralWithLSP1 is ERC165, TokenRouter {
 
                 // But `_transferRemote(...)` uses `msg.sender` as the `from` to transfer tokens.
                 // Since we are dealing with a `universalReceiver(...)` callback on the HypLSP7Collateral contract
-                // triggered via the `<LSP7 token>.authorizeOperator(...)`, the `msg.sender` is the token contract, which shouldn't be.
-                // Therefore, we need to re-write the logic of the `_transferRemote(...)` to use the `from` extracted from the received `operatorNotificationData`
+                // triggered via the `<LSP7 token>.authorizeOperator(...)`, the `msg.sender` is the token contract,
+                // which shouldn't be.
+                // Therefore, we need to re-write the logic of the `_transferRemote(...)` to use the `from` extracted
+                // from the received `operatorNotificationData`
                 wrappedToken.transfer(from, address(this), amount, true, "");
 
                 bytes memory _tokenMessage = TokenMessage.format(recipient, amount, ""); // no token metadata
 
-                // normally _transferRemote returns the message ID. We don't return it here (could be a problem for external contracts that interact with it and need it)
-                /* messageId = */
+                // normally `_transferRemote(...)` returns the message ID. We don't return it here (could be a problem
+                // for
+                // external contracts that interact with it and need it)
                 _Router_dispatch(
                     destination, msg.value, _tokenMessage, _GasRouter_hookMetadata(destination), address(hook)
                 );

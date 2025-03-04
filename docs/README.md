@@ -1,10 +1,36 @@
-## Bridging Flow Overview
+# Bridging Flow Overview
 
-The flow for bridging tokens is generally as follow. If the token is originally from:
+The flow for bridging tokens is generally as follows.
 
-### ETHEREUM -> LUKSO
+```mermaid
+graph LR;
+    User[User 👤] --> ERC20[ERC20 stablecoin 🪙];
 
-**scenario 1:** the ERC20 token initially exists on Ethereum and was deployed there (_e.g: DAI, USDC, etc..._).
+    subgraph Collateral_Chain[Ethereum]
+        ERC20 -- lock tokens into --> HypERC20Collateral[HypERC20Collateral 🏦🔒];
+        HypERC20Collateral -- informs --> Mailbox1[Hyperlane Mailbox 📭📥];
+    end
+
+    Mailbox1 -- to relay ✉️ bridge token --> Relayer[Hyperlane Relayer 🚚];
+    Relayer -- relaying ✉️ bridge tx to LUKSO chain  --> Mailbox2[Hyperlane Mailbox 📬📤];
+
+
+    subgraph Synthetic_Chain[LUKSO]
+        Mailbox2 -- verify bridge transaction in source chain <--> ISM[Hashi ISM 👮🫡];
+        Mailbox2 --> HypLSP7[wrapped synthetic version of stablecoin as LSP7 🪙 📦];
+    end
+        HypLSP7 -- mint ⛏️ --> User2[User 👤]
+
+    Hashi[Hashi zk light client generating zk proofs 🔄⨐] <--> ISM
+```
+
+If the token is originally from:
+
+## ETHEREUM -> LUKSO
+
+### Scenario 1: ERC20 on Ethereum (USDC) -> HypLSP7 on LUKSO
+
+The ERC20 token initially exists on Ethereum and was deployed there (_e.g: DAI, USDC, etc..._).
 
 The ERC20 token is locked on ETHEREUM, an HypLSP7 token is minted on LUKSO.
 
@@ -23,7 +49,9 @@ graph TD
     end
 ```
 
-**scenario 2:** the token was migrated from LUKSO to Ethereum and an HypERC20 token contract was created as a wrapper on
+### Scenario 2: HypERC20 from Ethereum (wCHILL) -> LSP7 on LUKSO
+
+The token was migrated from LUKSO to Ethereum and an HypERC20 token contract was created as a wrapper on
 the Ethereum side (_e.g: wrapped Chillwhale or wrapped FABS as HypERC20_).
 
 The user burns the wrapped token `HypERC20` on Ethereum, and the tokens are unlocked on the LUKSO side and transferred
@@ -43,9 +71,11 @@ graph TD
     end
 ```
 
-### LUKSO -> ETHEREUM
+## LUKSO -> ETHEREUM
 
-- **scenario 3:** the LSP7 token was originally created and deployed on LUKSO (_e.g: Chillwhale, FABS, etc..._).
+### Scenario 3: LSP7 on LUKSO (CHILL) -> HypERC20 on Ethereum
+
+The LSP7 token was originally created and deployed on LUKSO (_e.g: Chillwhale, FABS, etc..._).
 
 The user transfers the LSP7 token to its `HypLSP7Collateral` contract on LUKSO where it is locked. The HypERC20 token on
 Ethereum is then minted for the user.
@@ -64,8 +94,22 @@ graph TD
     end
 ```
 
-- **scenario 4:** an ERC20 token was bridged from Ethereum to LUKSO and we want to bridge back to Ethereum (_e.g:
-  wrapped DAI as HypLSP7_).
+The flow of functions being called is as follow:
+
+1. user approves the `HypLSP7Collateral` to spend x amount of CHILL tokens
+2. user calls `transferRemote(uint32,address,uint256)` on `HypLSP7Collateral`
+
+```solidity
+transferRemote(
+  uint32 destination, // chain ID
+  address recipient,
+  uint256 amount
+)
+```
+
+### Scenario 4: HypLSP7 on LUKSO (wUSDC) -> ERC20 on Ethereum
+
+An ERC20 token was bridged from Ethereum to LUKSO and we want to bridge back to Ethereum (_e.g: wrapped DAI as HypLSP7_).
 
 This HypLSP7 token is burnt on LUKSO, on Ethereum it is unlocked.
 
