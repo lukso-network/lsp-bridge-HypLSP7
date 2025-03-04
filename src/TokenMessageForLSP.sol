@@ -76,6 +76,10 @@ library TokenMessageForLSP {
         );
     }
 
+    function sender(bytes calldata message) internal pure returns (bytes32) {
+        return bytes32(message[0:32]);
+    }
+
     function recipient(bytes calldata message) internal pure returns (bytes32) {
         return bytes32(message[32:64]);
     }
