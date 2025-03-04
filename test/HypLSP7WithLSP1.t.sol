@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.13;
 
-import { Test, console } from "forge-std/src/Test.sol";
+import { Test } from "forge-std/src/Test.sol";
 
 /// Hyperlane testing environnement
 /// @dev See https://docs.hyperlane.xyz/docs/guides/developer-tips/unit-testing
@@ -10,7 +10,6 @@ import { TestMailbox } from "@hyperlane-xyz/core/contracts/test/TestMailbox.sol"
 import { TestPostDispatchHook } from "@hyperlane-xyz/core/contracts/test/TestPostDispatchHook.sol";
 import { TestInterchainGasPaymaster } from "@hyperlane-xyz/core/contracts/test/TestInterchainGasPaymaster.sol";
 import { GasRouter } from "@hyperlane-xyz/core/contracts/client/GasRouter.sol";
-import { HypNative } from "@hyperlane-xyz/core/contracts/token/HypNative.sol";
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
 
 // Mocks + contracts to test

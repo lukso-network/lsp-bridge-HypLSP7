@@ -51,8 +51,8 @@ graph TD
 
 ### Scenario 2: HypERC20 from Ethereum (wCHILL) -> LSP7 on LUKSO
 
-The token was migrated from LUKSO to Ethereum and an HypERC20 token contract was created as a wrapper on
-the Ethereum side (_e.g: wrapped Chillwhale or wrapped FABS as HypERC20_).
+The token was migrated from LUKSO to Ethereum and an HypERC20 token contract was created as a wrapper on the Ethereum
+side (_e.g: wrapped Chillwhale or wrapped FABS as HypERC20_).
 
 The user burns the wrapped token `HypERC20` on Ethereum, and the tokens are unlocked on the LUKSO side and transferred
 to the user.
@@ -109,7 +109,8 @@ transferRemote(
 
 ### Scenario 4: HypLSP7 on LUKSO (wUSDC) -> ERC20 on Ethereum
 
-An ERC20 token was bridged from Ethereum to LUKSO and we want to bridge back to Ethereum (_e.g: wrapped DAI as HypLSP7_).
+An ERC20 token was bridged from Ethereum to LUKSO and we want to bridge back to Ethereum (_e.g: wrapped DAI as
+HypLSP7_).
 
 This HypLSP7 token is burnt on LUKSO, on Ethereum it is unlocked.
 
@@ -208,9 +209,9 @@ graph TD
 - [Cross Chain Alliance - Hashi](https://crosschain-alliance.gitbook.io/hashi)
 - [Hyperlane smart contracts monorepo](https://github.com/hyperlane-xyz/hyperlane-monorepo)
 
-[`HypERC20Collateral`]:
+[`hyperc20collateral`]:
   https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%405.2.0/solidity/contracts/token/HypERC20Collateral.sol
-[`HypERC20`]:
+[`hyperc20`]:
   https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%405.2.0/solidity/contracts/token/HypERC20.sol
-[`Mailbox`]:
+[`mailbox`]:
   https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%405.2.0/solidity/contracts/Mailbox.sol

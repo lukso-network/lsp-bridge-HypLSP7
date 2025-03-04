@@ -5,6 +5,8 @@
     "compiler-version": ["error", ">=0.8.0"],
     "func-name-mixedcase": "off",
     "func-visibility": ["error", { "ignoreConstructors": true }],
+    "no-unused-import": "error",
+    "immutable-vars-naming": "error",
     "named-parameters-mapping": "warn",
     "no-console": "off",
     "not-rely-on-time": "off",

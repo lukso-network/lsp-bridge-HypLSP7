@@ -19,6 +19,7 @@ import { _TYPEID_LSP7_TOKENOPERATOR } from "@lukso/lsp7-contracts/contracts/LSP7
 import { _INTERFACEID_LSP1 } from "@lukso/lsp1-contracts/contracts/LSP1Constants.sol";
 
 contract HypLSP7CollateralWithLSP1 is ERC165, TokenRouter {
+    // solhint-disable-next-line immutable-vars-naming
     ILSP7 public immutable wrappedToken;
 
     /**

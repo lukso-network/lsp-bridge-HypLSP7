@@ -3,8 +3,6 @@ pragma solidity >=0.8.19;
 
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
 
-import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMessage.sol";
-
 import { ILSP8IdentifiableDigitalAsset as ILSP8 } from
     "@lukso/lsp8-contracts/contracts/ILSP8IdentifiableDigitalAsset.sol";
 
@@ -13,6 +11,7 @@ import { ILSP8IdentifiableDigitalAsset as ILSP8 } from
  * @author Abacus Works
  */
 contract HypLSP8Collateral is TokenRouter {
+    // solhint-disable-next-line immutable-vars-naming
     ILSP8 public immutable wrappedToken;
 
     /**
