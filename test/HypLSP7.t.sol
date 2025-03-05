@@ -13,7 +13,6 @@ import { GasRouter } from "@hyperlane-xyz/core/contracts/client/GasRouter.sol";
 import { HypNative } from "@hyperlane-xyz/core/contracts/token/HypNative.sol";
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
 import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMessage.sol";
-import { Message } from "@hyperlane-xyz/core/contracts/libs/Message.sol";
 
 // Mocks + contracts to test
 import { LSP7Mock } from "./LSP7Mock.sol";

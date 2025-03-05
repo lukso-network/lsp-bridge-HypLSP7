@@ -2,7 +2,6 @@
 pragma solidity ^0.8.13;
 
 import { Test } from "forge-std/src/Test.sol";
-import { console } from "forge-std/src/console.sol";
 
 import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 import { TestMailbox } from "@hyperlane-xyz/core/contracts/test/TestMailbox.sol";
@@ -11,7 +10,6 @@ import { TestInterchainGasPaymaster } from "@hyperlane-xyz/core/contracts/test/T
 import { GasRouter } from "@hyperlane-xyz/core/contracts/client/GasRouter.sol";
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
 import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMessage.sol";
-import { Message } from "@hyperlane-xyz/core/contracts/libs/Message.sol";
 
 // Mock + contracts to test
 import { HypLSP8 } from "../src/HypLSP8.sol";
