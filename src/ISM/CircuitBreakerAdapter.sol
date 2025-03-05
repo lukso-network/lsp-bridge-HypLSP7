@@ -8,12 +8,22 @@ event RegisteredCircuitBreaker(address ism, address circuitBreaker);
 
 event UnregisteredCircuitBreaker(address ism, address circuitBreaker);
 
+error NotCircuitBreakerOrOwner();
+
 abstract contract CircuitBreakerAdapter is AccessControl, Ownable {
     // The role given only to Circuit Breaker
     bytes32 public constant CIRCUIT_BREAKER_ROLE = keccak256("CIRCUIT_BREAKER_ROLE");
 
+    constructor(address owner) Ownable() {
+        _transferOwnership(owner);
+    }
+
     modifier isCircuitBreakerOrOwner() {
-        require(hasRole(CIRCUIT_BREAKER_ROLE, msg.sender) || owner() == msg.sender, "Unauthorized");
+        if (!hasRole(CIRCUIT_BREAKER_ROLE, msg.sender)) {
+            if (owner() != msg.sender) {
+                revert NotCircuitBreakerOrOwner();
+            }
+        }
         _;
     }
 

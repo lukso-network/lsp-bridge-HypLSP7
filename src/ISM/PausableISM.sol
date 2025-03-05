@@ -16,12 +16,10 @@ import { IInterchainSecurityModule } from "@hyperlane-xyz/core/contracts/interfa
 // ============ Internal Imports ============
 import { CircuitBreakerAdapter } from "./CircuitBreakerAdapter.sol";
 
-contract PausableIsm is IInterchainSecurityModule, Ownable, Pausable, CircuitBreakerAdapter {
+contract PausableIsm is IInterchainSecurityModule, Pausable, CircuitBreakerAdapter {
     uint8 public constant override moduleType = uint8(Types.NULL);
 
-    constructor(address owner) Ownable() Pausable() {
-        _transferOwnership(owner);
-    }
+    constructor(address owner) CircuitBreakerAdapter(owner) { }
 
     /**
      * @inheritdoc IInterchainSecurityModule
