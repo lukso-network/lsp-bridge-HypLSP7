@@ -15,7 +15,7 @@ import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRoute
 // Mocks + contracts to test
 import { LSP7Mock } from "./LSP7Mock.sol";
 import { HypLSP7 } from "../src/HypLSP7.sol";
-import { HypLSP7CollateralWithLSP1 } from "../src/HypLSP7CollateralWithLSP1.sol";
+import { HypLSP7CollateralWithLSP1 } from "./Mocks/HypLSP7CollateralWithLSP1.sol";
 
 abstract contract HypTokenTest is Test {
     using TypeCasts for address;
