@@ -6,7 +6,7 @@ import { LSP7DigitalAssetInitAbstract } from "@lukso/lsp7-contracts/contracts/LS
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
 
 // constants
-import { _LSP4_TOKEN_TYPE_TOKEN } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
+import { _LSP4_TOKEN_TYPE_TOKEN, _LSP4_METADATA_KEY } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
 
 /**
  * @title LSP7 version of the Hyperlane ERC20 Token Router
@@ -37,7 +37,8 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
         string memory _symbol,
         address _hook,
         address _interchainSecurityModule,
-        address _owner
+        address _owner,
+        bytes memory _lsp4Metadata
     )
         external
         initializer
@@ -48,9 +49,9 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
             symbol_: _symbol,
             newOwner_: _owner,
             lsp4TokenType_: _LSP4_TOKEN_TYPE_TOKEN,
-            isNonDivisible_: false // isNonDivisible set to `false` as will not be used anyway since decimals() is
-                // overriden
+            isNonDivisible_: false // isNonDivisible set to `false` as not used anyway since decimals() is overriden
          });
+        _setData(_LSP4_METADATA_KEY, _lsp4Metadata);
 
         // mints initial supply to deployer
         LSP7DigitalAssetInitAbstract._mint({ to: msg.sender, amount: _totalSupply, force: true, data: "" });
