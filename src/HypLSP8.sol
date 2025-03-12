@@ -12,7 +12,10 @@ import { _LSP8_TOKENID_FORMAT_NUMBER } from "@lukso/lsp8-contracts/contracts/LSP
 
 /**
  * @title LSP8 version of the Hyperlane ERC721 Token Router
- * @dev https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/main/solidity/contracts/token/HypERC721.sol
+ * @dev See following links for reference:
+ * - HypERC721 implementation:
+ * https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/main/solidity/contracts/token/HypERC721.sol
+ * - LSP8 standard: https://github.com/lukso-network/LIPs/blob/main/LSPs/LSP-8-IdentifiableDigitalAsset.md
  */
 contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter {
     constructor(address _mailbox) TokenRouter(_mailbox) { }
@@ -22,11 +25,13 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter {
      *
      * @dev The `_mintAmount` parameter is mostly used for a brand new NFT that want to exists only as a warp route.
      * In other words, the entire warp route is deployed with HypLSP8, and no HypLSP8Collateral.
-     * For existing NFT collections (e.g: Bored Apes, CloneX, etc...) that already exist on the source chain, set this
-     * to 0.
+     * This enables to create an instantly bridgable NFT, by deploying the contract, minting and distributing the token
+     * supply.
+     * For existing NFT collections that already exist on the source chain, set this parameter to 0.
      *
-     * This `_mintAmount` parameter can be used to create an  instantly bridgable NFT.
-     * By deploying the contract, mint the entire supply to themselves, and distribute.
+     * LSP8 specific notice: note that a callback to the `universalReceiver(...)` function
+     * on the `msg.sender` contract address will be triggered for every single tokenId
+     * being minted if the `_mintAmount` is set to more than 0.
      *
      * @param _mintAmount The amount of NFTs to mint to `msg.sender`.
      * @param _name The name of the token.
@@ -34,11 +39,11 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter {
      */
     function initialize(
         uint256 _mintAmount,
+        string memory _name,
+        string memory _symbol,
         address _hook,
         address _interchainSecurityModule,
         address _owner,
-        string memory _name,
-        string memory _symbol,
         bytes memory _lsp4Metadata
     )
         external
@@ -70,6 +75,9 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter {
 
     /**
      * @dev Asserts `msg.sender` is owner and burns `_tokenId`.
+     * Note that this function will also trigger a callback to the `universalReceiver(...)` function
+     * on the sender contract address.
+     *
      * @inheritdoc TokenRouter
      */
     function _transferFromSender(uint256 _tokenId) internal virtual override returns (bytes memory) {
@@ -81,6 +89,9 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter {
 
     /**
      * @dev Mints `_tokenId` to `_recipient`.
+     * Note that this function will also trigger a callback to the `universalReceiver(...)` function
+     * on the recipient contract address.
+     *
      * @inheritdoc TokenRouter
      */
     function _transferTo(

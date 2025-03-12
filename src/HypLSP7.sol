@@ -10,7 +10,10 @@ import { _LSP4_TOKEN_TYPE_TOKEN, _LSP4_METADATA_KEY } from "@lukso/lsp4-contract
 
 /**
  * @title LSP7 version of the Hyperlane ERC20 Token Router
- * @dev https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/main/solidity/contracts/token/HypERC20.sol
+ * @dev See following links for reference:
+ * - HypERC20 implementation:
+ * https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/main/solidity/contracts/token/HypERC20.sol
+ * - LSP7 standard: https://github.com/lukso-network/LIPs/blob/main/LSPs/LSP-7-DigitalAsset.md
  */
 contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
     // solhint-disable-next-line immutable-vars-naming
@@ -30,6 +33,9 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
      * This aims to keep the number of parameters consistent between hyperc20 and hypLSP7, so that the code of off-chain
      * agents that call this function
      * does not need to be modifed to add an extra parameter that would be irrelevant.
+     *
+     * Note that a callback to the `universalReceiver(...)` function on the `msg.sender` contract address
+     * will be triggered, even if the `_totalSupply` parameter passed is 0.
      */
     function initialize(
         uint256 _totalSupply,
@@ -76,6 +82,9 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
 
     /**
      * @dev Burns `_amount` of token from `msg.sender` balance.
+     * Note that this function will also trigger a callback to the `universalReceiver(...)` function
+     * on the sender contract address.
+     *
      * @inheritdoc TokenRouter
      */
     function _transferFromSender(uint256 _amount) internal override returns (bytes memory) {
@@ -85,6 +94,9 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
 
     /**
      * @dev Mints `_amount` of token to `_recipient` balance.
+     * Note that this function will also trigger a callback to the `universalReceiver(...)` function
+     * on the recipient contract address.
+     *
      * @inheritdoc TokenRouter
      */
     function _transferTo(

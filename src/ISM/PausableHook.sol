@@ -2,11 +2,11 @@
 pragma solidity >=0.8.0;
 
 /*
- __         __  __     __  __     ______     ______    
-/\ \       /\ \/\ \   /\ \/ /    /\  ___\   /\  __ \   
-\ \ \____  \ \ \_\ \  \ \  _"-.  \ \___  \  \ \ \/\ \  
- \ \_____\  \ \_____\  \ \_\ \_\  \/\_____\  \ \_____\ 
-  \/_____/   \/_____/   \/_/\/_/   \/_____/   \/_____/                                                      
+ __         __  __     __  __     ______     ______
+/\ \       /\ \/\ \   /\ \/ /    /\  ___\   /\  __ \
+\ \ \____  \ \ \_\ \  \ \  _"-.  \ \___  \  \ \ \/\ \
+ \ \_____\  \ \_____\  \ \_\ \_\  \/\_____\  \ \_____\
+  \/_____/   \/_____/   \/_/\/_/   \/_____/   \/_____/
 */
 
 import { IPostDispatchHook } from "@hyperlane-xyz/core/contracts/interfaces/hooks/IPostDispatchHook.sol";
@@ -16,6 +16,13 @@ import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 
 import { CircuitBreakerAdapter } from "./CircuitBreakerAdapter.sol";
 
+/**
+ * @title PausableHook
+ * @dev A post-dispatch hook based on Hyperlane to enable pausing a warp route on the origin chain.
+ * The pausing functionality can be triggered by:
+ * - an address with the `CIRCUIT_BREAKER_ROLE`
+ * - or the owner of this contract.
+ */
 contract PausableHook is AbstractPostDispatchHook, Pausable, CircuitBreakerAdapter {
     constructor(address owner) CircuitBreakerAdapter(owner) { }
 
