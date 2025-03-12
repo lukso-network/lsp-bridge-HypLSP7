@@ -6,7 +6,7 @@ import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRoute
 import { LSP8IdentifiableDigitalAssetInitAbstract } from
     "@lukso/lsp8-contracts/contracts/LSP8IdentifiableDigitalAssetInitAbstract.sol";
 
-import { _LSP4_TOKEN_TYPE_TOKEN, _LSP4_METADATA_KEY } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
+import { _LSP4_TOKEN_TYPE_NFT, _LSP4_METADATA_KEY } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
 
 import { _LSP8_TOKENID_FORMAT_NUMBER } from "@lukso/lsp8-contracts/contracts/LSP8Constants.sol";
 
@@ -54,7 +54,7 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter {
 
         // Initialize LSP8 collection metadata
         LSP8IdentifiableDigitalAssetInitAbstract._initialize(
-            _name, _symbol, _owner, _LSP4_TOKEN_TYPE_TOKEN, _LSP8_TOKENID_FORMAT_NUMBER
+            _name, _symbol, _owner, _LSP4_TOKEN_TYPE_NFT, _LSP8_TOKENID_FORMAT_NUMBER
         );
         _setData(_LSP4_METADATA_KEY, _lsp4Metadata);
 
