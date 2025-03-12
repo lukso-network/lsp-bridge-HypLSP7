@@ -13,8 +13,8 @@ import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMess
 import { HypLSP8 } from "../src/HypLSP8.sol";
 import { HypLSP8Collateral } from "../src/HypLSP8Collateral.sol";
 import { LSP8Mock } from "./LSP8Mock.sol";
-import { PausableIsm } from "../src/ISM/PausableISM.sol";
-import { PausableHook } from "../src/ISM/PausableHook.sol";
+import { PausableCircuitBreakerIsm } from "../src/ISM/PausableCircuitBreakerISM.sol";
+import { PausableCircuitBreakerHook } from "../src/ISM/PausableCircuitBreakerHook.sol";
 
 abstract contract HypTokenTest is Test {
     using TypeCasts for address;
@@ -40,8 +40,8 @@ abstract contract HypTokenTest is Test {
     HypLSP8 internal remoteToken;
     TestPostDispatchHook internal noopHook;
 
-    PausableHook internal pausableHook;
-    PausableIsm internal pausableIsm;
+    PausableCircuitBreakerHook internal pausableHook;
+    PausableCircuitBreakerIsm internal pausableIsm;
 
     function setUp() public virtual {
         localMailbox = new TestMailbox(ORIGIN);
@@ -53,8 +53,8 @@ abstract contract HypTokenTest is Test {
         localMailbox.setDefaultHook(address(noopHook));
         localMailbox.setRequiredHook(address(noopHook));
 
-        pausableHook = new PausableHook(OWNER);
-        pausableIsm = new PausableIsm(OWNER);
+        pausableHook = new PausableCircuitBreakerHook(OWNER);
+        pausableIsm = new PausableCircuitBreakerIsm(OWNER);
 
         vm.deal(ALICE, 1 ether);
     }

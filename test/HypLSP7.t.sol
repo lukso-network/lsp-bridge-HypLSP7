@@ -18,8 +18,8 @@ import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMess
 import { LSP7Mock } from "./LSP7Mock.sol";
 import { HypLSP7 } from "../src/HypLSP7.sol";
 import { HypLSP7Collateral } from "../src/HypLSP7Collateral.sol";
-import { PausableIsm } from "../src/ISM/PausableISM.sol";
-import { PausableHook } from "../src/ISM/PausableHook.sol";
+import { PausableCircuitBreakerIsm } from "../src/ISM/PausableCircuitBreakerISM.sol";
+import { PausableCircuitBreakerHook } from "../src/ISM/PausableCircuitBreakerHook.sol";
 
 abstract contract HypTokenTest is Test {
     using TypeCasts for address;
@@ -47,8 +47,8 @@ abstract contract HypTokenTest is Test {
     TestPostDispatchHook internal noopHook;
     TestInterchainGasPaymaster internal igp;
 
-    PausableHook internal pausableHook;
-    PausableIsm internal pausableIsm;
+    PausableCircuitBreakerHook internal pausableHook;
+    PausableCircuitBreakerIsm internal pausableIsm;
 
     event SentTransferRemote(uint32 indexed destination, bytes32 indexed recipient, uint256 amount);
 
@@ -64,8 +64,8 @@ abstract contract HypTokenTest is Test {
         localMailbox.setDefaultHook(address(noopHook));
         localMailbox.setRequiredHook(address(noopHook));
 
-        pausableHook = new PausableHook(OWNER);
-        pausableIsm = new PausableIsm(OWNER);
+        pausableHook = new PausableCircuitBreakerHook(OWNER);
+        pausableIsm = new PausableCircuitBreakerIsm(OWNER);
 
         REQUIRED_VALUE = noopHook.quoteDispatch("", "");
 
