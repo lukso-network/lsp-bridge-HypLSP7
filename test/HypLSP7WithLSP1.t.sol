@@ -60,7 +60,7 @@ abstract contract HypTokenTest is Test {
 
         remoteToken = new HypLSP7(DECIMALS, address(remoteMailbox));
 
-        remoteToken.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER);
+        remoteToken.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, "");
 
         vm.prank(OWNER);
         remoteToken.enrollRemoteRouter(ORIGIN, address(localToken).addressToBytes32());

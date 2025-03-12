@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.13;
 
+// test utilities
 import { Test } from "forge-std/src/Test.sol";
 
 /// Hyperlane testing environnement
@@ -9,8 +10,11 @@ import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 import { TestMailbox } from "@hyperlane-xyz/core/contracts/test/TestMailbox.sol";
 import { TestPostDispatchHook } from "@hyperlane-xyz/core/contracts/test/TestPostDispatchHook.sol";
 import { TestInterchainGasPaymaster } from "@hyperlane-xyz/core/contracts/test/TestInterchainGasPaymaster.sol";
+
 import { GasRouter } from "@hyperlane-xyz/core/contracts/client/GasRouter.sol";
 import { HypNative } from "@hyperlane-xyz/core/contracts/token/HypNative.sol";
+
+// libraries
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
 import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMessage.sol";
 
@@ -20,6 +24,9 @@ import { HypLSP7 } from "../src/HypLSP7.sol";
 import { HypLSP7Collateral } from "../src/HypLSP7Collateral.sol";
 import { PausableCircuitBreakerIsm } from "../src/ISM/PausableCircuitBreakerISM.sol";
 import { PausableCircuitBreakerHook } from "../src/ISM/PausableCircuitBreakerHook.sol";
+
+// constants
+import { _LSP4_METADATA_KEY } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
 
 abstract contract HypTokenTest is Test {
     using TypeCasts for address;
@@ -32,6 +39,8 @@ abstract contract HypTokenTest is Test {
     uint256 internal constant TRANSFER_AMOUNT = 100e18;
     string internal constant NAME = "HyperlaneInu";
     string internal constant SYMBOL = "HYP";
+    bytes internal constant SAMPLE_METADATA_BYTES =
+        hex"00006f357c6a0020820464ddfac1bec070cc14a8daf04129871d458f2ca94368aae8391311af6361696670733a2f2f516d597231564a4c776572673670456f73636468564775676f3339706136727963455a4c6a7452504466573834554178";
 
     address internal ALICE = makeAddr("alice");
     address internal BOB = makeAddr("bob");
@@ -71,7 +80,7 @@ abstract contract HypTokenTest is Test {
 
         remoteToken = new HypLSP7(DECIMALS, address(remoteMailbox));
 
-        remoteToken.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER);
+        remoteToken.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, SAMPLE_METADATA_BYTES);
 
         igp = new TestInterchainGasPaymaster();
 
@@ -320,7 +329,7 @@ contract HypLSP7Test is HypTokenTest {
         hypLSP7Token = HypLSP7(payable(address(localToken)));
 
         vm.prank(OWNER);
-        hypLSP7Token.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER);
+        hypLSP7Token.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, SAMPLE_METADATA_BYTES);
 
         vm.prank(OWNER);
         hypLSP7Token.enrollRemoteRouter(DESTINATION, address(remoteToken).addressToBytes32());
@@ -335,7 +344,11 @@ contract HypLSP7Test is HypTokenTest {
 
     function testInitialize_revert_ifAlreadyInitialized() public {
         vm.expectRevert("Initializable: contract is already initialized");
-        hypLSP7Token.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER);
+        hypLSP7Token.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, SAMPLE_METADATA_BYTES);
+    }
+
+    function testLSP4MetadataIsSet() public view {
+        assertEq(hypLSP7Token.getData(_LSP4_METADATA_KEY), SAMPLE_METADATA_BYTES);
     }
 
     function testTotalSupply() public view {

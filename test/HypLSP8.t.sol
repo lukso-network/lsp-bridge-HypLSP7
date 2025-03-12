@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.13;
 
+// test utilities
 import { Test } from "forge-std/src/Test.sol";
-
 import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 import { TestMailbox } from "@hyperlane-xyz/core/contracts/test/TestMailbox.sol";
 import { TestPostDispatchHook } from "@hyperlane-xyz/core/contracts/test/TestPostDispatchHook.sol";
+
+// libraries
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
 import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMessage.sol";
 
@@ -15,6 +17,9 @@ import { HypLSP8Collateral } from "../src/HypLSP8Collateral.sol";
 import { LSP8Mock } from "./LSP8Mock.sol";
 import { PausableCircuitBreakerIsm } from "../src/ISM/PausableCircuitBreakerISM.sol";
 import { PausableCircuitBreakerHook } from "../src/ISM/PausableCircuitBreakerHook.sol";
+
+// constants
+import { _LSP4_METADATA_KEY } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
 
 abstract contract HypTokenTest is Test {
     using TypeCasts for address;
@@ -31,6 +36,8 @@ abstract contract HypTokenTest is Test {
     uint32 internal constant DESTINATION = 22;
     bytes32 internal constant TOKEN_ID = bytes32(uint256(1));
     string internal constant URI = "http://example.com/token/";
+    bytes internal constant SAMPLE_METADATA_BYTES =
+        hex"00006f357c6a0020820464ddfac1bec070cc14a8daf04129871d458f2ca94368aae8391311af6361696670733a2f2f516d597231564a4c776572673670456f73636468564775676f3339706136727963455a4c6a7452504466573834554178";
 
     LSP8Mock internal localPrimaryToken;
     LSP8Mock internal remotePrimaryToken;
@@ -62,7 +69,7 @@ abstract contract HypTokenTest is Test {
     function _deployRemoteToken() internal {
         remoteToken = new HypLSP8(address(remoteMailbox));
         vm.prank(OWNER);
-        remoteToken.initialize(0, address(noopHook), address(0), OWNER, NAME, SYMBOL);
+        remoteToken.initialize(0, NAME, SYMBOL, address(noopHook), address(0), OWNER, SAMPLE_METADATA_BYTES);
         vm.prank(OWNER);
         remoteToken.enrollRemoteRouter(ORIGIN, address(localToken).addressToBytes32());
     }
@@ -205,7 +212,9 @@ contract HypLSP8Test is HypTokenTest {
         hypLSP8Token = HypLSP8(payable(address(localToken)));
 
         vm.prank(OWNER);
-        hypLSP8Token.initialize(INITIAL_SUPPLY, address(noopHook), address(0), OWNER, NAME, SYMBOL);
+        hypLSP8Token.initialize(
+            INITIAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, SAMPLE_METADATA_BYTES
+        );
 
         vm.prank(OWNER);
         hypLSP8Token.enrollRemoteRouter(DESTINATION, address(remoteToken).addressToBytes32());
@@ -225,7 +234,13 @@ contract HypLSP8Test is HypTokenTest {
 
     function testInitialize_revert_ifAlreadyInitialized() public {
         vm.expectRevert("Initializable: contract is already initialized");
-        hypLSP8Token.initialize(INITIAL_SUPPLY, address(noopHook), address(0), OWNER, NAME, SYMBOL);
+        hypLSP8Token.initialize(
+            INITIAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, SAMPLE_METADATA_BYTES
+        );
+    }
+
+    function testLSP4MetadataIsSet() public view {
+        assertEq(hypLSP8Token.getData(_LSP4_METADATA_KEY), SAMPLE_METADATA_BYTES);
     }
 
     function testTotalSupply() public view {
