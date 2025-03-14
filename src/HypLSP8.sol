@@ -56,7 +56,11 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter {
         LSP8IdentifiableDigitalAssetInitAbstract._initialize(
             _name, _symbol, _owner, _LSP4_TOKEN_TYPE_NFT, _LSP8_TOKENID_FORMAT_NUMBER
         );
-        _setData(_LSP4_METADATA_KEY, _lsp4Metadata);
+
+        // emit `DataChanged` event only if some metadata bytes is provided to save gas
+        if (_lsp4Metadata.length > 0) {
+            _setData(_LSP4_METADATA_KEY, _lsp4Metadata);
+        }
 
         for (uint256 i = 0; i < _mintAmount; i++) {
             _mint(msg.sender, bytes32(i), true, "");

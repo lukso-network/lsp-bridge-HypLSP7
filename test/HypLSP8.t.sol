@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 // test utilities
+import { Vm } from "forge-std/src/Vm.sol";
 import { Test } from "forge-std/src/Test.sol";
 import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 import { TestMailbox } from "@hyperlane-xyz/core/contracts/test/TestMailbox.sol";
@@ -14,9 +15,10 @@ import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMess
 // Mock + contracts to test
 import { HypLSP8 } from "../src/HypLSP8.sol";
 import { HypLSP8Collateral } from "../src/HypLSP8Collateral.sol";
-import { LSP8Mock } from "./LSP8Mock.sol";
+import { LSP8Mock } from "./Mocks/LSP8Mock.sol";
 import { PausableCircuitBreakerIsm } from "../src/ISM/PausableCircuitBreakerISM.sol";
 import { PausableCircuitBreakerHook } from "../src/ISM/PausableCircuitBreakerHook.sol";
+import { IERC725Y } from "@erc725/smart-contracts/contracts/interfaces/IERC725Y.sol";
 
 // constants
 import { _LSP4_METADATA_KEY } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
@@ -241,6 +243,42 @@ contract HypLSP8Test is HypTokenTest {
 
     function testLSP4MetadataIsSet() public view {
         assertEq(hypLSP8Token.getData(_LSP4_METADATA_KEY), SAMPLE_METADATA_BYTES);
+    }
+
+    function testEmitDataChangedEventWhenMetadataBytesProvided() public {
+        vm.prank(OWNER);
+        HypLSP8 someHypLSP8Token = new HypLSP8(address(localMailbox));
+
+        vm.expectEmit({ checkTopic1: true, checkTopic2: false, checkTopic3: false, checkData: true });
+        emit IERC725Y.DataChanged(_LSP4_METADATA_KEY, SAMPLE_METADATA_BYTES);
+
+        someHypLSP8Token.initialize(
+            INITIAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, SAMPLE_METADATA_BYTES
+        );
+    }
+
+    function testNoDataChangedEventEmittedIfNoMetadataBytesProvided() public {
+        // Capture logs before the transaction
+        vm.recordLogs();
+
+        HypLSP8 someHypLSP8Token = new HypLSP8(address(localMailbox));
+
+        // initialize token without metadata bytes
+        vm.prank(OWNER);
+        someHypLSP8Token.initialize(INITIAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, "");
+
+        // Search all the logs
+        Vm.Log[] memory emittedEvents = vm.getRecordedLogs();
+        for (uint256 i = 0; i < emittedEvents.length; i++) {
+            // Check that no `DataChanged` event was emitted for the `LSP4Metadata` data key
+            bool hasUpdatedLSP4MetadataKey = bytes32(emittedEvents[i].topics[0]) == IERC725Y.DataChanged.selector
+                && emittedEvents[i].topics[1] == _LSP4_METADATA_KEY;
+
+            assertFalse(
+                hasUpdatedLSP4MetadataKey,
+                "DataChanged event should not have been emitted because no metadata bytes were provided"
+            );
+        }
     }
 
     function testTotalSupply() public view {

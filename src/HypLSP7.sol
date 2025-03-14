@@ -57,7 +57,11 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
             lsp4TokenType_: _LSP4_TOKEN_TYPE_TOKEN,
             isNonDivisible_: false // isNonDivisible set to `false` as not used anyway since decimals() is overriden
          });
-        _setData(_LSP4_METADATA_KEY, _lsp4Metadata);
+
+        // emit `DataChanged` event only if some metadata bytes is provided to save gas
+        if (_lsp4Metadata.length > 0) {
+            _setData(_LSP4_METADATA_KEY, _lsp4Metadata);
+        }
 
         // mints initial supply to deployer
         LSP7DigitalAssetInitAbstract._mint({ to: msg.sender, amount: _totalSupply, force: true, data: "" });
