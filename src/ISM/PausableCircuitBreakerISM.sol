@@ -2,11 +2,11 @@
 pragma solidity >=0.8.0;
 
 /*
- __         __  __     __  __     ______     ______    
-/\ \       /\ \/\ \   /\ \/ /    /\  ___\   /\  __ \   
-\ \ \____  \ \ \_\ \  \ \  _"-.  \ \___  \  \ \ \/\ \  
- \ \_____\  \ \_____\  \ \_\ \_\  \/\_____\  \ \_____\ 
-  \/_____/   \/_____/   \/_/\/_/   \/_____/   \/_____/                                                      
+ __         __  __     __  __     ______     ______
+/\ \       /\ \/\ \   /\ \/ /    /\  ___\   /\  __ \
+\ \ \____  \ \ \_\ \  \ \  _"-.  \ \___  \  \ \ \/\ \
+ \ \_____\  \ \_____\  \ \_\ \_\  \/\_____\  \ \_____\
+  \/_____/   \/_____/   \/_/\/_/   \/_____/   \/_____/
 */
 
 // ============ External Imports ============
@@ -15,7 +15,17 @@ import { IInterchainSecurityModule } from "@hyperlane-xyz/core/contracts/interfa
 // ============ Internal Imports ============
 import { CircuitBreakerAdapter } from "./CircuitBreakerAdapter.sol";
 
-contract PausableIsm is IInterchainSecurityModule, Pausable, CircuitBreakerAdapter {
+/**
+ * @title PausableCircuitBreakerISM
+ * @dev A post-dispatch ISM based on Hyperlane to enable pausing a warp route on the destination chain.
+ *
+ * The pausing functionality can be triggered by:
+ * - an address with the `CIRCUIT_BREAKER_ROLE`
+ * - or the owner of this contract.
+ *
+ * Unpausing can be triggered only by the owner of this contract.
+ */
+contract PausableCircuitBreakerIsm is IInterchainSecurityModule, Pausable, CircuitBreakerAdapter {
     uint8 public constant override moduleType = uint8(Types.NULL);
 
     constructor(address owner) CircuitBreakerAdapter(owner) { }

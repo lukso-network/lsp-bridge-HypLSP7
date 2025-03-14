@@ -2,11 +2,11 @@
 pragma solidity >=0.8.0;
 
 /*
- __         __  __     __  __     ______     ______    
-/\ \       /\ \/\ \   /\ \/ /    /\  ___\   /\  __ \   
-\ \ \____  \ \ \_\ \  \ \  _"-.  \ \___  \  \ \ \/\ \  
- \ \_____\  \ \_____\  \ \_\ \_\  \/\_____\  \ \_____\ 
-  \/_____/   \/_____/   \/_/\/_/   \/_____/   \/_____/                                                      
+ __         __  __     __  __     ______     ______
+/\ \       /\ \/\ \   /\ \/ /    /\  ___\   /\  __ \
+\ \ \____  \ \ \_\ \  \ \  _"-.  \ \___  \  \ \ \/\ \
+ \ \_____\  \ \_____\  \ \_\ \_\  \/\_____\  \ \_____\
+  \/_____/   \/_____/   \/_/\/_/   \/_____/   \/_____/
 */
 
 import { IPostDispatchHook } from "@hyperlane-xyz/core/contracts/interfaces/hooks/IPostDispatchHook.sol";
@@ -16,7 +16,17 @@ import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 
 import { CircuitBreakerAdapter } from "./CircuitBreakerAdapter.sol";
 
-contract PausableHook is AbstractPostDispatchHook, Pausable, CircuitBreakerAdapter {
+/**
+ * @title PausableCircuitBreakerHook
+ * @dev A post-dispatch hook based on Hyperlane to enable pausing a warp route on the origin chain.
+ *
+ * The pausing functionality can be triggered by:
+ * - an address with the `CIRCUIT_BREAKER_ROLE`
+ * - or the owner of this contract.
+ *
+ * Unpausing can be triggered only by the owner of this contract.
+ */
+contract PausableCircuitBreakerHook is AbstractPostDispatchHook, Pausable, CircuitBreakerAdapter {
     constructor(address owner) CircuitBreakerAdapter(owner) { }
 
     function pause() external isCircuitBreakerOrOwner {
@@ -35,6 +45,7 @@ contract PausableHook is AbstractPostDispatchHook, Pausable, CircuitBreakerAdapt
     }
 
     /// @inheritdoc AbstractPostDispatchHook
+    /// @dev Do not run any logic post dispatch in this
     function _postDispatch(bytes calldata metadata, bytes calldata message) internal override whenNotPaused { }
 
     /// @inheritdoc AbstractPostDispatchHook

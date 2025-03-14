@@ -8,7 +8,6 @@ import { ILSP8IdentifiableDigitalAsset as ILSP8 } from
 
 /**
  * @title Hyperlane LSP8 Token Collateral that wraps an existing LSP8 with remote transfer functionality.
- * @author Abacus Works
  */
 contract HypLSP8Collateral is TokenRouter {
     // solhint-disable-next-line immutable-vars-naming
@@ -16,17 +15,19 @@ contract HypLSP8Collateral is TokenRouter {
 
     /**
      * @notice Constructor
-     * @param lsp8 Address of the token to keep as collateral
+     *
+     * @param lsp8_ Address of the token to keep as collateral
      */
-    constructor(address lsp8, address _mailbox) TokenRouter(_mailbox) {
-        wrappedToken = ILSP8(lsp8);
+    constructor(address lsp8_, address mailbox_) TokenRouter(mailbox_) {
+        wrappedToken = ILSP8(lsp8_);
     }
 
     /**
      * @notice Initializes the Hyperlane router
+     *
      * @param _hook The post-dispatch hook contract.
-     *    @param _interchainSecurityModule The interchain security module contract.
-     *    @param _owner The this contract.
+     * @param _interchainSecurityModule The interchain security module contract.
+     * @param _owner The this contract.
      */
     function initialize(address _hook, address _interchainSecurityModule, address _owner) public virtual initializer {
         _MailboxClient_initialize(_hook, _interchainSecurityModule, _owner);
@@ -46,6 +47,9 @@ contract HypLSP8Collateral is TokenRouter {
 
     /**
      * @dev Transfers `_tokenId` of `wrappedToken` from `msg.sender` to this contract.
+     * Note that this function will also trigger a callback to the `universalReceiver(...)` function
+     * on the `msg.sender` if it is a contract that supports + implements the LSP1 standard.
+     *
      * @inheritdoc TokenRouter
      */
     function _transferFromSender(uint256 _tokenId) internal virtual override returns (bytes memory) {
@@ -55,6 +59,9 @@ contract HypLSP8Collateral is TokenRouter {
 
     /**
      * @dev Transfers `_tokenId` of `wrappedToken` from this contract to `_recipient`.
+     * Note that this function will also trigger a callback to the `universalReceiver(...)` function
+     * on the `_recipient` if it is a contract that supports + implements the LSP1 standard.
+     *
      * @inheritdoc TokenRouter
      */
     function _transferTo(

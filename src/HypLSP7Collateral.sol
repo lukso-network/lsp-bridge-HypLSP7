@@ -10,12 +10,16 @@ import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRoute
 // Libraries
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
+/**
+ * @title Hyperlane + LUKSO LSP7 Token Collateral that wraps an existing LSP7 with remote transfer functionality.
+ */
 contract HypLSP7Collateral is TokenRouter {
     // solhint-disable-next-line immutable-vars-naming
     ILSP7 public immutable wrappedToken;
 
     /**
      * @notice Constructor
+     *
      * @param lsp7_ Address of the token to keep as collateral
      */
     constructor(address lsp7_, address mailbox_) TokenRouter(mailbox_) {
@@ -24,6 +28,13 @@ contract HypLSP7Collateral is TokenRouter {
         wrappedToken = ILSP7(lsp7_);
     }
 
+    /**
+     * @notice Initializes the Hyperlane router
+     *
+     * @param _hook The post-dispatch hook contract.
+     * @param _interchainSecurityModule The interchain security module contract.
+     * @param _owner The this contract.
+     */
     function initialize(address _hook, address _interchainSecurityModule, address _owner) public virtual initializer {
         _MailboxClient_initialize(_hook, _interchainSecurityModule, _owner);
     }
@@ -34,6 +45,9 @@ contract HypLSP7Collateral is TokenRouter {
 
     /**
      * @dev Transfers `_amount` of `wrappedToken` from `msg.sender` to this contract.
+     * Note that this function will also trigger a callback to the `universalReceiver(...)` function
+     * on the `msg.sender` if it is a contract that supports + implements the LSP1 standard.
+     *
      * @inheritdoc TokenRouter
      */
     function _transferFromSender(uint256 _amount) internal virtual override returns (bytes memory) {
@@ -43,6 +57,9 @@ contract HypLSP7Collateral is TokenRouter {
 
     /**
      * @dev Transfers `_amount` of `wrappedToken` from this contract to `_recipient`.
+     * Note that this function will also trigger a callback to the `universalReceiver(...)` function
+     * on the `_recipient` if it is a contract that supports + implements the LSP1 standard.
+     *
      * @inheritdoc TokenRouter
      */
     function _transferTo(

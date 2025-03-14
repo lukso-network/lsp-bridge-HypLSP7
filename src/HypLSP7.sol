@@ -6,11 +6,14 @@ import { LSP7DigitalAssetInitAbstract } from "@lukso/lsp7-contracts/contracts/LS
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
 
 // constants
-import { _LSP4_TOKEN_TYPE_TOKEN } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
+import { _LSP4_TOKEN_TYPE_TOKEN, _LSP4_METADATA_KEY } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
 
 /**
  * @title LSP7 version of the Hyperlane ERC20 Token Router
- * @dev https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/main/solidity/contracts/token/HypERC20.sol
+ * @dev See following links for reference:
+ * - HypERC20 implementation:
+ * https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/main/solidity/contracts/token/HypERC20.sol
+ * - LSP7 standard: https://github.com/lukso-network/LIPs/blob/main/LSPs/LSP-7-DigitalAsset.md
  */
 contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
     // solhint-disable-next-line immutable-vars-naming
@@ -30,6 +33,9 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
      * This aims to keep the number of parameters consistent between hyperc20 and hypLSP7, so that the code of off-chain
      * agents that call this function
      * does not need to be modifed to add an extra parameter that would be irrelevant.
+     *
+     * Note that a callback to the `universalReceiver(...)` function on the `msg.sender` contract address
+     * will be triggered, even if the `_totalSupply` parameter passed is 0.
      */
     function initialize(
         uint256 _totalSupply,
@@ -37,7 +43,8 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
         string memory _symbol,
         address _hook,
         address _interchainSecurityModule,
-        address _owner
+        address _owner,
+        bytes memory _lsp4Metadata
     )
         external
         initializer
@@ -48,9 +55,13 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
             symbol_: _symbol,
             newOwner_: _owner,
             lsp4TokenType_: _LSP4_TOKEN_TYPE_TOKEN,
-            isNonDivisible_: false // isNonDivisible set to `false` as will not be used anyway since decimals() is
-                // overriden
+            isNonDivisible_: false // isNonDivisible set to `false` as not used anyway since decimals() is overriden
          });
+
+        // emit `DataChanged` event only if some metadata bytes is provided to save gas
+        if (_lsp4Metadata.length > 0) {
+            _setData(_LSP4_METADATA_KEY, _lsp4Metadata);
+        }
 
         // mints initial supply to deployer
         LSP7DigitalAssetInitAbstract._mint({ to: msg.sender, amount: _totalSupply, force: true, data: "" });
@@ -75,6 +86,9 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
 
     /**
      * @dev Burns `_amount` of token from `msg.sender` balance.
+     * Note that this function will also trigger a callback to the `universalReceiver(...)` function
+     * on the sender contract address.
+     *
      * @inheritdoc TokenRouter
      */
     function _transferFromSender(uint256 _amount) internal override returns (bytes memory) {
@@ -84,6 +98,9 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
 
     /**
      * @dev Mints `_amount` of token to `_recipient` balance.
+     * Note that this function will also trigger a callback to the `universalReceiver(...)` function
+     * on the recipient contract address.
+     *
      * @inheritdoc TokenRouter
      */
     function _transferTo(

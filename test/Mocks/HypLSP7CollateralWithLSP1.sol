@@ -18,6 +18,9 @@ import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMess
 import { _TYPEID_LSP7_TOKENOPERATOR } from "@lukso/lsp7-contracts/contracts/LSP7Constants.sol";
 import { _INTERFACEID_LSP1 } from "@lukso/lsp1-contracts/contracts/LSP1Constants.sol";
 
+/// @dev This is a mock contract created to showcase that it is not possible to use the `universalReceiver(...)`
+/// function to bridge a token in a single transaction
+/// Because of the interchain gas payment required to be sent that cannot be sent.
 contract HypLSP7CollateralWithLSP1 is ERC165, TokenRouter {
     // solhint-disable-next-line immutable-vars-naming
     ILSP7 public immutable wrappedToken;
