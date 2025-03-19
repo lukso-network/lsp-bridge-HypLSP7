@@ -13,9 +13,15 @@
     "@lukso/lsp8-contracts": "0.16.2"
   },
   "devDependencies": {
+    "@lukso/lsp1delegate-contracts": "^0.15.0",
+    "@lukso/lsp6-contracts": "^0.15.0",
+    "@lukso/universalprofile-contracts": "^0.15.0",
     "forge-std": "github:foundry-rs/forge-std#v1.8.1",
     "prettier": "^3.0.0",
     "solhint": "^3.6.2"
+  },
+  "resolutions": {
+    "@lukso/lsp17contractextension-contracts": "~0.16.2"
   },
   "keywords": [
     "blockchain",
