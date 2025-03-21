@@ -35,7 +35,7 @@ import {
 contract UniversalProfileTestHelpers is Test {
     LSP1DelegateUP mainLSP1DelegateImplementationForUPs;
 
-    function setUp() public {
+    function setUp() virtual public {
         mainLSP1DelegateImplementationForUPs = new LSP1DelegateUP();
     }
 

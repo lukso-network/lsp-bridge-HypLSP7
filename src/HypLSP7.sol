@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.19;
 
+import { console } from "forge-std/src/console.sol";
+
 // modules
 import { LSP7DigitalAssetInitAbstract } from "@lukso/lsp7-contracts/contracts/LSP7DigitalAssetInitAbstract.sol";
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
@@ -112,6 +114,7 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
         virtual
         override
     {
+        console.log("Transfering to ", _recipient);
         LSP7DigitalAssetInitAbstract._mint(_recipient, _amount, true, "");
     }
 }

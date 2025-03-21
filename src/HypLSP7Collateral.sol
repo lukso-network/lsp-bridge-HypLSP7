@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.19;
 
+import { console } from "forge-std/src/console.sol";
+
 // Interfaces
 import { ILSP7DigitalAsset as ILSP7 } from "@lukso/lsp7-contracts/contracts/ILSP7DigitalAsset.sol";
 
@@ -40,6 +42,7 @@ contract HypLSP7Collateral is TokenRouter {
     }
 
     function balanceOf(address _account) external view override returns (uint256) {
+        console.log("balanceOf called from ", address(this));
         return wrappedToken.balanceOf(_account);
     }
 
@@ -71,6 +74,9 @@ contract HypLSP7Collateral is TokenRouter {
         virtual
         override
     {
+        console.log("Transfering ", _amount, " to ", _recipient);
+        console.log("OLD BALANCE (", _recipient, "): ", wrappedToken.balanceOf(_recipient));
         wrappedToken.transfer(address(this), _recipient, _amount, true, "");
+        console.log("NEW BALANCE: ", wrappedToken.balanceOf(_recipient));
     }
 }
