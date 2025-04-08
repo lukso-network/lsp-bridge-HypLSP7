@@ -1,9 +1,7 @@
 {
-  "[solidity]": {
-    "editor.defaultFormatter": "NomicFoundation.hardhat-solidity"
-  },
   "[toml]": {
     "editor.defaultFormatter": "tamasfe.even-better-toml"
   },
-  "solidity.formatter": "forge"
+  "solidity.formatter": "forge",
+  "wake.compiler.solc.remappings": ["@/=node_modules/@", "forge-std/=node_modules/forge-std"]
 }
