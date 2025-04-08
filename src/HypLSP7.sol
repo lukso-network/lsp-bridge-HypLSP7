@@ -31,8 +31,7 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
      *
      * @dev The `LSP4TokenType` is hardcoded to type `Token` (= `0`) as all ERC20 tokens are of token type 0.
      * This aims to keep the number of parameters consistent between hyperc20 and hypLSP7, so that the code of off-chain
-     * agents that call this function
-     * does not need to be modifed to add an extra parameter that would be irrelevant.
+     * agents that call this function does not need to be modified to add an extra parameter that would be irrelevant.
      *
      * Note that a callback to the `universalReceiver(...)` function on the `msg.sender` contract address
      * will be triggered, even if the `_totalSupply` parameter passed is 0.

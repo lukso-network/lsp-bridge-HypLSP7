@@ -19,10 +19,8 @@ abstract contract CircuitBreakerAdapter is AccessControl, Ownable {
     }
 
     modifier isCircuitBreakerOrOwner() {
-        if (!hasRole(CIRCUIT_BREAKER_ROLE, msg.sender)) {
-            if (owner() != msg.sender) {
-                revert NotCircuitBreakerOrOwner();
-            }
+        if (!hasRole(CIRCUIT_BREAKER_ROLE, msg.sender) && msg.sender != owner()) {
+            revert NotCircuitBreakerOrOwner();
         }
         _;
     }

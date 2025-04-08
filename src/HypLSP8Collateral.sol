@@ -34,7 +34,7 @@ contract HypLSP8Collateral is TokenRouter {
     }
 
     function ownerOf(uint256 _tokenId) external view returns (address) {
-        return ILSP8(wrappedToken).tokenOwnerOf(bytes32(_tokenId));
+        return wrappedToken.tokenOwnerOf(bytes32(_tokenId));
     }
 
     /**
@@ -42,7 +42,7 @@ contract HypLSP8Collateral is TokenRouter {
      * @inheritdoc TokenRouter
      */
     function balanceOf(address _account) external view override returns (uint256) {
-        return ILSP8(wrappedToken).balanceOf(_account);
+        return wrappedToken.balanceOf(_account);
     }
 
     /**
