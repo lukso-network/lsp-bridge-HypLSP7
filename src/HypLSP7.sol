@@ -43,7 +43,8 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
         address _hook,
         address _interchainSecurityModule,
         address _owner,
-        bytes memory _lsp4Metadata
+        bytes32[] memory dataKeys,
+        bytes[] memory dataValues
     )
         external
         initializer
@@ -57,9 +58,9 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
             isNonDivisible_: false // isNonDivisible set to `false` as not used anyway since decimals() is overriden
          });
 
-        // emit `DataChanged` event only if some metadata bytes is provided to save gas
-        if (_lsp4Metadata.length > 0) {
-            _setData(_LSP4_METADATA_KEY, _lsp4Metadata);
+        // set init data keys & values
+        if (dataKeys.length > 0 || dataValues.length > 0) {
+            _setDataBatch(dataKeys, dataValues);
         }
 
         // mints initial supply to deployer
