@@ -2,7 +2,7 @@ pragma solidity ^0.8.13;
 
 // test utilities
 import { Test } from "forge-std/src/Test.sol";
-import { Vm } from "forge-std/src/Vm.sol";
+// import { Vm } from "forge-std/src/Vm.sol";
 import { console } from "forge-std/src/console.sol";
 
 /// Hyperlane testing environnement
@@ -10,10 +10,6 @@ import { console } from "forge-std/src/console.sol";
 import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 import { TestMailbox } from "@hyperlane-xyz/core/contracts/test/TestMailbox.sol";
 import { TestPostDispatchHook } from "@hyperlane-xyz/core/contracts/test/TestPostDispatchHook.sol";
-import { TestInterchainGasPaymaster } from "@hyperlane-xyz/core/contracts/test/TestInterchainGasPaymaster.sol";
-
-import { GasRouter } from "@hyperlane-xyz/core/contracts/client/GasRouter.sol";
-import { HypNative } from "@hyperlane-xyz/core/contracts/token/HypNative.sol";
 
 // libraries
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
@@ -25,7 +21,7 @@ import { HypLSP7 } from "../../src/HypLSP7.sol";
 import { HypLSP7Collateral } from "../../src/HypLSP7Collateral.sol";
 
 contract CollateralImbalance is Test {
-using TypeCasts for address;
+    using TypeCasts for address;
     using TokenMessage for bytes;
 
     address internal ATTACKER = makeAddr("attacker");
@@ -33,12 +29,11 @@ using TypeCasts for address;
 
     LSP7Mock internal lsp7;
     HypLSP7Collateral internal collateralToken;
-    // TokenRouter internal localToken;
     HypLSP7 internal syntheticToken;
+
     TestMailbox internal localMailbox;
     TestMailbox internal remoteMailbox;
     TestPostDispatchHook internal noopHook;
-    TestInterchainGasPaymaster internal igp;
 
     uint32 internal constant ORIGIN = 11;
     uint32 internal constant DESTINATION = 12;
@@ -49,10 +44,9 @@ using TypeCasts for address;
     string internal constant NAME = "HyperlaneInu";
     string internal constant SYMBOL = "HYP";
 
-    uint256 internal amount = 10 * 10 ** 18;
-    
-    function setUp() public {
+    uint256 internal amount = TRANSFER_AMOUNT;
 
+    function setUp() public {
         localMailbox = new TestMailbox(ORIGIN);
         remoteMailbox = new TestMailbox(DESTINATION);
 
@@ -81,42 +75,45 @@ using TypeCasts for address;
         // Emulate Transfer of `amount` to HypLSP7Collateral
         lsp7.mintTo(address(collateralToken), amount);
 
-        // Bridge (ie Mint) the amount stored in collateral 
-        bytes memory _body = TokenMessage.format(
-            ATTACKER.addressToBytes32(), 
-            amount,
-            "");
+        // Bridge (ie Mint) the amount stored in collateral
+        bytes memory _body = TokenMessage.format(ATTACKER.addressToBytes32(), amount, "");
         remoteMailbox.testHandle(
-            ORIGIN, 
-            address(collateralToken).addressToBytes32(), 
-            address(syntheticToken).addressToBytes32(), 
-            _body);
+            ORIGIN, address(collateralToken).addressToBytes32(), address(syntheticToken).addressToBytes32(), _body
+        );
     }
 
-    function bridgeToAddress(bytes32 recipient, TokenRouter sender, TokenRouter receiver, uint32 _fromDomain, uint32 _toDomain, TestMailbox _destMailbox) internal {
+    function bridgeToAddress(
+        bytes32 recipient,
+        TokenRouter sender,
+        TokenRouter receiver,
+        uint32 _fromDomain,
+        uint32 _toDomain,
+        TestMailbox _destMailbox
+    )
+        internal
+    {
         // bridge `amount` to `recipient`
         vm.prank(ATTACKER);
-        sender.transferRemote(
-            _toDomain,
-            recipient,
-            amount
-        );
+        sender.transferRemote(_toDomain, recipient, amount);
 
         // recreate the token message sending to `recipient`
-        bytes memory _body = TokenMessage.format(
-            recipient,
-            amount,
-            ""
-        );
+        bytes memory _body = TokenMessage.format(recipient, amount, "");
+
         _destMailbox.testHandle(
-            _fromDomain,
-            address(sender).addressToBytes32(),
-            address(receiver).addressToBytes32(),
-            _body
+            _fromDomain, address(sender).addressToBytes32(), address(receiver).addressToBytes32(), _body
         );
     }
 
-    function bridgeToken(bytes32 recipient, TokenRouter sender, TokenRouter receiver, uint32 _fromDomain, uint32 _toDomain, TestMailbox _destMailbox) internal {
+    function bridgeToken(
+        bytes32 recipient,
+        TokenRouter sender,
+        TokenRouter receiver,
+        uint32 _fromDomain,
+        uint32 _toDomain,
+        TestMailbox _destMailbox
+    )
+        internal
+    {
         // Check the balanceOf Collateral Token with totalSupply of Synthetic
         uint256 collateralBalance1 = lsp7.balanceOf(address(collateralToken));
         uint256 totalSupply1 = syntheticToken.totalSupply();
@@ -133,18 +130,19 @@ using TypeCasts for address;
         uint256 totalSupply0 = syntheticToken.totalSupply();
 
         address NOONE = makeAddr("noop");
-        bridgeToken(
-            NOONE.addressToBytes32(), 
-            syntheticToken, 
-            collateralToken,
-            DESTINATION,
-            ORIGIN,
-            localMailbox
-        );
+        // bridgeToken(
+        //     NOONE.addressToBytes32(),
+        //     syntheticToken,
+        //     collateralToken,
+        //     DESTINATION,
+        //     ORIGIN,
+        //     localMailbox
+        // );
+        bridgeToken(NOONE.addressToBytes32(), syntheticToken, collateralToken, DESTINATION, ORIGIN, localMailbox);
 
         uint256 collateralBalance1 = lsp7.balanceOf(address(collateralToken));
         uint256 totalSupply1 = syntheticToken.totalSupply();
-        
+
         console.log("Previous Balance");
         console.log("balanceOf(collateral)", collateralBalance0);
         console.log("totalSupply()", totalSupply0);
@@ -162,10 +160,10 @@ using TypeCasts for address;
         bridgeToSynthetic();
         uint256 collateralBalance0 = lsp7.balanceOf(address(collateralToken));
         uint256 totalSupply0 = syntheticToken.totalSupply();
-        
+
         bridgeToken(
-            address(collateralToken).addressToBytes32(), 
-            syntheticToken, 
+            address(collateralToken).addressToBytes32(),
+            syntheticToken,
             collateralToken,
             DESTINATION,
             ORIGIN,
@@ -174,7 +172,7 @@ using TypeCasts for address;
 
         uint256 collateralBalance1 = lsp7.balanceOf(address(collateralToken));
         uint256 totalSupply1 = syntheticToken.totalSupply();
-        
+
         console.log("Previous Balance");
         console.log("balanceOf(collateral)", collateralBalance0);
         console.log("totalSupply()", totalSupply0);
@@ -191,21 +189,22 @@ using TypeCasts for address;
     function test_bridgeToSynthetic_UnknownAddress() public {
         uint256 collateralBalance0 = lsp7.balanceOf(address(collateralToken));
         uint256 totalSupply0 = syntheticToken.totalSupply();
-        
+
         lsp7.mintTo(ATTACKER, amount);
         vm.prank(ATTACKER);
         lsp7.authorizeOperator(address(collateralToken), amount, "");
 
         address NOONE = makeAddr("noop");
-        bridgeToken(
-            NOONE.addressToBytes32(), 
-            collateralToken,
-            syntheticToken,
-            ORIGIN,
-            DESTINATION,
-            remoteMailbox
-        );
-        
+        // bridgeToken(
+        //     NOONE.addressToBytes32(),
+        //     collateralToken,
+        //     syntheticToken,
+        //     ORIGIN,
+        //     DESTINATION,
+        //     remoteMailbox
+        // );
+        bridgeToken(NOONE.addressToBytes32(), collateralToken, syntheticToken, ORIGIN, DESTINATION, remoteMailbox);
+
         uint256 collateralBalance1 = lsp7.balanceOf(address(collateralToken));
         uint256 totalSupply1 = syntheticToken.totalSupply();
         console.log("Previous Balance");
@@ -215,7 +214,7 @@ using TypeCasts for address;
         console.log("balanceOf(collateral)", collateralBalance1);
         console.log("totalSupply()", totalSupply1);
         // when bridging from collateral to synthetic the collateral balance
-        // should equal the synthetic totalSupply regardless of who the 
+        // should equal the synthetic totalSupply regardless of who the
         // synthetic tokens are minted to
         vm.assertEq(collateralBalance1, totalSupply1);
         vm.assertEq(totalSupply1, amount);
@@ -224,13 +223,13 @@ using TypeCasts for address;
     function test_bridgeToSynthetic_SyntheticTokenAddress() public {
         uint256 collateralBalance0 = lsp7.balanceOf(address(collateralToken));
         uint256 totalSupply0 = syntheticToken.totalSupply();
-        
+
         lsp7.mintTo(ATTACKER, amount);
         vm.prank(ATTACKER);
         lsp7.authorizeOperator(address(collateralToken), amount, "");
 
         bridgeToken(
-            address(syntheticToken).addressToBytes32(), 
+            address(syntheticToken).addressToBytes32(),
             collateralToken,
             syntheticToken,
             ORIGIN,
@@ -247,7 +246,7 @@ using TypeCasts for address;
         console.log("balanceOf(collateral)", collateralBalance1);
         console.log("totalSupply()", totalSupply1);
         // when bridging from collateral to synthetic the collateral balance
-        // should equal the synthetic totalSupply regardless of who the 
+        // should equal the synthetic totalSupply regardless of who the
         // synthetic tokens are minted to
         vm.assertEq(collateralBalance1, totalSupply1);
         vm.assertEq(totalSupply1, amount);
