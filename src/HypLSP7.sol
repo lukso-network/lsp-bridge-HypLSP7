@@ -19,6 +19,8 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
     // solhint-disable-next-line immutable-vars-naming
     uint8 private immutable _decimals;
 
+    error InvalidRecipientError();
+
     constructor(uint8 __decimals, address _mailbox) TokenRouter(_mailbox) {
         _decimals = __decimals;
     }
@@ -112,5 +114,43 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
         override
     {
         LSP7DigitalAssetInitAbstract._mint(_recipient, _amount, true, "");
+    }
+
+    /**
+     * @inheritdoc TokenRouter
+     * @dev Ensures that the recipient of the token transfer is not the collateral contract
+     */
+    function transferRemote(
+        uint32 _destination,
+        bytes32 _recipient,
+        uint256 _amountOrId
+    )
+        external
+        payable
+        override
+        returns (bytes32 messageId)
+    {
+        if (_recipient == routers(_destination)) revert InvalidRecipientError();
+        return _transferRemote(_destination, _recipient, _amountOrId, msg.value);
+    }
+
+    /**
+     * @inheritdoc TokenRouter
+     * @dev Ensures that the recipient of the token transfer is not the collateral contract
+     */
+    function transferRemote(
+        uint32 _destination,
+        bytes32 _recipient,
+        uint256 _amountOrId,
+        bytes calldata _hookMetadata,
+        address _hook
+    )
+        external
+        payable
+        override
+        returns (bytes32 messageId)
+    {
+        if (_recipient == routers(_destination)) revert InvalidRecipientError();
+        return _transferRemote(_destination, _recipient, _amountOrId, msg.value, _hookMetadata, _hook);
     }
 }

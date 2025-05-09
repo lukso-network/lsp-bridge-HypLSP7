@@ -20,9 +20,11 @@ import { LSP7Mock } from "../Mocks/LSP7Mock.sol";
 import { HypLSP7 } from "../../src/HypLSP7.sol";
 import { HypLSP7Collateral } from "../../src/HypLSP7Collateral.sol";
 
-contract CollateralImbalance is Test {
+contract CollateralImbalanceLSP7 is Test {
     using TypeCasts for address;
     using TokenMessage for bytes;
+
+    error InvalidRecipientError();
 
     address internal ATTACKER = makeAddr("attacker");
     address internal OWNER = makeAddr("owner");
@@ -117,7 +119,6 @@ contract CollateralImbalance is Test {
         // Check the balanceOf Collateral Token with totalSupply of Synthetic
         uint256 collateralBalance1 = lsp7.balanceOf(address(collateralToken));
         uint256 totalSupply1 = syntheticToken.totalSupply();
-        // console.log("ColBal1 ", collateralBalance1);
         vm.assertEq(collateralBalance1, totalSupply1);
 
         bridgeToAddress(recipient, sender, receiver, _fromDomain, _toDomain, _destMailbox);
@@ -130,14 +131,6 @@ contract CollateralImbalance is Test {
         uint256 totalSupply0 = syntheticToken.totalSupply();
 
         address NOONE = makeAddr("noop");
-        // bridgeToken(
-        //     NOONE.addressToBytes32(),
-        //     syntheticToken,
-        //     collateralToken,
-        //     DESTINATION,
-        //     ORIGIN,
-        //     localMailbox
-        // );
         bridgeToken(NOONE.addressToBytes32(), syntheticToken, collateralToken, DESTINATION, ORIGIN, localMailbox);
 
         uint256 collateralBalance1 = lsp7.balanceOf(address(collateralToken));
@@ -158,32 +151,10 @@ contract CollateralImbalance is Test {
 
     function test_bridgeToCollateralRouter_CausesAccountingError() public {
         bridgeToSynthetic();
-        uint256 collateralBalance0 = lsp7.balanceOf(address(collateralToken));
-        uint256 totalSupply0 = syntheticToken.totalSupply();
 
-        bridgeToken(
-            address(collateralToken).addressToBytes32(),
-            syntheticToken,
-            collateralToken,
-            DESTINATION,
-            ORIGIN,
-            localMailbox
-        );
-
-        uint256 collateralBalance1 = lsp7.balanceOf(address(collateralToken));
-        uint256 totalSupply1 = syntheticToken.totalSupply();
-
-        console.log("Previous Balance");
-        console.log("balanceOf(collateral)", collateralBalance0);
-        console.log("totalSupply()", totalSupply0);
-        console.log("Post Balance");
-        console.log("balanceOf(collateral)", collateralBalance1);
-        console.log("totalSupply()", totalSupply1);
-
-        // when bridging to the collateral token router itself,
-        // balance gets trapped in the collateral token router
-        vm.assertEq(collateralBalance1, totalSupply1);
-        vm.assertEq(totalSupply1, 0);
+        vm.expectRevert(InvalidRecipientError.selector);
+        vm.prank(ATTACKER);
+        syntheticToken.transferRemote(ORIGIN, address(collateralToken).addressToBytes32(), amount);
     }
 
     function test_bridgeToSynthetic_UnknownAddress() public {
@@ -195,14 +166,6 @@ contract CollateralImbalance is Test {
         lsp7.authorizeOperator(address(collateralToken), amount, "");
 
         address NOONE = makeAddr("noop");
-        // bridgeToken(
-        //     NOONE.addressToBytes32(),
-        //     collateralToken,
-        //     syntheticToken,
-        //     ORIGIN,
-        //     DESTINATION,
-        //     remoteMailbox
-        // );
         bridgeToken(NOONE.addressToBytes32(), collateralToken, syntheticToken, ORIGIN, DESTINATION, remoteMailbox);
 
         uint256 collateralBalance1 = lsp7.balanceOf(address(collateralToken));
