@@ -2,7 +2,6 @@ pragma solidity ^0.8.13;
 
 // test utilities
 import { Test } from "forge-std/src/Test.sol";
-// import { Vm } from "forge-std/src/Vm.sol";
 import { console } from "forge-std/src/console.sol";
 
 /// Hyperlane testing environnement
@@ -155,12 +154,22 @@ contract CollateralImbalanceLSP8 is Test {
         tokenId += 1;
         bridgeToSynthetic(tokenId);
 
-        uint256 collateralBalance0 = lsp8.balanceOf(address(collateralToken));
-        uint256 totalSupply0 = syntheticToken.totalSupply();
-
         vm.expectRevert(InvalidRecipientError.selector);
         vm.prank(ATTACKER);
         syntheticToken.transferRemote(ORIGIN, address(collateralToken).addressToBytes32(), tokenId);
+    }
+
+    function test_bridgeToCollateralRouterWithHook_CausesAccountingError() public {
+        tokenId += 1;
+        bridgeToSynthetic(tokenId);
+
+        bytes memory hookMetadata = "";
+
+        vm.expectRevert(InvalidRecipientError.selector);
+        vm.prank(ATTACKER);
+        syntheticToken.transferRemote(
+            ORIGIN, address(collateralToken).addressToBytes32(), tokenId, hookMetadata, address(noopHook)
+        );
     }
 
     function test_bridgeToSynthetic_UnknownAddress() public {

@@ -2,7 +2,6 @@ pragma solidity ^0.8.13;
 
 // test utilities
 import { Test } from "forge-std/src/Test.sol";
-// import { Vm } from "forge-std/src/Vm.sol";
 import { console } from "forge-std/src/console.sol";
 
 /// Hyperlane testing environnement
@@ -41,7 +40,6 @@ contract CollateralImbalanceLSP7 is Test {
     uint32 internal constant DESTINATION = 12;
     uint8 internal constant DECIMALS = 18;
     uint256 internal constant TOTAL_SUPPLY = 1_000_000e18;
-    uint256 internal constant GAS_LIMIT = 10_000;
     uint256 internal constant TRANSFER_AMOUNT = 100e18;
     string internal constant NAME = "HyperlaneInu";
     string internal constant SYMBOL = "HYP";
@@ -155,6 +153,18 @@ contract CollateralImbalanceLSP7 is Test {
         vm.expectRevert(InvalidRecipientError.selector);
         vm.prank(ATTACKER);
         syntheticToken.transferRemote(ORIGIN, address(collateralToken).addressToBytes32(), amount);
+    }
+
+    function test_bridgeToCollateralRouterWithHook_CausesAccountingError() public {
+        bridgeToSynthetic();
+
+        bytes memory hookMetadata = "";
+
+        vm.expectRevert(InvalidRecipientError.selector);
+        vm.prank(ATTACKER);
+        syntheticToken.transferRemote(
+            ORIGIN, address(collateralToken).addressToBytes32(), amount, hookMetadata, address(noopHook)
+        );
     }
 
     function test_bridgeToSynthetic_UnknownAddress() public {
