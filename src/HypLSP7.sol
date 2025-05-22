@@ -4,9 +4,11 @@ pragma solidity >=0.8.19;
 // modules
 import { LSP7DigitalAssetInitAbstract } from "@lukso/lsp7-contracts/contracts/LSP7DigitalAssetInitAbstract.sol";
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
+import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 
 // constants
 import { _LSP4_TOKEN_TYPE_TOKEN, _LSP4_METADATA_KEY } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
+import { ICircuitBreaker, ICircuitBreakable, _HypLSP_CIRCUIT_BREAKER_KEY, CircuitError } from "./ISM/CircuitBreaker.sol";
 
 /**
  * @title LSP7 version of the Hyperlane ERC20 Token Router
@@ -15,7 +17,8 @@ import { _LSP4_TOKEN_TYPE_TOKEN, _LSP4_METADATA_KEY } from "@lukso/lsp4-contract
  * https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/main/solidity/contracts/token/HypERC20.sol
  * - LSP7 standard: https://github.com/lukso-network/LIPs/blob/main/LSPs/LSP-7-DigitalAsset.md
  */
-contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
+contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter, ICircuitBreakable {
+    using TypeCasts for bytes32;
     // solhint-disable-next-line immutable-vars-naming
     uint8 private immutable _decimals;
 
@@ -23,6 +26,36 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
         _decimals = __decimals;
     }
 
+    function initialize(
+        uint256 _totalSupply,
+        string memory _name,
+        string memory _symbol,
+        address _hook,
+        address _interchainSecurityModule,
+        address _owner,
+        bytes memory _lsp4Metadata
+    )
+        external
+        
+    {   
+        _initialize(_totalSupply, _name, _symbol, _hook, _interchainSecurityModule, _owner, _lsp4Metadata, hex"00");
+    }
+
+    function initialize(
+        uint256 _totalSupply,
+        string memory _name,
+        string memory _symbol,
+        address _hook,
+        address _interchainSecurityModule,
+        address _owner,
+        bytes memory _lsp4Metadata,
+        bytes memory _circuitBreaker
+    )
+        external
+        
+    {   
+        _initialize(_totalSupply, _name, _symbol, _hook, _interchainSecurityModule, _owner, _lsp4Metadata, _circuitBreaker);
+    }
     /**
      * @notice Initializes the Hyperlane router, LSP7 metadata, and mints initial supply to deployer.
      * @param _totalSupply The initial supply of the token.
@@ -36,16 +69,17 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
      * Note that a callback to the `universalReceiver(...)` function on the `msg.sender` contract address
      * will be triggered, even if the `_totalSupply` parameter passed is 0.
      */
-    function initialize(
+    function _initialize(
         uint256 _totalSupply,
         string memory _name,
         string memory _symbol,
         address _hook,
         address _interchainSecurityModule,
         address _owner,
-        bytes memory _lsp4Metadata
+        bytes memory _lsp4Metadata,
+        bytes memory _circuitBreaker
     )
-        external
+        internal
         initializer
     {
         // Initialize LSP7 metadata
@@ -61,6 +95,8 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
         if (_lsp4Metadata.length > 0) {
             _setData(_LSP4_METADATA_KEY, _lsp4Metadata);
         }
+
+        _setData(_HypLSP_CIRCUIT_BREAKER_KEY, _circuitBreaker);
 
         // mints initial supply to deployer
         LSP7DigitalAssetInitAbstract._mint({ to: msg.sender, amount: _totalSupply, force: true, data: "" });
@@ -91,6 +127,7 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
      * @inheritdoc TokenRouter
      */
     function _transferFromSender(uint256 _amount) internal override returns (bytes memory) {
+        if(!_circuitOpen()) { revert  CircuitError(); }
         LSP7DigitalAssetInitAbstract._burn(msg.sender, _amount, "");
         return bytes(""); // no metadata
     }
@@ -111,6 +148,29 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
         virtual
         override
     {
+        if(!_circuitOpen()) { revert  CircuitError(); }
         LSP7DigitalAssetInitAbstract._mint(_recipient, _amount, true, "");
     }
+
+    /**
+    {
+        "name": "HypLSP_CIRCUIT_BREAKER",
+        "key": "0x47ed5ddfcef19059e8642d926caadf37ff4ded3fa59cae8ed58d844bbeac9f4d",
+        "keyType": "Singleton",
+        "valueType": "address",
+        "valueContent": "String"
+    }
+     */
+    function circuitOpen() external view returns(bool) {
+        return _circuitOpen();
+    }
+
+    function _circuitOpen() internal view returns(bool) {
+        address _address =  bytes32(_getData(_HypLSP_CIRCUIT_BREAKER_KEY)).bytes32ToAddress();
+        ICircuitBreaker circuitBreaker = ICircuitBreaker(_address);
+        // if _address is 0x0 address, this should still return true?
+        return !circuitBreaker.paused();
+    }
+    
 }
+

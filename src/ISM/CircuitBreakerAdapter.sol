@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity >=0.8.0;
 
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 event RegisteredCircuitBreaker(address ism, address circuitBreaker);
 
@@ -10,12 +11,12 @@ event UnregisteredCircuitBreaker(address ism, address circuitBreaker);
 
 error NotCircuitBreakerOrOwner();
 
-abstract contract CircuitBreakerAdapter is AccessControl, Ownable {
+abstract contract CircuitBreakerAdapter is AccessControlUpgradeable, OwnableUpgradeable, PausableUpgradeable {
     // The role given only to Circuit Breaker
     bytes32 public constant CIRCUIT_BREAKER_ROLE = keccak256("CIRCUIT_BREAKER_ROLE");
 
-    constructor(address owner) Ownable() {
-        _transferOwnership(owner);
+    constructor()  {
+        //  __Pausable_init();
     }
 
     modifier isCircuitBreakerOrOwner() {
@@ -34,5 +35,13 @@ abstract contract CircuitBreakerAdapter is AccessControl, Ownable {
     function unregisterCircuitBreaker(address _address) external onlyOwner {
         _revokeRole(CIRCUIT_BREAKER_ROLE, _address);
         emit UnregisteredCircuitBreaker(address(this), _address);
+    }
+
+    function pause() external isCircuitBreakerOrOwner {
+        _pause();
+    }
+
+    function unpause() external onlyOwner {
+        _unpause();
     }
 }

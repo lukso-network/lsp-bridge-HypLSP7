@@ -10,7 +10,7 @@ pragma solidity >=0.8.0;
 */
 
 // ============ External Imports ============
-import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import { IInterchainSecurityModule } from "@hyperlane-xyz/core/contracts/interfaces/IInterchainSecurityModule.sol";
 // ============ Internal Imports ============
 import { CircuitBreakerAdapter } from "./CircuitBreakerAdapter.sol";
@@ -25,10 +25,10 @@ import { CircuitBreakerAdapter } from "./CircuitBreakerAdapter.sol";
  *
  * Unpausing can be triggered only by the owner of this contract.
  */
-contract PausableCircuitBreakerIsm is IInterchainSecurityModule, Pausable, CircuitBreakerAdapter {
+contract PausableCircuitBreakerIsm is IInterchainSecurityModule, PausableUpgradeable, CircuitBreakerAdapter {
     uint8 public constant override moduleType = uint8(Types.NULL);
 
-    constructor(address owner) CircuitBreakerAdapter(owner) { }
+    constructor(address owner) CircuitBreakerAdapter() { }
 
     /**
      * @inheritdoc IInterchainSecurityModule
@@ -38,11 +38,11 @@ contract PausableCircuitBreakerIsm is IInterchainSecurityModule, Pausable, Circu
         return true;
     }
 
-    function pause() external isCircuitBreakerOrOwner {
-        _pause();
-    }
+    // function pause() external isCircuitBreakerOrOwner {
+    //     _pause();
+    // }
 
-    function unpause() external onlyOwner {
-        _unpause();
-    }
+    // function unpause() external onlyOwner {
+    //     _unpause();
+    // }
 }

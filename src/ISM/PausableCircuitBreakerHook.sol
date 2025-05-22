@@ -12,7 +12,7 @@ pragma solidity >=0.8.0;
 import { IPostDispatchHook } from "@hyperlane-xyz/core/contracts/interfaces/hooks/IPostDispatchHook.sol";
 import { AbstractPostDispatchHook } from "@hyperlane-xyz/core/contracts/hooks/libs/AbstractPostDispatchHook.sol";
 
-import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import { CircuitBreakerAdapter } from "./CircuitBreakerAdapter.sol";
 
@@ -26,16 +26,16 @@ import { CircuitBreakerAdapter } from "./CircuitBreakerAdapter.sol";
  *
  * Unpausing can be triggered only by the owner of this contract.
  */
-contract PausableCircuitBreakerHook is AbstractPostDispatchHook, Pausable, CircuitBreakerAdapter {
-    constructor(address owner) CircuitBreakerAdapter(owner) { }
+contract PausableCircuitBreakerHook is AbstractPostDispatchHook, PausableUpgradeable, CircuitBreakerAdapter {
+    constructor(address owner) CircuitBreakerAdapter() { }
 
-    function pause() external isCircuitBreakerOrOwner {
-        _pause();
-    }
+    // function pause() external isCircuitBreakerOrOwner {
+    //     _pause();
+    // }
 
-    function unpause() external onlyOwner {
-        _unpause();
-    }
+    // function unpause() external onlyOwner {
+    //     _unpause();
+    // }
 
     // ============ External Functions ============
 
