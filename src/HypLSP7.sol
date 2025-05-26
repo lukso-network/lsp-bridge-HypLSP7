@@ -36,7 +36,6 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter, ICircuitBreakable
         bytes memory _lsp4Metadata
     )
         external
-        
     {   
         _initialize(_totalSupply, _name, _symbol, _hook, _interchainSecurityModule, _owner, _lsp4Metadata, hex"00");
     }
@@ -127,7 +126,7 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter, ICircuitBreakable
      * @inheritdoc TokenRouter
      */
     function _transferFromSender(uint256 _amount) internal override returns (bytes memory) {
-        if(!_circuitOpen()) { revert  CircuitError(); }
+        if(!_circuitBroken()) { revert  CircuitError(); }
         LSP7DigitalAssetInitAbstract._burn(msg.sender, _amount, "");
         return bytes(""); // no metadata
     }
@@ -148,7 +147,7 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter, ICircuitBreakable
         virtual
         override
     {
-        if(!_circuitOpen()) { revert  CircuitError(); }
+        if(!_circuitBroken()) { revert  CircuitError(); }
         LSP7DigitalAssetInitAbstract._mint(_recipient, _amount, true, "");
     }
 
@@ -161,12 +160,12 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter, ICircuitBreakable
         "valueContent": "String"
     }
      */
-    function circuitOpen() external view returns(bool) {
-        return _circuitOpen();
+    function circuitBroken() external view returns(bool) {
+        return _circuitBroken();
     }
 
-    function _circuitOpen() internal view returns(bool) {
-        address _address =  bytes32(_getData(_HypLSP_CIRCUIT_BREAKER_KEY)).bytes32ToAddress();
+    function _circuitBroken() internal view returns(bool) {
+        address _address =  address(bytes20(_getData(_HypLSP_CIRCUIT_BREAKER_KEY)));
         ICircuitBreaker circuitBreaker = ICircuitBreaker(_address);
         // if _address is 0x0 address, this should still return true?
         return !circuitBreaker.paused();

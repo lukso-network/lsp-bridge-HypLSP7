@@ -24,7 +24,7 @@ error NotCircuitBreakerOrOwner();
 error CircuitError();
 
 interface ICircuitBreakable {
-    function circuitOpen() external view  returns (bool);
+    function circuitBroken() external view  returns (bool);
 }
 
 interface ICircuitBreaker {

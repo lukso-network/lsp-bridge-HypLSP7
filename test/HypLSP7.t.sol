@@ -24,7 +24,7 @@ import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMess
 import { LSP7Mock } from "./Mocks/LSP7Mock.sol";
 import { HypLSP7 } from "../src/HypLSP7.sol";
 import { HypLSP7Collateral } from "../src/HypLSP7Collateral.sol";
-import { CircuitBreaker, CircuitError } from "../src/ISM/CircuitBreaker.sol";
+import { CircuitBreaker, CircuitError, _HypLSP_CIRCUIT_BREAKER_KEY } from "../src/ISM/CircuitBreaker.sol";
 
 import { IERC725Y } from "@erc725/smart-contracts/contracts/interfaces/IERC725Y.sol";
 
@@ -133,53 +133,6 @@ abstract contract HypTokenTest is Test {
         }
         assertEq(circuitBreakerRemote.paused(), false);
     }
-    // function _setupPausableIsm() internal {
-    //     vm.prank(OWNER);
-    //     remoteToken.setInterchainSecurityModule(address(pausableIsm));
-
-    //     vm.prank(OWNER);
-    //     pausableIsm.registerCircuitBreaker(CIRCUIT_BREAKER);
-    // }
-
-    // // Setting this as a different function because the hook interferes with other tests
-    // function _setupPausableHook() internal {
-    //     localMailbox.setRequiredHook(address(pausableHook));
-
-    //     vm.prank(OWNER);
-    //     pausableHook.registerCircuitBreaker(CIRCUIT_BREAKER);
-    // }
-
-    // function _circuitBreakerPauseIsm() internal {
-    //     if (!pausableIsm.paused()) {
-    //         vm.prank(CIRCUIT_BREAKER);
-    //         pausableIsm.pause();
-    //     }
-    //     assertEq(pausableIsm.paused(), true);
-    // }
-
-    // function _circuitBreakerUnpauseIsm() internal {
-    //     if (pausableIsm.paused()) {
-    //         vm.prank(OWNER);
-    //         pausableIsm.unpause();
-    //     }
-    //     assertEq(pausableIsm.paused(), false);
-    // }
-
-    // function _circuitBreakerPauseHook() internal {
-    //     if (!pausableHook.paused()) {
-    //         vm.prank(CIRCUIT_BREAKER);
-    //         pausableHook.pause();
-    //     }
-    //     assertEq(pausableHook.paused(), true);
-    // }
-
-    // function _circuitBreakerUnpauseHook() internal {
-    //     if (pausableHook.paused()) {
-    //         vm.prank(OWNER);
-    //         pausableHook.unpause();
-    //     }
-    //     assertEq(pausableHook.paused(), false);
-    // }
 
     function _expectRemoteBalance(address _user, uint256 _balance) internal view {
         assertEq(remoteToken.balanceOf(_user), _balance);
@@ -546,11 +499,12 @@ contract HypLSP7CollateralTest is HypTokenTest {
 
         lsp7Collateral.initialize(address(noopHook), address(0), OWNER);
 
-        vm.startPrank(OWNER);
+        vm.prank(OWNER);
         lsp7Collateral.enrollRemoteRouter(DESTINATION, address(remoteToken).addressToBytes32());
-        lsp7Collateral.setCircuitBreaker(address(circuitBreakerLocal));
-        vm.stopPrank();
-
+        
+        vm.prank(address(this));
+        primaryToken.setData(_HypLSP_CIRCUIT_BREAKER_KEY, abi.encodePacked(address(circuitBreakerLocal)));
+        
         primaryToken.transfer(address(this), address(localToken), 1000e18, true, "");
 
         primaryToken.transfer(address(this), ALICE, 1000e18, true, "");
@@ -621,14 +575,14 @@ contract HypLSP7CollateralTest is HypTokenTest {
     }
 
     function testNoCircuitBreakerDoesNotCauseRevert() public {
-        vm.prank(OWNER);
-        lsp7Collateral.setCircuitBreaker(address(0));
+        vm.prank(address(this));
+        primaryToken.setData(_HypLSP_CIRCUIT_BREAKER_KEY, abi.encodePacked(address(0)));
 
         bytes memory _message = TokenMessage.format(BOB.addressToBytes32(), TRANSFER_AMOUNT, "");
         
         localMailbox.testHandle(DESTINATION, address(remoteToken).addressToBytes32(), address(localToken).addressToBytes32(), _message);
 
-        vm.prank(OWNER);
-        lsp7Collateral.setCircuitBreaker(CIRCUIT_BREAKER);
+        vm.prank(address(this));
+        primaryToken.setData(_HypLSP_CIRCUIT_BREAKER_KEY, abi.encodePacked(CIRCUIT_BREAKER));
     }
 }
