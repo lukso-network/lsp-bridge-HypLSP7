@@ -2,6 +2,7 @@
 pragma solidity >=0.8.19;
 
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
+import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 
 import { LSP8IdentifiableDigitalAssetInitAbstract } from
     "@lukso/lsp8-contracts/contracts/LSP8IdentifiableDigitalAssetInitAbstract.sol";
@@ -9,7 +10,7 @@ import { LSP8IdentifiableDigitalAssetInitAbstract } from
 import { _LSP4_TOKEN_TYPE_NFT, _LSP4_METADATA_KEY } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
 
 import { _LSP8_TOKENID_FORMAT_NUMBER } from "@lukso/lsp8-contracts/contracts/LSP8Constants.sol";
-import { ICircuitBreaker, ICircuitBreakable, _HypLSP_CIRCUIT_BREAKER_KEY, CircuitError } from "./ISM/CircuitBreaker.sol";
+import { IFreezer, IFreezeable, FrozenError } from "./ISM/FreezerUP.sol";
 /**
  * @title LSP8 version of the Hyperlane ERC721 Token Router
  * @dev See following links for reference:
@@ -17,7 +18,11 @@ import { ICircuitBreaker, ICircuitBreakable, _HypLSP_CIRCUIT_BREAKER_KEY, Circui
  * https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/main/solidity/contracts/token/HypERC721.sol
  * - LSP8 standard: https://github.com/lukso-network/LIPs/blob/main/LSPs/LSP-8-IdentifiableDigitalAsset.md
  */
-contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter, ICircuitBreakable {
+contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter, IFreezeable {
+    using TypeCasts for bytes32;
+
+    IFreezer freezer;
+
     constructor(address _mailbox) TokenRouter(_mailbox) { }
 
     function initialize(
@@ -40,9 +45,9 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter, ICirc
         address _interchainSecurityModule,
         address _owner,
         bytes memory _lsp4Metadata,
-        bytes memory _circuitBreaker
+        bytes memory _freezer
     ) external {
-        _initialize(_mintAmount, _name, _symbol, _hook, _interchainSecurityModule, _owner, _lsp4Metadata, _circuitBreaker);
+        _initialize(_mintAmount, _name, _symbol, _hook, _interchainSecurityModule, _owner, _lsp4Metadata, _freezer);
     }
     /**
      * @notice Initializes the Hyperlane router, LSP8 metadata, and mints initial supply to deployer.
@@ -69,7 +74,7 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter, ICirc
         address _interchainSecurityModule,
         address _owner,
         bytes memory _lsp4Metadata,
-        bytes memory _circuitBreaker
+        bytes memory _freezer
     )
         internal
         initializer
@@ -87,7 +92,7 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter, ICirc
             _setData(_LSP4_METADATA_KEY, _lsp4Metadata);
         }
 
-        _setData(_HypLSP_CIRCUIT_BREAKER_KEY, _circuitBreaker);
+        freezer = IFreezer(bytes32(_freezer).bytes32ToAddress());
 
         for (uint256 i = 0; i < _mintAmount; i++) {
             _mint(msg.sender, bytes32(i), true, "");
@@ -112,7 +117,7 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter, ICirc
      * @inheritdoc TokenRouter
      */
     function _transferFromSender(uint256 _tokenId) internal virtual override returns (bytes memory) {
-        if(!_circuitBroken()) { revert  CircuitError(); }
+        if(_frozen()) { revert  FrozenError(); }
         bytes32 tokenIdAsBytes32 = bytes32(_tokenId);
         require(tokenOwnerOf(tokenIdAsBytes32) == msg.sender, "!owner");
         _burn(tokenIdAsBytes32, "");
@@ -135,28 +140,18 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter, ICirc
         virtual
         override
     {
-        if(!_circuitBroken()) { revert  CircuitError(); }
+        if(_frozen()) { revert  FrozenError(); }
         _mint(_recipient, bytes32(_tokenId), true, "");
     }
 
-    /**
-    {
-        "name": "HypLSP_CIRCUIT_BREAKER",
-        "key": "0x47ed5ddfcef19059e8642d926caadf37ff4ded3fa59cae8ed58d844bbeac9f4d",
-        "keyType": "Singleton",
-        "valueType": "address",
-        "valueContent": "String"
-    }
-     */
-    function circuitBroken() external view returns(bool) {
-        return _circuitBroken();
+    function frozen() external view returns(bool) {
+        return _frozen();
     }
 
-    function _circuitBroken() internal view returns(bool) {
-        address _address =  address(bytes20(_getData(_HypLSP_CIRCUIT_BREAKER_KEY)));
-        ICircuitBreaker circuitBreaker = ICircuitBreaker(_address);
-        // if _address is 0x0 address, this should still return true?
-        return !circuitBreaker.paused();
+    function _frozen() internal view returns(bool) {
+        // if _address is 0x0 address, this should still return false
+        if(address(freezer) == address(0)) { return false; }
+        return freezer.paused();
     }
     
 }

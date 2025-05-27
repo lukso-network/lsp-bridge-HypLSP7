@@ -21,19 +21,17 @@ event CircuitBreakerBypassed();
 
 error NotCircuitBreakerOrOwner();
 
-error CircuitError();
+error FrozenError();
 
-interface ICircuitBreakable {
-    function circuitBroken() external view  returns (bool);
+interface IFreezeable {
+    function frozen() external view  returns (bool);
 }
 
-interface ICircuitBreaker {
+interface IFreezer {
     function paused() external view returns (bool);
 }
 
-bytes32 constant _HypLSP_CIRCUIT_BREAKER_KEY = 0x47ed5ddfcef19059e8642d926caadf37ff4ded3fa59cae8ed58d844bbeac9f4d;
-
-contract CircuitBreaker is AccessControl, Ownable, Pausable {
+contract FreezerUP is AccessControl, Ownable, Pausable {
     // The role given only to Circuit Breaker
     bytes32 public constant CIRCUIT_BREAKER_ROLE = keccak256("CIRCUIT_BREAKER_ROLE");
 

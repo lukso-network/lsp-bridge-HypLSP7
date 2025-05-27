@@ -3,24 +3,21 @@ pragma solidity >=0.8.19;
 
 // Interfaces
 import { ILSP7DigitalAsset as ILSP7 } from "@lukso/lsp7-contracts/contracts/ILSP7DigitalAsset.sol";
-import { IERC725Y } from "@erc725/smart-contracts/contracts/interfaces/IERC725Y.sol";
 
 // Modules
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
 
 // Libraries
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import { OwnableUnset } from "@erc725/smart-contracts/contracts/custom/OwnableUnset.sol";
 
-import { ICircuitBreaker, ICircuitBreakable, _HypLSP_CIRCUIT_BREAKER_KEY, CircuitError } from "./ISM/CircuitBreaker.sol";
-
+import { IFreezer, IFreezeable, FrozenError } from "./ISM/FreezerUP.sol";
 /**
  * @title Hyperlane + LUKSO LSP7 Token Collateral that wraps an existing LSP7 with remote transfer functionality.
  */
-contract HypLSP7Collateral is TokenRouter, ICircuitBreakable {
+contract HypLSP7Collateral is TokenRouter, IFreezeable {
     // solhint-disable-next-line immutable-vars-naming
     ILSP7 public immutable wrappedToken;
+    IFreezer freezer;
 
     /**
      * @notice Constructor
@@ -33,6 +30,14 @@ contract HypLSP7Collateral is TokenRouter, ICircuitBreakable {
         wrappedToken = ILSP7(lsp7_);
     }
 
+    function initialize(address _hook, address _interchainSecurityModule, address _owner) public virtual {
+        _initialize(_hook, _interchainSecurityModule, _owner, address(0));
+    }
+
+    function initialize(address _hook, address _interchainSecurityModule, address _owner, address _freezer) public virtual {
+        _initialize(_hook, _interchainSecurityModule, _owner, _freezer);
+    }
+
     /**
      * @notice Initializes the Hyperlane router
      *
@@ -40,8 +45,9 @@ contract HypLSP7Collateral is TokenRouter, ICircuitBreakable {
      * @param _interchainSecurityModule The interchain security module contract.
      * @param _owner The this contract.
      */
-    function initialize(address _hook, address _interchainSecurityModule, address _owner) public virtual initializer {
+    function _initialize(address _hook, address _interchainSecurityModule, address _owner, address _freezer) internal virtual initializer {
         _MailboxClient_initialize(_hook, _interchainSecurityModule, _owner);
+        freezer = IFreezer(_freezer);
     }
 
     function balanceOf(address _account) external view override returns (uint256) {
@@ -56,7 +62,7 @@ contract HypLSP7Collateral is TokenRouter, ICircuitBreakable {
      * @inheritdoc TokenRouter
      */
     function _transferFromSender(uint256 _amount) internal virtual override returns (bytes memory) {
-        if(_circuitBroken()) { revert  CircuitError(); }
+        if(_frozen()) { revert  FrozenError(); }
         wrappedToken.transfer(msg.sender, address(this), _amount, true, "");
         return bytes(""); // no metadata
     }
@@ -77,51 +83,21 @@ contract HypLSP7Collateral is TokenRouter, ICircuitBreakable {
         virtual
         override
     {
-        if(_circuitBroken()) { revert  CircuitError(); }
+        if(_frozen()) { revert  FrozenError(); }
         wrappedToken.transfer(address(this), _recipient, _amount, true, "");
     }
 
-    function circuitBroken() external view returns(bool) {
-        return _circuitBroken();
+    function frozen() external view returns(bool) {
+        return _frozen();
     }
 
     /**
     This requires the Wrapped Token to have set up the CircuitBreaker in advance
      */
-    function _circuitBroken() internal view returns(bool) {
-        IERC725Y erc725y = IERC725Y(address(wrappedToken));
-        bytes memory data = erc725y.getData(_HypLSP_CIRCUIT_BREAKER_KEY);
-        address cbaddress = address(bytes20(data));
-        ICircuitBreaker circuitBreaker = ICircuitBreaker(cbaddress);
+    function _frozen() internal view returns(bool) {
+        
         // if _address is 0x0 address, this should still return false
-        if(address(circuitBreaker) == address(0)) { return false; }
-        return circuitBreaker.paused();
+        if(address(freezer) == address(0)) { return false; }
+        return freezer.paused();
     }
-
-    /**
-    I'm not convinced all the following overrides is worth introducing ERC725Y just to set
-    a single data point
-    It could be MUCH cleaner just to store the address in a local variable
-    
-    //  */
-    // function _checkOwner() internal view virtual override(OwnableUpgradeable, OwnableUnset) {
-    //     OwnableUpgradeable._checkOwner();
-    // }
-
-    // function renounceOwnership() public virtual override(OwnableUpgradeable, OwnableUnset) {
-    //     OwnableUpgradeable.renounceOwnership();
-    // }
-
-    // function transferOwnership(address newOwner) public virtual override(OwnableUpgradeable, OwnableUnset) {
-    //     OwnableUpgradeable.transferOwnership(newOwner);
-    // }
-
-    // function owner() public view virtual override(OwnableUpgradeable, OwnableUnset) returns (address) {
-    //     return OwnableUpgradeable.owner();
-    // }
-
-    // // modifier onlyOwner() override(OwnableUpgradeable, OwnableUnset) {
-    // //     _checkOwner();
-    // //     _;
-    // // }
 }

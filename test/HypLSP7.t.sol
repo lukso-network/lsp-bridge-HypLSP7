@@ -24,7 +24,7 @@ import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMess
 import { LSP7Mock } from "./Mocks/LSP7Mock.sol";
 import { HypLSP7 } from "../src/HypLSP7.sol";
 import { HypLSP7Collateral } from "../src/HypLSP7Collateral.sol";
-import { CircuitBreaker, CircuitError, _HypLSP_CIRCUIT_BREAKER_KEY } from "../src/ISM/CircuitBreaker.sol";
+import { FreezerUP, FrozenError } from "../src/ISM/FreezerUP.sol";
 
 import { IERC725Y } from "@erc725/smart-contracts/contracts/interfaces/IERC725Y.sol";
 
@@ -60,8 +60,8 @@ abstract contract HypTokenTest is Test {
     TestInterchainGasPaymaster internal igp;
     TestIsm internal testIsm;
 
-    CircuitBreaker internal circuitBreakerLocal;
-    CircuitBreaker internal circuitBreakerRemote;
+    FreezerUP internal circuitBreakerLocal;
+    FreezerUP internal circuitBreakerRemote;
 
     event SentTransferRemote(uint32 indexed destination, bytes32 indexed recipient, uint256 amount);
 
@@ -79,8 +79,8 @@ abstract contract HypTokenTest is Test {
         testIsm = new TestIsm();
 
         vm.startPrank(OWNER);
-        circuitBreakerLocal = new CircuitBreaker();
-        circuitBreakerRemote = new CircuitBreaker();
+        circuitBreakerLocal = new FreezerUP();
+        circuitBreakerRemote = new FreezerUP();
         circuitBreakerLocal.registerCircuitBreaker(CIRCUIT_BREAKER);
         circuitBreakerRemote.registerCircuitBreaker(CIRCUIT_BREAKER);
         vm.stopPrank();
@@ -276,7 +276,7 @@ abstract contract HypTokenTest is Test {
 
         bytes memory _message = _prepareProcessCall(_amount);
 
-        vm.expectRevert(CircuitError.selector);
+        vm.expectRevert(FrozenError.selector);
         remoteMailbox.process("", _message); // we don't need metadata
     }
 
@@ -302,7 +302,7 @@ abstract contract HypTokenTest is Test {
         assertEq(remoteToken.balanceOf(BOB), 0);
         uint256 aliceBalance = localToken.balanceOf(ALICE);
 
-        vm.expectRevert(CircuitError.selector);
+        vm.expectRevert(FrozenError.selector);
         vm.prank(ALICE);
         localToken.transferRemote{ value: _msgValue }(DESTINATION, BOB.addressToBytes32(), _amount);
 
@@ -313,7 +313,7 @@ abstract contract HypTokenTest is Test {
         _circuitBreakerPauseRemote();
 
         bytes memory _message = TokenMessage.format(BOB.addressToBytes32(), _amount, "");
-        vm.expectRevert(CircuitError.selector);
+        vm.expectRevert(FrozenError.selector);
         vm.prank(ALICE);
         remoteMailbox.testHandle(ORIGIN, address(localToken).addressToBytes32(), address(remoteToken).addressToBytes32(), _message);
     }
@@ -324,7 +324,7 @@ abstract contract HypTokenTest is Test {
         assertEq(remoteToken.balanceOf(BOB), 0);
         uint256 aliceBalance = localToken.balanceOf(ALICE);
 
-        vm.expectRevert(CircuitError.selector);
+        vm.expectRevert(FrozenError.selector);
         vm.prank(ALICE);
         remoteToken.transferRemote{ value: _msgValue }(DESTINATION, BOB.addressToBytes32(), _amount);
 
@@ -339,7 +339,7 @@ abstract contract HypTokenTest is Test {
         // remoteToken.transferRemote{ value: _msgValue }(DESTINATION, BOB.addressToBytes32(), _amount);
 
         bytes memory _message = TokenMessage.format(BOB.addressToBytes32(), _amount, "");
-        vm.expectRevert(CircuitError.selector);
+        vm.expectRevert(FrozenError.selector);
         localMailbox.testHandle(DESTINATION, address(remoteToken).addressToBytes32(), address(localToken).addressToBytes32(), _message);
     }
 }
@@ -475,14 +475,6 @@ contract HypLSP7Test is HypTokenTest {
     function testTransferToSyntheticRemotePaused() public {
         _performTransferToSyntheticRemotePaused(REQUIRED_VALUE, TRANSFER_AMOUNT);
     }
-
-    // function testTransferToCollateralLocalPaused() public {
-    //     _performTransferToCollateralLocalPaused(REQUIRED_VALUE, TRANSFER_AMOUNT);
-    // }
-
-    // function testTransferToCollateralRemotePaused() public {
-    //     _performTransferToCollateralRemotePaused(REQUIRED_VALUE, TRANSFER_AMOUNT);
-    // }
 }
 
 contract HypLSP7CollateralTest is HypTokenTest {
@@ -497,20 +489,17 @@ contract HypLSP7CollateralTest is HypTokenTest {
 
         lsp7Collateral = HypLSP7Collateral(address(localToken));
 
-        lsp7Collateral.initialize(address(noopHook), address(0), OWNER);
+        lsp7Collateral.initialize(address(noopHook), address(0), OWNER, address(circuitBreakerLocal));
 
         vm.prank(OWNER);
         lsp7Collateral.enrollRemoteRouter(DESTINATION, address(remoteToken).addressToBytes32());
         
-        vm.prank(address(this));
-        primaryToken.setData(_HypLSP_CIRCUIT_BREAKER_KEY, abi.encodePacked(address(circuitBreakerLocal)));
         
         primaryToken.transfer(address(this), address(localToken), 1000e18, true, "");
 
         primaryToken.transfer(address(this), ALICE, 1000e18, true, "");
 
         _enrollRemoteTokenRouter();
-        // _setupPausableIsm();
     }
 
     function test_constructor_revert_ifInvalidToken() public {
@@ -567,7 +556,7 @@ contract HypLSP7CollateralTest is HypTokenTest {
     function testTransferToCollateralRemotePaused() public {
         vm.prank(ALICE);
         primaryToken.authorizeOperator(address(localToken), TRANSFER_AMOUNT, "");
-        _performTransferToSyntheticLocalPaused(REQUIRED_VALUE, TRANSFER_AMOUNT);
+        _performTransferToCollateralRemotePaused(REQUIRED_VALUE, TRANSFER_AMOUNT);
     }
 
     function testTransferToCollateralLocalPaused() public {
@@ -575,14 +564,12 @@ contract HypLSP7CollateralTest is HypTokenTest {
     }
 
     function testNoCircuitBreakerDoesNotCauseRevert() public {
-        vm.prank(address(this));
-        primaryToken.setData(_HypLSP_CIRCUIT_BREAKER_KEY, abi.encodePacked(address(0)));
-
+        // vm.prank(address(this));
+        HypLSP7Collateral lsp7CollateralNoFreezer = new HypLSP7Collateral(address(localToken), address(localMailbox));
+        lsp7CollateralNoFreezer.initialize(address(noopHook), address(0), OWNER, address(0));
+        
         bytes memory _message = TokenMessage.format(BOB.addressToBytes32(), TRANSFER_AMOUNT, "");
         
         localMailbox.testHandle(DESTINATION, address(remoteToken).addressToBytes32(), address(localToken).addressToBytes32(), _message);
-
-        vm.prank(address(this));
-        primaryToken.setData(_HypLSP_CIRCUIT_BREAKER_KEY, abi.encodePacked(CIRCUIT_BREAKER));
     }
 }

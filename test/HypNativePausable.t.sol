@@ -21,7 +21,7 @@ import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMess
 // LUKSO
 import { HypLSP7 } from "../src/HypLSP7.sol";
 import { HypNativePausable } from "../src/HypNativePausable.sol";
-import { CircuitBreaker, CircuitError } from "../src/ISM/CircuitBreaker.sol";
+import { FreezerUP, FrozenError } from "../src/ISM/FreezerUP.sol";
 
 abstract contract HypTokenTest is Test {
     using TypeCasts for address;
@@ -45,7 +45,8 @@ abstract contract HypTokenTest is Test {
 
     HypNativePausable internal nativeToken;
     HypLSP7 internal remoteToken;
-    CircuitBreaker internal circuitBreakerRemote;
+    FreezerUP internal freezerLocal;
+    FreezerUP internal freezerRemote;
     TestMailbox internal localMailbox;
     TestMailbox internal remoteMailbox;
     TestPostDispatchHook internal noopHook;
@@ -59,8 +60,6 @@ abstract contract HypTokenTest is Test {
         localMailbox = new TestMailbox(ORIGIN);
         remoteMailbox = new TestMailbox(DESTINATION);
 
-        // primaryToken = new LSP7Mock(NAME, SYMBOL, address(this), TOTAL_SUPPLY);
-
         noopHook = new TestPostDispatchHook();
         localMailbox.setDefaultHook(address(noopHook));
         localMailbox.setRequiredHook(address(noopHook));
@@ -71,15 +70,16 @@ abstract contract HypTokenTest is Test {
         localToken.initialize(address(noopHook), address(0), OWNER);
         nativeToken = HypNativePausable(payable(address(localToken)));
         vm.prank(OWNER);
-        nativeToken.registerCircuitBreaker(CIRCUIT_BREAKER);
-        // nativeToken.initialize(address(noopHook), address(0), OWNER);
+        nativeToken.setFreezer(address(freezerLocal));
 
         vm.startPrank(OWNER);
-        circuitBreakerRemote = new CircuitBreaker();
-        circuitBreakerRemote.registerCircuitBreaker(CIRCUIT_BREAKER);
+        freezerLocal = new FreezerUP();
+        freezerLocal.registerCircuitBreaker(CIRCUIT_BREAKER);
+        freezerRemote = new FreezerUP();
+        freezerRemote.registerCircuitBreaker(CIRCUIT_BREAKER);
         vm.stopPrank();
 
-        bytes memory cbaddress = abi.encodePacked(address(circuitBreakerRemote).addressToBytes32());
+        bytes memory cbaddress = abi.encodePacked(address(freezerRemote).addressToBytes32());
 
         remoteToken = new HypLSP7(DECIMALS, address(remoteMailbox));
         remoteToken.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, SAMPLE_METADATA_BYTES, cbaddress);
@@ -97,35 +97,35 @@ abstract contract HypTokenTest is Test {
     }
 
     function _circuitBreakerPauseLocal() internal {
-        if (!nativeToken.paused()) {
+        if (!freezerLocal.paused()) {
             vm.prank(CIRCUIT_BREAKER);
-            nativeToken.pause();
+            freezerLocal.pause();
         }
-        assertEq(nativeToken.paused(), true);
+        assertEq(freezerLocal.paused(), true);
     }
 
     function _circuitBreakerUnpauseLocal() internal {
-        if (nativeToken.paused()) {
+        if (freezerLocal.paused()) {
             vm.prank(OWNER);
-            nativeToken.unpause();
+            freezerLocal.unpause();
         }
-        assertEq(nativeToken.paused(), false);
+        assertEq(freezerLocal.paused(), false);
     }
 
     function _circuitBreakerPauseRemote() internal {
-        if (!circuitBreakerRemote.paused()) {
+        if (!freezerRemote.paused()) {
             vm.prank(CIRCUIT_BREAKER);
-            circuitBreakerRemote.pause();
+            freezerRemote.pause();
         }
-        assertEq(circuitBreakerRemote.paused(), true);
+        assertEq(freezerRemote.paused(), true);
     }
 
     function _circuitBreakerUnpauseRemote() internal {
-        if (circuitBreakerRemote.paused()) {
+        if (freezerRemote.paused()) {
             vm.prank(OWNER);
-            circuitBreakerRemote.unpause();
+            freezerRemote.unpause();
         }
-        assertEq(circuitBreakerRemote.paused(), false);
+        assertEq(freezerRemote.paused(), false);
     }
 
     function _expectRemoteBalance(address _user, uint256 _balance) internal view {
@@ -332,7 +332,7 @@ contract HypNativeTest is HypTokenTest {
 
         _circuitBreakerPauseRemote();
         vm.prank(ALICE);
-        vm.expectRevert(CircuitError.selector);
+        vm.expectRevert(FrozenError.selector);
         remoteToken.transferRemote(ORIGIN, BOB.addressToBytes32(), TRANSFER_AMOUNT);
     }
 
@@ -373,5 +373,15 @@ contract HypNativeTest is HypTokenTest {
 
         remoteMailbox.process("", _message); // we don't need metadata
         assertEq(remoteToken.balanceOf(BOB), TRANSFER_AMOUNT);
+    }
+
+    function testNoCircuitBreakerDoesNotCauseRevert() public {
+        
+        vm.prank(OWNER);
+        nativeToken.setFreezer(address(0));
+
+        bytes memory _message = TokenMessage.format(BOB.addressToBytes32(), TRANSFER_AMOUNT, "");
+        
+        localMailbox.testHandle(DESTINATION, address(remoteToken).addressToBytes32(), address(nativeToken).addressToBytes32(), _message);
     }
 }

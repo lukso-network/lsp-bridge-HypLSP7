@@ -6,12 +6,15 @@ import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRoute
 import { ILSP8IdentifiableDigitalAsset as ILSP8 } from
     "@lukso/lsp8-contracts/contracts/ILSP8IdentifiableDigitalAsset.sol";
 
+import { IFreezer, IFreezeable, FrozenError } from "./ISM/FreezerUP.sol";
+
 /**
  * @title Hyperlane LSP8 Token Collateral that wraps an existing LSP8 with remote transfer functionality.
  */
-contract HypLSP8Collateral is TokenRouter {
+contract HypLSP8Collateral is TokenRouter, IFreezeable {
     // solhint-disable-next-line immutable-vars-naming
     ILSP8 public immutable wrappedToken;
+    IFreezer freezer;
 
     /**
      * @notice Constructor
@@ -22,6 +25,14 @@ contract HypLSP8Collateral is TokenRouter {
         wrappedToken = ILSP8(lsp8_);
     }
 
+    function initialize(address _hook, address _interchainSecurityModule, address _owner) public virtual {
+        _initialize(_hook, _interchainSecurityModule, _owner, address(0));
+    }
+
+    function initialize(address _hook, address _interchainSecurityModule, address _owner, address _freezer) public virtual {
+        _initialize(_hook, _interchainSecurityModule, _owner, _freezer);
+    }
+
     /**
      * @notice Initializes the Hyperlane router
      *
@@ -29,8 +40,9 @@ contract HypLSP8Collateral is TokenRouter {
      * @param _interchainSecurityModule The interchain security module contract.
      * @param _owner The this contract.
      */
-    function initialize(address _hook, address _interchainSecurityModule, address _owner) public virtual initializer {
+    function _initialize(address _hook, address _interchainSecurityModule, address _owner, address _freezer) internal virtual initializer {
         _MailboxClient_initialize(_hook, _interchainSecurityModule, _owner);
+        freezer = IFreezer(_freezer);
     }
 
     function ownerOf(uint256 _tokenId) external view returns (address) {
@@ -53,6 +65,7 @@ contract HypLSP8Collateral is TokenRouter {
      * @inheritdoc TokenRouter
      */
     function _transferFromSender(uint256 _tokenId) internal virtual override returns (bytes memory) {
+        if(_frozen()) { revert  FrozenError(); }
         wrappedToken.transfer(msg.sender, address(this), bytes32(_tokenId), true, "");
         return bytes(""); // no metadata
     }
@@ -72,6 +85,20 @@ contract HypLSP8Collateral is TokenRouter {
         internal
         override
     {
+        if(_frozen()) { revert  FrozenError(); }
         wrappedToken.transfer(address(this), _recipient, bytes32(_tokenId), true, "");
+    }
+
+    function frozen() external view returns(bool) {
+        return _frozen();
+    }
+
+    /**
+    This requires the Wrapped Token to have set up the Freezer in advance
+     */
+    function _frozen() internal view returns(bool) {
+        // if _address is 0x0 address, this should still return false
+        if(address(freezer) == address(0)) { return false; }
+        return freezer.paused();
     }
 }

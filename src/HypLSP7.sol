@@ -8,7 +8,7 @@ import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 
 // constants
 import { _LSP4_TOKEN_TYPE_TOKEN, _LSP4_METADATA_KEY } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
-import { ICircuitBreaker, ICircuitBreakable, _HypLSP_CIRCUIT_BREAKER_KEY, CircuitError } from "./ISM/CircuitBreaker.sol";
+import { IFreezer, IFreezeable, FrozenError } from "./ISM/FreezerUP.sol";
 
 /**
  * @title LSP7 version of the Hyperlane ERC20 Token Router
@@ -17,10 +17,11 @@ import { ICircuitBreaker, ICircuitBreakable, _HypLSP_CIRCUIT_BREAKER_KEY, Circui
  * https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/main/solidity/contracts/token/HypERC20.sol
  * - LSP7 standard: https://github.com/lukso-network/LIPs/blob/main/LSPs/LSP-7-DigitalAsset.md
  */
-contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter, ICircuitBreakable {
+contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter, IFreezeable {
     using TypeCasts for bytes32;
     // solhint-disable-next-line immutable-vars-naming
     uint8 private immutable _decimals;
+    IFreezer freezer;
 
     constructor(uint8 __decimals, address _mailbox) TokenRouter(_mailbox) {
         _decimals = __decimals;
@@ -48,12 +49,12 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter, ICircuitBreakable
         address _interchainSecurityModule,
         address _owner,
         bytes memory _lsp4Metadata,
-        bytes memory _circuitBreaker
+        bytes memory _freezer
     )
         external
         
     {   
-        _initialize(_totalSupply, _name, _symbol, _hook, _interchainSecurityModule, _owner, _lsp4Metadata, _circuitBreaker);
+        _initialize(_totalSupply, _name, _symbol, _hook, _interchainSecurityModule, _owner, _lsp4Metadata, _freezer);
     }
     /**
      * @notice Initializes the Hyperlane router, LSP7 metadata, and mints initial supply to deployer.
@@ -76,7 +77,7 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter, ICircuitBreakable
         address _interchainSecurityModule,
         address _owner,
         bytes memory _lsp4Metadata,
-        bytes memory _circuitBreaker
+        bytes memory _freezer
     )
         internal
         initializer
@@ -95,7 +96,7 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter, ICircuitBreakable
             _setData(_LSP4_METADATA_KEY, _lsp4Metadata);
         }
 
-        _setData(_HypLSP_CIRCUIT_BREAKER_KEY, _circuitBreaker);
+        freezer = IFreezer(bytes32(_freezer).bytes32ToAddress());
 
         // mints initial supply to deployer
         LSP7DigitalAssetInitAbstract._mint({ to: msg.sender, amount: _totalSupply, force: true, data: "" });
@@ -126,7 +127,7 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter, ICircuitBreakable
      * @inheritdoc TokenRouter
      */
     function _transferFromSender(uint256 _amount) internal override returns (bytes memory) {
-        if(!_circuitBroken()) { revert  CircuitError(); }
+        if(_frozen()) { revert  FrozenError(); }
         LSP7DigitalAssetInitAbstract._burn(msg.sender, _amount, "");
         return bytes(""); // no metadata
     }
@@ -147,28 +148,18 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter, ICircuitBreakable
         virtual
         override
     {
-        if(!_circuitBroken()) { revert  CircuitError(); }
+        if(_frozen()) { revert  FrozenError(); }
         LSP7DigitalAssetInitAbstract._mint(_recipient, _amount, true, "");
     }
 
-    /**
-    {
-        "name": "HypLSP_CIRCUIT_BREAKER",
-        "key": "0x47ed5ddfcef19059e8642d926caadf37ff4ded3fa59cae8ed58d844bbeac9f4d",
-        "keyType": "Singleton",
-        "valueType": "address",
-        "valueContent": "String"
-    }
-     */
-    function circuitBroken() external view returns(bool) {
-        return _circuitBroken();
+    function frozen() external view returns(bool) {
+        return _frozen();
     }
 
-    function _circuitBroken() internal view returns(bool) {
-        address _address =  address(bytes20(_getData(_HypLSP_CIRCUIT_BREAKER_KEY)));
-        ICircuitBreaker circuitBreaker = ICircuitBreaker(_address);
-        // if _address is 0x0 address, this should still return true?
-        return !circuitBreaker.paused();
+    function _frozen() internal view returns(bool) {
+        // if _address is 0x0 address, this should still return false?
+        if(address(freezer) == address(0)) { return false; }
+        return freezer.paused();
     }
     
 }
