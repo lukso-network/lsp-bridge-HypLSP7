@@ -31,6 +31,7 @@ import { IERC725Y } from "@erc725/smart-contracts/contracts/interfaces/IERC725Y.
 import { _INTERFACEID_LSP0 } from "@lukso/lsp0-contracts/contracts/LSP0Constants.sol";
 import {
     _LSP4_TOKEN_TYPE_TOKEN,
+    _LSP4_SUPPORTED_STANDARDS_KEY,
     _LSP4_TOKEN_NAME_KEY,
     _LSP4_TOKEN_SYMBOL_KEY,
     _LSP4_TOKEN_TYPE_KEY,
@@ -445,13 +446,13 @@ contract HypLSP7Test is HypTokenTest {
         );
     }
 
-    function testNoDataChangedEventEmittedIfNoMetadataBytesProvided() public {
+    function testNoDataChangedEventEmittedIfNoDataKeysValuesProvided() public {
         // Capture logs before the transaction
         vm.recordLogs();
 
         HypLSP7 someHypLSP7Token = new HypLSP7(DECIMALS, address(localMailbox));
 
-        // initialize token without metadata bytes
+        // initialize token without setting any additional data key / value pairs
         vm.prank(OWNER);
         bytes32[] memory dataKeys = new bytes32[](0);
         bytes[] memory dataValues = new bytes[](0);
@@ -461,15 +462,22 @@ contract HypLSP7Test is HypTokenTest {
 
         // Search all the logs
         Vm.Log[] memory emittedEvents = vm.getRecordedLogs();
-        for (uint256 i = 0; i < emittedEvents.length; i++) {
-            // Check that no `DataChanged` event was emitted for the `LSP4Metadata` data key
-            bool hasUpdatedLSP4MetadataKey = bytes32(emittedEvents[i].topics[0]) == IERC725Y.DataChanged.selector
-                && emittedEvents[i].topics[1] == _LSP4_METADATA_KEY;
 
-            assertFalse(
-                hasUpdatedLSP4MetadataKey,
-                "DataChanged event should not have been emitted because no metadata bytes were provided"
-            );
+        for (uint256 i = 0; i < emittedEvents.length; i++) {
+            // Check that no `DataChanged` event was emitted
+            // except for the ones set by `LSP4DigitalAssetMetadata` contract in the inheritance
+            if (bytes32(emittedEvents[i].topics[0]) == IERC725Y.DataChanged.selector) {
+                bool isLSP4SupportedStandardUpdate = emittedEvents[i].topics[1] == _LSP4_SUPPORTED_STANDARDS_KEY;
+                bool isLSP4TokenNameUpdate = emittedEvents[i].topics[1] == _LSP4_TOKEN_NAME_KEY;
+                bool isLSP4TokenSymbolUpdate = emittedEvents[i].topics[1] == _LSP4_TOKEN_SYMBOL_KEY;
+                bool isLSP4TokenTypeUpdate = emittedEvents[i].topics[1] == _LSP4_TOKEN_TYPE_KEY;
+
+                assertTrue(
+                    isLSP4SupportedStandardUpdate || isLSP4TokenNameUpdate || isLSP4TokenSymbolUpdate
+                        || isLSP4TokenTypeUpdate,
+                    "No DataChanged event should have been emitted except for the data keys set in `LSP4DigitalAssetMetadata` parent contract"
+                );
+            }
         }
     }
 
