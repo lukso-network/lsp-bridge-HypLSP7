@@ -11,6 +11,10 @@ contract HypNativePausable is HypNative, IFreezeable {
 
     constructor(address mailbox) HypNative(mailbox) { }
 
+    /**
+     * HypNative `initialize()` is not marked as virtual so we cannot override it to provide 
+     * an option for initializing a Freezer contract.
+     */
     function setFreezer(address _freezer) public onlyOwner {
         freezer = IFreezer(_freezer);
     }
