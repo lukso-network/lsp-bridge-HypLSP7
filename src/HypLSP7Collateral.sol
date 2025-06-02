@@ -14,6 +14,7 @@ import { IFreezer, IFreezeable, FrozenError } from "./ISM/FreezerUP.sol";
 /**
  * @title Hyperlane + LUKSO LSP7 Token Collateral that wraps an existing LSP7 with remote transfer functionality.
  */
+
 contract HypLSP7Collateral is TokenRouter, IFreezeable {
     // solhint-disable-next-line immutable-vars-naming
     ILSP7 public immutable wrappedToken;
@@ -34,7 +35,15 @@ contract HypLSP7Collateral is TokenRouter, IFreezeable {
         _initialize(_hook, _interchainSecurityModule, _owner, address(0));
     }
 
-    function initialize(address _hook, address _interchainSecurityModule, address _owner, address _freezer) public virtual {
+    function initialize(
+        address _hook,
+        address _interchainSecurityModule,
+        address _owner,
+        address _freezer
+    )
+        public
+        virtual
+    {
         _initialize(_hook, _interchainSecurityModule, _owner, _freezer);
     }
 
@@ -45,7 +54,16 @@ contract HypLSP7Collateral is TokenRouter, IFreezeable {
      * @param _interchainSecurityModule The interchain security module contract.
      * @param _owner The this contract.
      */
-    function _initialize(address _hook, address _interchainSecurityModule, address _owner, address _freezer) internal virtual initializer {
+    function _initialize(
+        address _hook,
+        address _interchainSecurityModule,
+        address _owner,
+        address _freezer
+    )
+        internal
+        virtual
+        initializer
+    {
         _MailboxClient_initialize(_hook, _interchainSecurityModule, _owner);
         freezer = IFreezer(_freezer);
     }
@@ -62,7 +80,7 @@ contract HypLSP7Collateral is TokenRouter, IFreezeable {
      * @inheritdoc TokenRouter
      */
     function _transferFromSender(uint256 _amount) internal virtual override returns (bytes memory) {
-        if(_frozen()) { revert  FrozenError(); }
+        if (_frozen()) revert FrozenError();
         wrappedToken.transfer(msg.sender, address(this), _amount, true, "");
         return bytes(""); // no metadata
     }
@@ -83,21 +101,20 @@ contract HypLSP7Collateral is TokenRouter, IFreezeable {
         virtual
         override
     {
-        if(_frozen()) { revert  FrozenError(); }
+        if (_frozen()) revert FrozenError();
         wrappedToken.transfer(address(this), _recipient, _amount, true, "");
     }
 
-    function frozen() external view returns(bool) {
+    function frozen() external view returns (bool) {
         return _frozen();
     }
 
     /**
-    This requires the Wrapped Token to have set up the CircuitBreaker in advance
+     * This requires the Wrapped Token to have set up the CircuitBreaker in advance
      */
-    function _frozen() internal view returns(bool) {
-        
+    function _frozen() internal view returns (bool) {
         // if _address is 0x0 address, this should still return false
-        if(address(freezer) == address(0)) { return false; }
+        if (address(freezer) == address(0)) return false;
         return freezer.paused();
     }
 }

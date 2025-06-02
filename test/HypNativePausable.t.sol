@@ -82,7 +82,9 @@ abstract contract HypTokenTest is Test {
         bytes memory cbaddress = abi.encodePacked(address(freezerRemote).addressToBytes32());
 
         remoteToken = new HypLSP7(DECIMALS, address(remoteMailbox));
-        remoteToken.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, SAMPLE_METADATA_BYTES, cbaddress);
+        remoteToken.initialize(
+            TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, SAMPLE_METADATA_BYTES, cbaddress
+        );
 
         igp = new TestInterchainGasPaymaster();
 
@@ -322,13 +324,17 @@ contract HypNativeTest is HypTokenTest {
         bytes memory _tokenMessage = TokenMessage.format(BOB.addressToBytes32(), TRANSFER_AMOUNT, "");
 
         vm.expectRevert("Pausable: paused");
-        localMailbox.testHandle(DESTINATION, address(remoteToken).addressToBytes32(), address(nativeToken).addressToBytes32(), _tokenMessage); // we don't need metadata
+        localMailbox.testHandle(
+            DESTINATION, address(remoteToken).addressToBytes32(), address(nativeToken).addressToBytes32(), _tokenMessage
+        ); // we don't need metadata
     }
 
     function testPerformTransferToNativeRemotePaused() internal {
-        // first make sure there is synthetic tokens available to ALICE 
+        // first make sure there is synthetic tokens available to ALICE
         bytes memory _message = TokenMessage.format(ALICE.addressToBytes32(), TRANSFER_AMOUNT, "");
-        remoteMailbox.testHandle(ORIGIN, address(nativeToken).addressToBytes32(), address(remoteToken).addressToBytes32(), _message );
+        remoteMailbox.testHandle(
+            ORIGIN, address(nativeToken).addressToBytes32(), address(remoteToken).addressToBytes32(), _message
+        );
 
         _circuitBreakerPauseRemote();
         vm.prank(ALICE);
@@ -353,7 +359,9 @@ contract HypNativeTest is HypTokenTest {
         bytes memory _tokenMessage = TokenMessage.format(BOB.addressToBytes32(), TRANSFER_AMOUNT, "");
 
         vm.expectRevert("Pausable: paused");
-        remoteMailbox.testHandle(ORIGIN, address(nativeToken).addressToBytes32(), address(remoteToken).addressToBytes32(), _tokenMessage); // we don't need metadata
+        remoteMailbox.testHandle(
+            ORIGIN, address(nativeToken).addressToBytes32(), address(remoteToken).addressToBytes32(), _tokenMessage
+        ); // we don't need metadata
     }
 
     function testPerformRemoteTransferNoPause() internal {
@@ -376,12 +384,13 @@ contract HypNativeTest is HypTokenTest {
     }
 
     function testNoCircuitBreakerDoesNotCauseRevert() public {
-        
         vm.prank(OWNER);
         nativeToken.setFreezer(address(0));
 
         bytes memory _message = TokenMessage.format(BOB.addressToBytes32(), TRANSFER_AMOUNT, "");
-        
-        localMailbox.testHandle(DESTINATION, address(remoteToken).addressToBytes32(), address(nativeToken).addressToBytes32(), _message);
+
+        localMailbox.testHandle(
+            DESTINATION, address(remoteToken).addressToBytes32(), address(nativeToken).addressToBytes32(), _message
+        );
     }
 }

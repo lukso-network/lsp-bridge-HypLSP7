@@ -80,11 +80,12 @@ abstract contract HypTokenTest is Test {
         remoteToken = new HypLSP8(address(remoteMailbox));
         bytes memory cbaddress = abi.encodePacked(address(circuitBreakerRemote).addressToBytes32());
         vm.prank(OWNER);
-        remoteToken.initialize(0, NAME, SYMBOL, address(noopHook), address(testIsm), OWNER, SAMPLE_METADATA_BYTES, cbaddress);
+        remoteToken.initialize(
+            0, NAME, SYMBOL, address(noopHook), address(testIsm), OWNER, SAMPLE_METADATA_BYTES, cbaddress
+        );
         vm.prank(OWNER);
         remoteToken.enrollRemoteRouter(ORIGIN, address(localToken).addressToBytes32());
     }
-
 
     function _circuitBreakerPauseLocal() internal {
         if (!circuitBreakerLocal.paused()) {
@@ -351,7 +352,9 @@ contract HypLSP8Test is HypTokenTest {
         bytes memory _message = TokenMessage.format(BOB.addressToBytes32(), uint256(TOKEN_ID), "");
         vm.expectRevert(FrozenError.selector);
         vm.prank(ALICE);
-        remoteMailbox.testHandle(ORIGIN, address(localToken).addressToBytes32(), address(remoteToken).addressToBytes32(), _message);
+        remoteMailbox.testHandle(
+            ORIGIN, address(localToken).addressToBytes32(), address(remoteToken).addressToBytes32(), _message
+        );
     }
 }
 
@@ -433,7 +436,9 @@ contract HypLSP8CollateralTest is HypTokenTest {
 
         bytes memory _message = TokenMessage.format(BOB.addressToBytes32(), uint256(TOKEN_ID), "");
         vm.expectRevert(FrozenError.selector);
-        localMailbox.testHandle(DESTINATION, address(remoteToken).addressToBytes32(), address(localToken).addressToBytes32(), _message);
+        localMailbox.testHandle(
+            DESTINATION, address(remoteToken).addressToBytes32(), address(localToken).addressToBytes32(), _message
+        );
     }
 
     function testTransferToCollateralRemotePaused() public {
@@ -451,19 +456,23 @@ contract HypLSP8CollateralTest is HypTokenTest {
 
     function testNoLSP8CircuitBreakerDoesNotCauseRevert() public {
         // vm.prank(address(this));
-        HypLSP8Collateral lsp8CollateralNoFreezer = new HypLSP8Collateral(address(localPrimaryToken), address(localMailbox));
+        HypLSP8Collateral lsp8CollateralNoFreezer =
+            new HypLSP8Collateral(address(localPrimaryToken), address(localMailbox));
         lsp8CollateralNoFreezer.initialize(address(noopHook), address(testIsm), OWNER, address(0));
 
         vm.prank(OWNER);
         lsp8CollateralNoFreezer.enrollRemoteRouter(DESTINATION, address(remoteToken).addressToBytes32());
-        
 
         bytes32 TOKEN_ID_2 = hex"02";
         localPrimaryToken.mint(address(lsp8CollateralNoFreezer), TOKEN_ID_2, true, "");
-        
+
         bytes memory _message = TokenMessage.format(BOB.addressToBytes32(), uint256(TOKEN_ID_2), "");
-        
-        localMailbox.testHandle(DESTINATION, address(remoteToken).addressToBytes32(), address(lsp8CollateralNoFreezer).addressToBytes32(), _message);
+
+        localMailbox.testHandle(
+            DESTINATION,
+            address(remoteToken).addressToBytes32(),
+            address(lsp8CollateralNoFreezer).addressToBytes32(),
+            _message
+        );
     }
-    
 }

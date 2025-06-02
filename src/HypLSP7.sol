@@ -19,8 +19,10 @@ import { IFreezer, IFreezeable, FrozenError } from "./ISM/FreezerUP.sol";
  */
 contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter, IFreezeable {
     using TypeCasts for bytes32;
+
     // solhint-disable-next-line immutable-vars-naming
     uint8 private immutable _decimals;
+
     IFreezer freezer;
 
     constructor(uint8 __decimals, address _mailbox) TokenRouter(_mailbox) {
@@ -37,7 +39,7 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter, IFreezeable {
         bytes memory _lsp4Metadata
     )
         external
-    {   
+    {
         _initialize(_totalSupply, _name, _symbol, _hook, _interchainSecurityModule, _owner, _lsp4Metadata, hex"00");
     }
 
@@ -52,8 +54,7 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter, IFreezeable {
         bytes memory _freezer
     )
         external
-        
-    {   
+    {
         _initialize(_totalSupply, _name, _symbol, _hook, _interchainSecurityModule, _owner, _lsp4Metadata, _freezer);
     }
     /**
@@ -69,6 +70,7 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter, IFreezeable {
      * Note that a callback to the `universalReceiver(...)` function on the `msg.sender` contract address
      * will be triggered, even if the `_totalSupply` parameter passed is 0.
      */
+
     function _initialize(
         uint256 _totalSupply,
         string memory _name,
@@ -127,7 +129,7 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter, IFreezeable {
      * @inheritdoc TokenRouter
      */
     function _transferFromSender(uint256 _amount) internal override returns (bytes memory) {
-        if(_frozen()) { revert  FrozenError(); }
+        if (_frozen()) revert FrozenError();
         LSP7DigitalAssetInitAbstract._burn(msg.sender, _amount, "");
         return bytes(""); // no metadata
     }
@@ -148,19 +150,17 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter, IFreezeable {
         virtual
         override
     {
-        if(_frozen()) { revert  FrozenError(); }
+        if (_frozen()) revert FrozenError();
         LSP7DigitalAssetInitAbstract._mint(_recipient, _amount, true, "");
     }
 
-    function frozen() external view returns(bool) {
+    function frozen() external view returns (bool) {
         return _frozen();
     }
 
-    function _frozen() internal view returns(bool) {
+    function _frozen() internal view returns (bool) {
         // if _address is 0x0 address, this should still return false?
-        if(address(freezer) == address(0)) { return false; }
+        if (address(freezer) == address(0)) return false;
         return freezer.paused();
     }
-    
 }
-

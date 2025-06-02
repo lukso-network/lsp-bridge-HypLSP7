@@ -15,9 +15,7 @@ abstract contract CircuitBreakerAdapter is AccessControlUpgradeable, OwnableUpgr
     // The role given only to Circuit Breaker
     bytes32 public constant CIRCUIT_BREAKER_ROLE = keccak256("CIRCUIT_BREAKER_ROLE");
 
-    constructor()  {
-        //  __Pausable_init();
-    }
+    constructor() { }
 
     modifier isCircuitBreakerOrOwner() {
         if (!hasRole(CIRCUIT_BREAKER_ROLE, msg.sender) && msg.sender != owner()) {

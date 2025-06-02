@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity >=0.8.0;
+
 /*
  __         __  __     __  __     ______     ______
 /\ \       /\ \/\ \   /\ \/ /    /\  ___\   /\  __ \
@@ -24,7 +25,7 @@ error NotCircuitBreakerOrOwner();
 error FrozenError();
 
 interface IFreezeable {
-    function frozen() external view  returns (bool);
+    function frozen() external view returns (bool);
 }
 
 interface IFreezer {
@@ -52,7 +53,7 @@ contract FreezerUP is AccessControl, Ownable, Pausable {
 
     function unregisterCircuitBreaker(address _address) external onlyOwner {
         _revokeRole(CIRCUIT_BREAKER_ROLE, _address);
-        emit UnregisteredCircuitBreaker( _address);
+        emit UnregisteredCircuitBreaker(_address);
     }
 
     function pause() external isCircuitBreakerOrOwner {

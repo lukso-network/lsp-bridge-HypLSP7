@@ -29,7 +29,15 @@ contract HypLSP8Collateral is TokenRouter, IFreezeable {
         _initialize(_hook, _interchainSecurityModule, _owner, address(0));
     }
 
-    function initialize(address _hook, address _interchainSecurityModule, address _owner, address _freezer) public virtual {
+    function initialize(
+        address _hook,
+        address _interchainSecurityModule,
+        address _owner,
+        address _freezer
+    )
+        public
+        virtual
+    {
         _initialize(_hook, _interchainSecurityModule, _owner, _freezer);
     }
 
@@ -40,7 +48,16 @@ contract HypLSP8Collateral is TokenRouter, IFreezeable {
      * @param _interchainSecurityModule The interchain security module contract.
      * @param _owner The this contract.
      */
-    function _initialize(address _hook, address _interchainSecurityModule, address _owner, address _freezer) internal virtual initializer {
+    function _initialize(
+        address _hook,
+        address _interchainSecurityModule,
+        address _owner,
+        address _freezer
+    )
+        internal
+        virtual
+        initializer
+    {
         _MailboxClient_initialize(_hook, _interchainSecurityModule, _owner);
         freezer = IFreezer(_freezer);
     }
@@ -65,7 +82,7 @@ contract HypLSP8Collateral is TokenRouter, IFreezeable {
      * @inheritdoc TokenRouter
      */
     function _transferFromSender(uint256 _tokenId) internal virtual override returns (bytes memory) {
-        if(_frozen()) { revert  FrozenError(); }
+        if (_frozen()) revert FrozenError();
         wrappedToken.transfer(msg.sender, address(this), bytes32(_tokenId), true, "");
         return bytes(""); // no metadata
     }
@@ -85,20 +102,20 @@ contract HypLSP8Collateral is TokenRouter, IFreezeable {
         internal
         override
     {
-        if(_frozen()) { revert  FrozenError(); }
+        if (_frozen()) revert FrozenError();
         wrappedToken.transfer(address(this), _recipient, bytes32(_tokenId), true, "");
     }
 
-    function frozen() external view returns(bool) {
+    function frozen() external view returns (bool) {
         return _frozen();
     }
 
     /**
-    This requires the Wrapped Token to have set up the Freezer in advance
+     * This requires the Wrapped Token to have set up the Freezer in advance
      */
-    function _frozen() internal view returns(bool) {
+    function _frozen() internal view returns (bool) {
         // if _address is 0x0 address, this should still return false
-        if(address(freezer) == address(0)) { return false; }
+        if (address(freezer) == address(0)) return false;
         return freezer.paused();
     }
 }
