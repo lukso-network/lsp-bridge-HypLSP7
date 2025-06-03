@@ -177,7 +177,7 @@ abstract contract HypTokenTest is Test {
         return abi.encodePacked(_version, _nonce, _originDomain, _sender, _destinationDomain, _recipient, _messageBody);
     }
 
-    function _prepareProcessCall(bytes32 _tokenId) internal returns (bytes memory) {
+    function _prepareProcessCall(bytes32 _tokenId) internal view returns (bytes memory) {
         // ============== WTF IS THIS ? ===========================
         // To test whether the ISM is Paused we must call
         // Mailbox.process(_metadata, _message) on the destination side
