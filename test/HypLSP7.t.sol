@@ -241,13 +241,13 @@ abstract contract HypTokenTest is Test {
     function testBenchmark_overheadGasUsage() public {
         vm.prank(address(localMailbox));
 
-        uint256 gasBefore = gasleft();
+        // uint256 gasBefore = gasleft();
         localToken.handle(
             DESTINATION,
             address(remoteToken).addressToBytes32(),
             abi.encodePacked(BOB.addressToBytes32(), TRANSFER_AMOUNT)
         );
-        uint256 gasAfter = gasleft();
+        // uint256 gasAfter = gasleft();
     }
 
     // This is a work around for creating a message to Mailbox.process()
@@ -269,7 +269,7 @@ abstract contract HypTokenTest is Test {
         return abi.encodePacked(_version, _nonce, _originDomain, _sender, _destinationDomain, _recipient, _messageBody);
     }
 
-    function _prepareProcessCall(uint256 _amount) internal returns (bytes memory) {
+    function _prepareProcessCall(uint256 _amount) internal view returns (bytes memory) {
         // ============== WTF IS THIS ? ===========================
         // To test whether the ISM is Paused we must call
         // Mailbox.process(_metadata, _message) on the destination side
@@ -595,8 +595,6 @@ contract HypLSP7CollateralTest is HypTokenTest {
     }
 
     function testRemoteTransferIsmCollateral_paused() public {
-        uint256 balanceBefore = localToken.balanceOf(ALICE);
-
         vm.prank(ALICE);
         primaryToken.authorizeOperator(address(localToken), TRANSFER_AMOUNT, "");
         _performRemoteTransferPauseRevert(REQUIRED_VALUE, TRANSFER_AMOUNT);
