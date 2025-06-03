@@ -44,7 +44,8 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter {
         address _hook,
         address _interchainSecurityModule,
         address _owner,
-        bytes memory _lsp4Metadata
+        bytes32[] memory dataKeys,
+        bytes[] memory dataValues
     )
         external
         initializer
@@ -57,9 +58,9 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter {
             _name, _symbol, _owner, _LSP4_TOKEN_TYPE_NFT, _LSP8_TOKENID_FORMAT_NUMBER
         );
 
-        // emit `DataChanged` event only if some metadata bytes is provided to save gas
-        if (_lsp4Metadata.length > 0) {
-            _setData(_LSP4_METADATA_KEY, _lsp4Metadata);
+        // set init data keys & values
+        if (dataKeys.length > 0 || dataValues.length > 0) {
+            _setDataBatch(dataKeys, dataValues);
         }
 
         for (uint256 i = 0; i < _mintAmount; i++) {

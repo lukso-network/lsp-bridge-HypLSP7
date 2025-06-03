@@ -28,7 +28,25 @@ import { PausableCircuitBreakerHook } from "../src/ISM/PausableCircuitBreakerHoo
 import { IERC725Y } from "@erc725/smart-contracts/contracts/interfaces/IERC725Y.sol";
 
 // constants
-import { _LSP4_METADATA_KEY } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
+import { _INTERFACEID_LSP0 } from "@lukso/lsp0-contracts/contracts/LSP0Constants.sol";
+import {
+    _LSP4_TOKEN_TYPE_TOKEN,
+    _LSP4_SUPPORTED_STANDARDS_KEY,
+    _LSP4_TOKEN_NAME_KEY,
+    _LSP4_TOKEN_SYMBOL_KEY,
+    _LSP4_TOKEN_TYPE_KEY,
+    _LSP4_CREATORS_ARRAY_KEY,
+    _LSP4_CREATORS_MAP_KEY_PREFIX,
+    _LSP4_METADATA_KEY
+} from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
+
+// errors
+import {
+    LSP4TokenNameNotEditable,
+    LSP4TokenSymbolNotEditable,
+    LSP4TokenTypeNotEditable
+} from "@lukso/lsp4-contracts/contracts/LSP4Errors.sol";
+import { ERC725Y_DataKeysValuesLengthMismatch } from "@erc725/smart-contracts/contracts/errors.sol";
 
 abstract contract HypTokenTest is Test {
     using TypeCasts for address;
@@ -82,7 +100,9 @@ abstract contract HypTokenTest is Test {
 
         remoteToken = new HypLSP7(DECIMALS, address(remoteMailbox));
 
-        remoteToken.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, SAMPLE_METADATA_BYTES);
+        (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
+
+        remoteToken.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, dataKeys, dataValues);
 
         igp = new TestInterchainGasPaymaster();
 
@@ -317,6 +337,24 @@ abstract contract HypTokenTest is Test {
 
         assertEq(aliceBalance, localToken.balanceOf(ALICE));
     }
+
+    // setting data keys for the following:
+    // - 1 x creator in the creator array
+    // - creator's info under the map key
+    // - the token metadata
+    function _getInitDataKeysAndValues() internal view returns (bytes32[] memory dataKeys, bytes[] memory dataValues) {
+        dataKeys = new bytes32[](4);
+        dataKeys[0] = _LSP4_CREATORS_ARRAY_KEY;
+        dataKeys[1] = bytes32(abi.encodePacked(bytes16(_LSP4_CREATORS_ARRAY_KEY), bytes16(uint128(0))));
+        dataKeys[2] = bytes32(abi.encodePacked(_LSP4_CREATORS_MAP_KEY_PREFIX, bytes2(0), bytes20(msg.sender)));
+        dataKeys[3] = _LSP4_METADATA_KEY;
+
+        dataValues = new bytes[](4);
+        dataValues[0] = abi.encodePacked(bytes16(uint128(1)));
+        dataValues[1] = abi.encodePacked(bytes20(msg.sender));
+        dataValues[2] = abi.encodePacked(_INTERFACEID_LSP0, bytes16(uint128(0)));
+        dataValues[3] = SAMPLE_METADATA_BYTES;
+    }
 }
 
 contract HypLSP7Test is HypTokenTest {
@@ -331,7 +369,8 @@ contract HypLSP7Test is HypTokenTest {
         hypLSP7Token = HypLSP7(payable(address(localToken)));
 
         vm.prank(OWNER);
-        hypLSP7Token.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, SAMPLE_METADATA_BYTES);
+        (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
+        hypLSP7Token.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, dataKeys, dataValues);
 
         vm.prank(OWNER);
         hypLSP7Token.enrollRemoteRouter(DESTINATION, address(remoteToken).addressToBytes32());
@@ -344,13 +383,54 @@ contract HypLSP7Test is HypTokenTest {
         _setupPausableIsm();
     }
 
-    function testInitialize_revert_ifAlreadyInitialized() public {
+    function test_Initialize_RevertIfAlreadyInitialized() public {
         vm.expectRevert("Initializable: contract is already initialized");
-        hypLSP7Token.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, SAMPLE_METADATA_BYTES);
+        (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
+        hypLSP7Token.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, dataKeys, dataValues);
     }
 
-    function testLSP4MetadataIsSet() public view {
-        assertEq(hypLSP7Token.getData(_LSP4_METADATA_KEY), SAMPLE_METADATA_BYTES);
+    function test_Initialize_RevertIfDataKeysAndValuesLengthMissmatch() public {
+        // Capture logs before the transaction
+        vm.recordLogs();
+
+        HypLSP7 someHypLSP7Token = new HypLSP7(DECIMALS, address(localMailbox));
+
+        // initialize token without metadata bytes
+        vm.prank(OWNER);
+        bytes32[] memory dataKeys = new bytes32[](1);
+        dataKeys[0] = _LSP4_METADATA_KEY;
+        bytes[] memory dataValues = new bytes[](0);
+
+        vm.expectRevert(ERC725Y_DataKeysValuesLengthMismatch.selector);
+        someHypLSP7Token.initialize(
+            TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, dataKeys, dataValues
+        );
+    }
+
+    function test_SetData_ChangeTokenName_Reverts(bytes memory name) public {
+        vm.prank(OWNER);
+        vm.expectRevert(LSP4TokenNameNotEditable.selector);
+        hypLSP7Token.setData(_LSP4_TOKEN_NAME_KEY, name);
+    }
+
+    function test_SetData_ChangeTokenSymbol_Reverts(bytes memory name) public {
+        vm.prank(OWNER);
+        vm.expectRevert(LSP4TokenSymbolNotEditable.selector);
+        hypLSP7Token.setData(_LSP4_TOKEN_SYMBOL_KEY, name);
+    }
+
+    function test_SetData_ChangeTokenType_Reverts(bytes memory name) public {
+        vm.prank(OWNER);
+        vm.expectRevert(LSP4TokenTypeNotEditable.selector);
+        hypLSP7Token.setData(_LSP4_TOKEN_TYPE_KEY, name);
+    }
+
+    function testInitDataKeysAreSet() public view {
+        (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
+
+        for (uint256 index = 0; index < dataKeys.length; index++) {
+            vm.assertEq(hypLSP7Token.getData(dataKeys[index]), dataValues[index]);
+        }
     }
 
     function testEmitDataChangedEventWhenMetadataBytesProvided() public {
@@ -360,32 +440,44 @@ contract HypLSP7Test is HypTokenTest {
         vm.expectEmit({ checkTopic1: true, checkTopic2: false, checkTopic3: false, checkData: true });
         emit IERC725Y.DataChanged(_LSP4_METADATA_KEY, SAMPLE_METADATA_BYTES);
 
+        (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
         someHypLSP7Token.initialize(
-            TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, SAMPLE_METADATA_BYTES
+            TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, dataKeys, dataValues
         );
     }
 
-    function testNoDataChangedEventEmittedIfNoMetadataBytesProvided() public {
+    function testNoDataChangedEventEmittedIfNoDataKeysValuesProvided() public {
         // Capture logs before the transaction
         vm.recordLogs();
 
         HypLSP7 someHypLSP7Token = new HypLSP7(DECIMALS, address(localMailbox));
 
-        // initialize token without metadata bytes
+        // initialize token without setting any additional data key / value pairs
         vm.prank(OWNER);
-        someHypLSP7Token.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, "");
+        bytes32[] memory dataKeys = new bytes32[](0);
+        bytes[] memory dataValues = new bytes[](0);
+        someHypLSP7Token.initialize(
+            TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, dataKeys, dataValues
+        );
 
         // Search all the logs
         Vm.Log[] memory emittedEvents = vm.getRecordedLogs();
-        for (uint256 i = 0; i < emittedEvents.length; i++) {
-            // Check that no `DataChanged` event was emitted for the `LSP4Metadata` data key
-            bool hasUpdatedLSP4MetadataKey = bytes32(emittedEvents[i].topics[0]) == IERC725Y.DataChanged.selector
-                && emittedEvents[i].topics[1] == _LSP4_METADATA_KEY;
 
-            assertFalse(
-                hasUpdatedLSP4MetadataKey,
-                "DataChanged event should not have been emitted because no metadata bytes were provided"
-            );
+        for (uint256 i = 0; i < emittedEvents.length; i++) {
+            // Check that no `DataChanged` event was emitted
+            // except for the ones set by `LSP4DigitalAssetMetadata` contract in the inheritance
+            if (bytes32(emittedEvents[i].topics[0]) == IERC725Y.DataChanged.selector) {
+                bool isLSP4SupportedStandardUpdate = emittedEvents[i].topics[1] == _LSP4_SUPPORTED_STANDARDS_KEY;
+                bool isLSP4TokenNameUpdate = emittedEvents[i].topics[1] == _LSP4_TOKEN_NAME_KEY;
+                bool isLSP4TokenSymbolUpdate = emittedEvents[i].topics[1] == _LSP4_TOKEN_SYMBOL_KEY;
+                bool isLSP4TokenTypeUpdate = emittedEvents[i].topics[1] == _LSP4_TOKEN_TYPE_KEY;
+
+                assertTrue(
+                    isLSP4SupportedStandardUpdate || isLSP4TokenNameUpdate || isLSP4TokenSymbolUpdate
+                        || isLSP4TokenTypeUpdate,
+                    "No DataChanged event should have been emitted except for the data keys set in `LSP4DigitalAssetMetadata` parent contract"
+                );
+            }
         }
     }
 
