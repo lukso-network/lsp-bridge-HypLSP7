@@ -23,22 +23,15 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter {
     /**
      * @notice Initializes the Hyperlane router, LSP8 metadata, and mints initial supply to deployer.
      *
-     * @dev The `_mintAmount` parameter is mostly used for a brand new NFT that want to exists only as a warp route.
-     * In other words, the entire warp route is deployed with HypLSP8, and no HypLSP8Collateral.
-     * This enables to create an instantly bridgable NFT, by deploying the contract, minting and distributing the token
-     * supply.
-     * For existing NFT collections that already exist on the source chain, set this parameter to 0.
-     *
-     * LSP8 specific notice: note that a callback to the `universalReceiver(...)` function
-     * on the `msg.sender` contract address will be triggered for every single tokenId
-     * being minted if the `_mintAmount` is set to more than 0.
-     *
-     * @param _mintAmount The amount of NFTs to mint to `msg.sender`.
      * @param _name The name of the token.
      * @param _symbol The symbol of the token.
+     *
+     * @dev The `_mintAmount` parameter is not used as minting synthetic NFTs when the warp route is created can lead
+     * to accounting issues between chains. It would result in synthetic NFTs minted on the destination chain
+     * while there is no NFTs locked in the collateral contract on the source chain.
      */
     function initialize(
-        uint256 _mintAmount,
+        uint256, /* _mintAmount */ // Unused but kept to not break compatibility with Hyperlane tools like CLI and SDK
         string memory _name,
         string memory _symbol,
         address _hook,
@@ -61,10 +54,6 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter {
         // set init data keys & values
         if (dataKeys.length > 0 || dataValues.length > 0) {
             _setDataBatch(dataKeys, dataValues);
-        }
-
-        for (uint256 i = 0; i < _mintAmount; i++) {
-            _mint(msg.sender, bytes32(i), true, "");
         }
     }
 

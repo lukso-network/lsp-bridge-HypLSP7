@@ -25,19 +25,17 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
 
     /**
      * @notice Initializes the Hyperlane router, LSP7 metadata, and mints initial supply to deployer.
-     * @param _totalSupply The initial supply of the token.
      * @param _name The name of the token.
      * @param _symbol The symbol of the token.
      *
      * @dev The `LSP4TokenType` is hardcoded to type `Token` (= `0`) as all ERC20 tokens are of token type 0.
-     * This aims to keep the number of parameters consistent between hyperc20 and hypLSP7, so that the code of off-chain
-     * agents that call this function does not need to be modified to add an extra parameter that would be irrelevant.
      *
-     * Note that a callback to the `universalReceiver(...)` function on the `msg.sender` contract address
-     * will be triggered, even if the `_totalSupply` parameter passed is 0.
+     * @dev The `_totalSupply` parameter is not used as minting synthetic tokens when the warp route is created can lead
+     * to accounting issues between chains. It would result in synthetic tokens minted on the destination chain
+     * while there is no tokens locked in the collateral contract on the source chain.
      */
     function initialize(
-        uint256 _totalSupply,
+        uint256, /* _totalSupply */ // Unused but kept to not break compatibility with Hyperlane tools like CLI and SDK
         string memory _name,
         string memory _symbol,
         address _hook,
@@ -62,9 +60,6 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
         if (dataKeys.length > 0 || dataValues.length > 0) {
             _setDataBatch(dataKeys, dataValues);
         }
-
-        // mints initial supply to deployer
-        LSP7DigitalAssetInitAbstract._mint({ to: msg.sender, amount: _totalSupply, force: true, data: "" });
 
         // Initializes the Hyperlane router
         _MailboxClient_initialize(_hook, _interchainSecurityModule, _owner);
