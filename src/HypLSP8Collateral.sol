@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.8.19;
 
-import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
-
+// Interfaces
 import { ILSP8IdentifiableDigitalAsset as ILSP8 } from
     "@lukso/lsp8-contracts/contracts/ILSP8IdentifiableDigitalAsset.sol";
+
+// Modules
+import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
+
+// Libraries
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 /**
  * @title Hyperlane LSP8 Token Collateral that wraps an existing LSP8 with remote transfer functionality.
@@ -19,6 +24,8 @@ contract HypLSP8Collateral is TokenRouter {
      * @param lsp8_ Address of the token to keep as collateral
      */
     constructor(address lsp8_, address mailbox_) TokenRouter(mailbox_) {
+        // solhint-disable-next-line custom-errors
+        require(Address.isContract(lsp8_), "HypLSP8Collateral: invalid token");
         wrappedToken = ILSP8(lsp8_);
     }
 
