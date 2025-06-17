@@ -74,10 +74,6 @@ abstract contract HypTokenTest is Test {
     TestPostDispatchHook internal noopHook;
     TestInterchainGasPaymaster internal igp;
 
-    event SentTransferRemote(uint32 indexed destination, bytes32 indexed recipient, uint256 amount);
-
-    event ReceivedTransferRemote(uint32 indexed origin, bytes32 indexed recipient, uint256 amount);
-
     function setUp() public virtual {
         localMailbox = new TestMailbox(ORIGIN);
         remoteMailbox = new TestMailbox(DESTINATION);
@@ -135,7 +131,7 @@ abstract contract HypTokenTest is Test {
 
         vm.expectEmit(true, true, false, true);
 
-        emit ReceivedTransferRemote(ORIGIN, BOB.addressToBytes32(), _amount);
+        emit TokenRouter.ReceivedTransferRemote(ORIGIN, BOB.addressToBytes32(), _amount);
         _processTransfers(BOB, _amount);
 
         assertEq(remoteToken.balanceOf(BOB), _amount);
@@ -151,7 +147,7 @@ abstract contract HypTokenTest is Test {
 
     function _performRemoteTransferWithEmit(uint256 _msgValue, uint256 _amount, uint256 _gasOverhead) internal {
         vm.expectEmit(true, true, false, true);
-        emit SentTransferRemote(DESTINATION, BOB.addressToBytes32(), _amount);
+        emit TokenRouter.SentTransferRemote(DESTINATION, BOB.addressToBytes32(), _amount);
         _performRemoteTransferAndGas(_msgValue, _amount, _gasOverhead);
     }
 
