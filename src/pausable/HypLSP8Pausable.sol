@@ -3,11 +3,16 @@ pragma solidity >=0.8.19;
 
 // modules
 import { Freezable } from "./Freezable.sol";
-import { HypLSP7Collateral } from "../HypLSP7Collateral.sol";
+import { HypLSP8 } from "../HypLSP8.sol";
 
-contract HypLSP7CollateralPausable is HypLSP7Collateral, Freezable {
-    constructor(address lsp7_, address mailbox_) HypLSP7Collateral(lsp7_, mailbox_) { }
+/**
+ * @title LSP7 version of the Hyperlane ERC20 Token Router with Pausable feature
+ * @dev See the `CircuitBreaker` contract for more infos on pausing
+ */
+contract HypLSP8Pausable is HypLSP8, Freezable {
+    constructor(address _mailbox) HypLSP8(_mailbox) { }
 
+    // overriden functions
     function _transferRemote(
         uint32 _destination,
         bytes32 _recipient,
@@ -35,6 +40,10 @@ contract HypLSP7CollateralPausable is HypLSP7Collateral, Freezable {
         override
         whenNotPaused
     {
-        HypLSP7Collateral._transferTo(_recipient, _amount, _metadata);
+        HypLSP8._transferTo(_recipient, _amount, _metadata);
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return super.supportsInterface(interfaceId);
     }
 }

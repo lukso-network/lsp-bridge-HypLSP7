@@ -23,11 +23,6 @@ import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMess
 // constants
 import { _INTERFACEID_LSP0 } from "@lukso/lsp0-contracts/contracts/LSP0Constants.sol";
 import {
-    _LSP4_TOKEN_TYPE_TOKEN,
-    _LSP4_SUPPORTED_STANDARDS_KEY,
-    _LSP4_TOKEN_NAME_KEY,
-    _LSP4_TOKEN_SYMBOL_KEY,
-    _LSP4_TOKEN_TYPE_KEY,
     _LSP4_CREATORS_ARRAY_KEY,
     _LSP4_CREATORS_MAP_KEY_PREFIX,
     _LSP4_METADATA_KEY
@@ -36,8 +31,6 @@ import {
 // LUKSO
 import { HypLSP7Pausable } from "../src/pausable/HypLSP7Pausable.sol";
 import { HypNativePausable } from "../src/pausable/HypNativePausable.sol";
-
-
 
 abstract contract HypTokenTest is Test {
     using TypeCasts for address;
@@ -92,21 +85,11 @@ abstract contract HypTokenTest is Test {
         HypNativePausable localToken = new HypNativePausable(address(localMailbox));
         localToken.initialize(address(noopHook), address(0), OWNER);
         nativeToken = HypNativePausable(payable(address(localToken)));
-        
-
-        // vm.startPrank(OWNER);
-        // freezerLocal = new FreezerUP();
-        // freezerLocal.registerCircuitBreaker(FREEZER);
-        // freezerRemote = new FreezerUP();
-        // freezerRemote.registerCircuitBreaker(FREEZER);
-        // vm.stopPrank();
 
         (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
 
         remoteToken = new HypLSP7Pausable(DECIMALS, address(remoteMailbox));
-        remoteToken.initialize(
-            TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, dataKeys, dataValues
-        );
+        remoteToken.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, dataKeys, dataValues);
 
         vm.startPrank(OWNER);
         nativeToken.changeFreezer(FREEZER);

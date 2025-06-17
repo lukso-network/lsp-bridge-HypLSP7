@@ -2,7 +2,6 @@
 pragma solidity >=0.8.19;
 
 // modules
-import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { LSP7DigitalAssetInitAbstract } from "@lukso/lsp7-contracts/contracts/LSP7DigitalAssetInitAbstract.sol";
 import { Freezable } from "./Freezable.sol";
 import { HypLSP7 } from "../HypLSP7.sol";
@@ -22,15 +21,26 @@ contract HypLSP7Pausable is HypLSP7, Freezable {
         uint256 _value,
         bytes memory _hookMetadata,
         address _hook
-    ) internal virtual override whenNotPaused() returns (bytes32 messageId) {
+    )
+        internal
+        virtual
+        override
+        whenNotPaused
+        returns (bytes32 messageId)
+    {
         return super._transferRemote(_destination, _recipient, _amountOrId, _value, _hookMetadata, _hook);
     }
 
     function _transferTo(
         address _recipient,
         uint256 _amount,
-        bytes calldata  _metadata
-    ) internal virtual override whenNotPaused() {
+        bytes calldata _metadata
+    )
+        internal
+        virtual
+        override
+        whenNotPaused
+    {
         HypLSP7._transferTo(_recipient, _amount, _metadata);
     }
 
