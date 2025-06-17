@@ -222,13 +222,11 @@ abstract contract HypTokenPausableTest is Test {
     function testBenchmark_overheadGasUsage() public {
         vm.prank(address(localMailbox));
 
-        uint256 gasBefore = gasleft();
         localToken.handle(
             DESTINATION,
             address(remoteToken).addressToBytes32(),
             abi.encodePacked(BOB.addressToBytes32(), TRANSFER_AMOUNT)
         );
-        uint256 gasAfter = gasleft();
     }
 
     // setting data keys for the following:
@@ -268,7 +266,7 @@ abstract contract HypTokenPausableTest is Test {
         return abi.encodePacked(_version, _nonce, _originDomain, _sender, _destinationDomain, _recipient, _messageBody);
     }
 
-    function _prepareProcessCall(uint256 _amount) internal returns (bytes memory) {
+    function _prepareProcessCall(uint256 _amount) internal view returns (bytes memory) {
         // ============== WTF IS THIS ? ===========================
         // To test whether the ISM is Paused we must call
         // Mailbox.process(_metadata, _message) on the destination side
@@ -336,7 +334,7 @@ abstract contract HypTokenPausableTest is Test {
         assertEq(aliceBalance, localToken.balanceOf(ALICE));
     }
 
-    function _performTransferToSyntheticRemotePaused(uint256 _msgValue, uint256 _amount) internal {
+    function _performTransferToSyntheticRemotePaused(uint256, /* _msgValue */ uint256 _amount) internal {
         _circuitBreakerPauseRemote();
 
         bytes memory _message = TokenMessage.format(BOB.addressToBytes32(), _amount, "");
@@ -360,7 +358,7 @@ abstract contract HypTokenPausableTest is Test {
         assertEq(aliceBalance, localToken.balanceOf(ALICE));
     }
 
-    function _performTransferToCollateralLocalPaused(uint256 _msgValue, uint256 _amount) internal {
+    function _performTransferToCollateralLocalPaused(uint256, /* _msgValue */ uint256 _amount) internal {
         _circuitBreakerPauseLocal();
 
         // vm.expectRevert(CircuitError.selector);
@@ -579,8 +577,6 @@ contract HypLSP7CollateralPausableTest is HypTokenPausableTest {
     }
 
     function testTransferToCollateral_paused() public {
-        uint256 balanceBefore = localToken.balanceOf(ALICE);
-
         vm.prank(ALICE);
         primaryToken.authorizeOperator(address(localToken), TRANSFER_AMOUNT, "");
         _performRemoteTransferPauseRevert(REQUIRED_VALUE, TRANSFER_AMOUNT);
@@ -588,7 +584,6 @@ contract HypLSP7CollateralPausableTest is HypTokenPausableTest {
 
     function testRemoteTransferIsmCollateral_unpaused() public {
         uint256 balanceBefore = localToken.balanceOf(ALICE);
-
         vm.prank(ALICE);
         primaryToken.authorizeOperator(address(localToken), TRANSFER_AMOUNT, "");
 
@@ -608,7 +603,6 @@ contract HypLSP7CollateralPausableTest is HypTokenPausableTest {
     }
 
     function testNoCircuitBreakerDoesNotCauseRevert() public {
-        // vm.prank(address(this));
         HypLSP7CollateralPausable lsp7CollateralNoFreezer =
             new HypLSP7CollateralPausable(address(localToken), address(localMailbox));
         lsp7CollateralNoFreezer.initialize(address(noopHook), address(testIsm), OWNER);

@@ -23,8 +23,6 @@ import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMess
 import { LSP7Mock } from "./Mocks/LSP7Mock.sol";
 import { HypLSP7 } from "../src/HypLSP7.sol";
 import { HypLSP7Collateral } from "../src/HypLSP7Collateral.sol";
-import { PausableCircuitBreakerIsm } from "../src/ISM/PausableCircuitBreakerISM.sol";
-import { PausableCircuitBreakerHook } from "../src/ISM/PausableCircuitBreakerHook.sol";
 import { IERC725Y } from "@erc725/smart-contracts/contracts/interfaces/IERC725Y.sol";
 
 // constants
@@ -76,9 +74,6 @@ abstract contract HypTokenTest is Test {
     TestPostDispatchHook internal noopHook;
     TestInterchainGasPaymaster internal igp;
 
-    PausableCircuitBreakerHook internal pausableHook;
-    PausableCircuitBreakerIsm internal pausableIsm;
-
     event SentTransferRemote(uint32 indexed destination, bytes32 indexed recipient, uint256 amount);
 
     event ReceivedTransferRemote(uint32 indexed origin, bytes32 indexed recipient, uint256 amount);
@@ -92,9 +87,6 @@ abstract contract HypTokenTest is Test {
         noopHook = new TestPostDispatchHook();
         localMailbox.setDefaultHook(address(noopHook));
         localMailbox.setRequiredHook(address(noopHook));
-
-        pausableHook = new PausableCircuitBreakerHook(OWNER);
-        pausableIsm = new PausableCircuitBreakerIsm(OWNER);
 
         REQUIRED_VALUE = noopHook.quoteDispatch("", "");
 
@@ -112,54 +104,6 @@ abstract contract HypTokenTest is Test {
     function _enrollRemoteTokenRouter() internal {
         vm.prank(OWNER);
         remoteToken.enrollRemoteRouter(ORIGIN, address(localToken).addressToBytes32());
-    }
-
-    function _setupPausableIsm() internal {
-        vm.prank(OWNER);
-        remoteToken.setInterchainSecurityModule(address(pausableIsm));
-
-        vm.prank(OWNER);
-        pausableIsm.registerCircuitBreaker(CIRCUIT_BREAKER);
-    }
-
-    // Setting this as a different function because the hook interferes with other tests
-    function _setupPausableHook() internal {
-        localMailbox.setRequiredHook(address(pausableHook));
-
-        vm.prank(OWNER);
-        pausableHook.registerCircuitBreaker(CIRCUIT_BREAKER);
-    }
-
-    function _circuitBreakerPauseIsm() internal {
-        if (!pausableIsm.paused()) {
-            vm.prank(CIRCUIT_BREAKER);
-            pausableIsm.pause();
-        }
-        assertEq(pausableIsm.paused(), true);
-    }
-
-    function _circuitBreakerUnpauseIsm() internal {
-        if (pausableIsm.paused()) {
-            vm.prank(OWNER);
-            pausableIsm.unpause();
-        }
-        assertEq(pausableIsm.paused(), false);
-    }
-
-    function _circuitBreakerPauseHook() internal {
-        if (!pausableHook.paused()) {
-            vm.prank(CIRCUIT_BREAKER);
-            pausableHook.pause();
-        }
-        assertEq(pausableHook.paused(), true);
-    }
-
-    function _circuitBreakerUnpauseHook() internal {
-        if (pausableHook.paused()) {
-            vm.prank(OWNER);
-            pausableHook.unpause();
-        }
-        assertEq(pausableHook.paused(), false);
     }
 
     function _expectRemoteBalance(address _user, uint256 _balance) internal view {
@@ -296,48 +240,6 @@ abstract contract HypTokenTest is Test {
         return message;
     }
 
-    function _performRemoteTransferPauseRevert(uint256 _msgValue, uint256 _amount) internal {
-        _circuitBreakerPauseIsm();
-        vm.prank(ALICE);
-        localToken.transferRemote{ value: _msgValue }(DESTINATION, BOB.addressToBytes32(), _amount);
-        emit ReceivedTransferRemote(ORIGIN, BOB.addressToBytes32(), _amount);
-
-        bytes memory _message = _prepareProcessCall(_amount);
-
-        vm.expectRevert("Pausable: paused");
-        remoteMailbox.process("", _message); // we don't need metadata
-    }
-
-    function _performRemoteTransferNoPause(uint256 _msgValue, uint256 _amount) internal {
-        _circuitBreakerUnpauseIsm();
-
-        assertEq(remoteToken.balanceOf(BOB), 0);
-
-        vm.prank(ALICE);
-        localToken.transferRemote{ value: _msgValue }(DESTINATION, BOB.addressToBytes32(), _amount);
-
-        emit ReceivedTransferRemote(ORIGIN, BOB.addressToBytes32(), _amount);
-
-        bytes memory _message = _prepareProcessCall(_amount);
-
-        remoteMailbox.process("", _message); // we don't need metadata
-        assertEq(remoteToken.balanceOf(BOB), _amount);
-    }
-
-    function _performRemoteTransferWithPausedHook(uint256 _msgValue, uint256 _amount) internal {
-        _setupPausableHook();
-        _circuitBreakerPauseHook();
-
-        assertEq(remoteToken.balanceOf(BOB), 0);
-        uint256 aliceBalance = localToken.balanceOf(ALICE);
-
-        vm.expectRevert("Pausable: paused");
-        vm.prank(ALICE);
-        localToken.transferRemote{ value: _msgValue }(DESTINATION, BOB.addressToBytes32(), _amount);
-
-        assertEq(aliceBalance, localToken.balanceOf(ALICE));
-    }
-
     // setting data keys for the following:
     // - 1 x creator in the creator array
     // - creator's info under the map key
@@ -380,7 +282,6 @@ contract HypLSP7Test is HypTokenTest {
         hypLSP7Token.transfer(OWNER, ALICE, 1000e18, true, "");
 
         _enrollRemoteTokenRouter();
-        _setupPausableIsm();
     }
 
     function test_Initialize_RevertIfAlreadyInitialized() public {
@@ -523,18 +424,6 @@ contract HypLSP7Test is HypTokenTest {
 
         assertEq(hypLSP7Token.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
     }
-
-    function testRemoteTransfer_paused() public {
-        _performRemoteTransferPauseRevert(REQUIRED_VALUE, TRANSFER_AMOUNT);
-    }
-
-    function testRemoteTransfer_unpaused() public {
-        _performRemoteTransferNoPause(REQUIRED_VALUE, TRANSFER_AMOUNT);
-    }
-
-    function testRemoteTransfer_pausedHook() public {
-        _performRemoteTransferWithPausedHook(REQUIRED_VALUE, TRANSFER_AMOUNT);
-    }
 }
 
 contract HypLSP7CollateralTest is HypTokenTest {
@@ -559,7 +448,6 @@ contract HypLSP7CollateralTest is HypTokenTest {
         primaryToken.transfer(address(this), ALICE, 1000e18, true, "");
 
         _enrollRemoteTokenRouter();
-        _setupPausableIsm();
     }
 
     function test_constructor_revert_ifInvalidToken() public {
@@ -593,29 +481,6 @@ contract HypLSP7CollateralTest is HypTokenTest {
         _performRemoteTransferAndGas(REQUIRED_VALUE, TRANSFER_AMOUNT, GAS_LIMIT * igp.gasPrice());
         assertEq(localToken.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
     }
-
-    function testRemoteTransferIsmCollateral_paused() public {
-        vm.prank(ALICE);
-        primaryToken.authorizeOperator(address(localToken), TRANSFER_AMOUNT, "");
-        _performRemoteTransferPauseRevert(REQUIRED_VALUE, TRANSFER_AMOUNT);
-    }
-
-    function testRemoteTransferIsmCollateral_unpaused() public {
-        uint256 balanceBefore = localToken.balanceOf(ALICE);
-
-        vm.prank(ALICE);
-        primaryToken.authorizeOperator(address(localToken), TRANSFER_AMOUNT, "");
-
-        _performRemoteTransferNoPause(REQUIRED_VALUE, TRANSFER_AMOUNT);
-        uint256 balanceAfter = localToken.balanceOf(ALICE);
-        assertEq(balanceAfter, balanceBefore - TRANSFER_AMOUNT);
-    }
-
-    function testRemoteTransferCollateral_pausedHook() public {
-        vm.prank(ALICE);
-        primaryToken.authorizeOperator(address(localToken), TRANSFER_AMOUNT, "");
-        _performRemoteTransferWithPausedHook(REQUIRED_VALUE, TRANSFER_AMOUNT);
-    }
 }
 
 contract HypNativeTest is HypTokenTest {
@@ -638,7 +503,6 @@ contract HypNativeTest is HypTokenTest {
         vm.deal(ALICE, 1000e18);
 
         _enrollRemoteTokenRouter();
-        _setupPausableIsm();
     }
 
     function testTransfer_withHookSpecified(uint256 fee, bytes calldata metadata) public override {
@@ -681,17 +545,5 @@ contract HypNativeTest is HypTokenTest {
         nativeToken.transferRemote{ value: nativeValue }(
             DESTINATION, bRecipient, nativeValue + 1, bytes(""), address(0)
         );
-    }
-
-    function testRemoteTransfer_paused() public {
-        _performRemoteTransferPauseRevert(REQUIRED_VALUE + TRANSFER_AMOUNT, TRANSFER_AMOUNT);
-    }
-
-    function testRemoteTransfer_unpaused() public {
-        _performRemoteTransferNoPause(REQUIRED_VALUE + TRANSFER_AMOUNT, TRANSFER_AMOUNT);
-    }
-
-    function testRemoteTransfer_pausedHook() public {
-        _performRemoteTransferWithPausedHook(REQUIRED_VALUE + TRANSFER_AMOUNT, TRANSFER_AMOUNT);
     }
 }
