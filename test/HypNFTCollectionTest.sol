@@ -38,38 +38,51 @@ import {
     _LSP4_METADATA_KEY
 } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
 
-/// @dev TODO: write basic description
+/// @dev TODO: write basic description of this test setup
 abstract contract HypNFTCollectionTest is Test {
     using TypeCasts for address;
 
+    // origin chain
+    // ---------------------------
+    uint32 internal constant ORIGIN = 11;
+    TokenRouter internal localToken;
+    TestMailbox internal localMailbox;
+
+    // destination chain
+    // ---------------------------
+    uint32 internal constant DESTINATION = 22;
+    HypLSP8 internal remoteToken;
+    TestMailbox internal remoteMailbox;
+
+    // warp route parameters
+    // ---------------------------
+    TestPostDispatchHook internal noopHook;
+
+    address internal WARP_ROUTE_OWNER = makeAddr("warp route owner");
     uint256 internal constant INITIAL_SUPPLY = 10;
+
+    // NFT collection being bridged
+    // TODO: initialization of this token should be moved in the HypLSP8Test `setUp()` function
+    // ---------------------------
+    LSP8Mock internal primaryNFTCollection;
+
     string internal constant NAME = "Hyperlane NFTs";
     string internal constant SYMBOL = "HNFT";
-
-    address internal ALICE = makeAddr("alice");
-    address internal BOB = makeAddr("bob");
-    address internal OWNER = makeAddr("owner");
-    address internal CIRCUIT_BREAKER = makeAddr("circuit_breaker");
-    uint32 internal constant ORIGIN = 11;
-    uint32 internal constant DESTINATION = 22;
-    bytes32 internal constant TOKEN_ID = bytes32(uint256(1));
     string internal constant URI = "http://example.com/token/";
     bytes internal constant SAMPLE_METADATA_BYTES =
         hex"00006f357c6a0020820464ddfac1bec070cc14a8daf04129871d458f2ca94368aae8391311af6361696670733a2f2f516d597231564a4c776572673670456f73636468564775676f3339706136727963455a4c6a7452504466573834554178";
 
-    LSP8Mock internal localPrimaryToken;
-    LSP8Mock internal remotePrimaryToken;
-    TestMailbox internal localMailbox;
-    TestMailbox internal remoteMailbox;
-    TokenRouter internal localToken;
-    HypLSP8 internal remoteToken;
-    TestPostDispatchHook internal noopHook;
+    // constants used for testing
+    // ---------------------------
+    address internal ALICE = makeAddr("alice");
+    address internal BOB = makeAddr("bob");
+    bytes32 internal constant TOKEN_ID = bytes32(uint256(1));
 
     function setUp() public virtual {
         localMailbox = new TestMailbox(ORIGIN);
         remoteMailbox = new TestMailbox(DESTINATION);
 
-        localPrimaryToken = new LSP8Mock(NAME, SYMBOL, OWNER);
+        primaryNFTCollection = new LSP8Mock(NAME, SYMBOL, address(this));
 
         noopHook = new TestPostDispatchHook();
         localMailbox.setDefaultHook(address(noopHook));
@@ -80,10 +93,10 @@ abstract contract HypNFTCollectionTest is Test {
 
     function _deployRemoteToken() internal {
         remoteToken = new HypLSP8(address(remoteMailbox));
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
-        remoteToken.initialize(0, NAME, SYMBOL, address(noopHook), address(0), OWNER, dataKeys, dataValues);
-        vm.prank(OWNER);
+        remoteToken.initialize(0, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER, dataKeys, dataValues);
+        vm.prank(WARP_ROUTE_OWNER);
         remoteToken.enrollRemoteRouter(ORIGIN, address(localToken).addressToBytes32());
     }
 

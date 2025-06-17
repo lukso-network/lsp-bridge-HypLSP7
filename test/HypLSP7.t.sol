@@ -41,6 +41,7 @@ import {
 } from "@lukso/lsp4-contracts/contracts/LSP4Errors.sol";
 import { ERC725Y_DataKeysValuesLengthMismatch } from "@erc725/smart-contracts/contracts/errors.sol";
 
+/// @dev This seems to be a test suite for bridging back, the `DESTINATION` chain is just a context
 contract HypLSP7Test is HypTokenTest {
     HypLSP7 internal hypLSP7Token;
 
@@ -50,16 +51,18 @@ contract HypLSP7Test is HypTokenTest {
         localToken = new HypLSP7(DECIMALS, address(localMailbox));
         hypLSP7Token = HypLSP7(payable(address(localToken)));
 
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
-        hypLSP7Token.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, dataKeys, dataValues);
+        hypLSP7Token.initialize(
+            TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER, dataKeys, dataValues
+        );
 
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         hypLSP7Token.enrollRemoteRouter(DESTINATION, TypeCasts.addressToBytes32(address(remoteToken)));
 
         // from, to, amount, force, data
-        vm.prank(OWNER);
-        hypLSP7Token.transfer(OWNER, ALICE, 1000e18, true, "");
+        vm.prank(WARP_ROUTE_OWNER);
+        hypLSP7Token.transfer(WARP_ROUTE_OWNER, ALICE, 1000e18, true, "");
 
         _enrollRemoteTokenRouter();
     }
@@ -67,7 +70,9 @@ contract HypLSP7Test is HypTokenTest {
     function test_Initialize_RevertIfAlreadyInitialized() public {
         vm.expectRevert("Initializable: contract is already initialized");
         (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
-        hypLSP7Token.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, dataKeys, dataValues);
+        hypLSP7Token.initialize(
+            TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER, dataKeys, dataValues
+        );
     }
 
     function test_Initialize_RevertIfDataKeysAndValuesLengthMissmatch() public {
@@ -77,31 +82,31 @@ contract HypLSP7Test is HypTokenTest {
         HypLSP7 someHypLSP7Token = new HypLSP7(DECIMALS, address(localMailbox));
 
         // initialize token without metadata bytes
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         bytes32[] memory dataKeys = new bytes32[](1);
         dataKeys[0] = _LSP4_METADATA_KEY;
         bytes[] memory dataValues = new bytes[](0);
 
         vm.expectRevert(ERC725Y_DataKeysValuesLengthMismatch.selector);
         someHypLSP7Token.initialize(
-            TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, dataKeys, dataValues
+            TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER, dataKeys, dataValues
         );
     }
 
     function test_SetData_ChangeTokenName_Reverts(bytes memory name) public {
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         vm.expectRevert(LSP4TokenNameNotEditable.selector);
         hypLSP7Token.setData(_LSP4_TOKEN_NAME_KEY, name);
     }
 
     function test_SetData_ChangeTokenSymbol_Reverts(bytes memory name) public {
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         vm.expectRevert(LSP4TokenSymbolNotEditable.selector);
         hypLSP7Token.setData(_LSP4_TOKEN_SYMBOL_KEY, name);
     }
 
     function test_SetData_ChangeTokenType_Reverts(bytes memory name) public {
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         vm.expectRevert(LSP4TokenTypeNotEditable.selector);
         hypLSP7Token.setData(_LSP4_TOKEN_TYPE_KEY, name);
     }
@@ -115,7 +120,7 @@ contract HypLSP7Test is HypTokenTest {
     }
 
     function testEmitDataChangedEventWhenMetadataBytesProvided() public {
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         HypLSP7 someHypLSP7Token = new HypLSP7(DECIMALS, address(localMailbox));
 
         vm.expectEmit({ checkTopic1: true, checkTopic2: false, checkTopic3: false, checkData: true });
@@ -123,7 +128,7 @@ contract HypLSP7Test is HypTokenTest {
 
         (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
         someHypLSP7Token.initialize(
-            TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, dataKeys, dataValues
+            TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER, dataKeys, dataValues
         );
     }
 
@@ -134,11 +139,11 @@ contract HypLSP7Test is HypTokenTest {
         HypLSP7 someHypLSP7Token = new HypLSP7(DECIMALS, address(localMailbox));
 
         // initialize token without setting any additional data key / value pairs
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         bytes32[] memory dataKeys = new bytes32[](0);
         bytes[] memory dataValues = new bytes[](0);
         someHypLSP7Token.initialize(
-            TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, dataKeys, dataValues
+            TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER, dataKeys, dataValues
         );
 
         // Search all the logs
@@ -181,17 +186,17 @@ contract HypLSP7Test is HypTokenTest {
     }
 
     function testRemoteTransfer() public {
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         remoteToken.enrollRemoteRouter(ORIGIN, TypeCasts.addressToBytes32(address(localToken)));
         uint256 balanceBefore = hypLSP7Token.balanceOf(ALICE);
 
-        _performRemoteTransferWithEmit(REQUIRED_VALUE, TRANSFER_AMOUNT, 0);
+        _performRemoteTransferWithEmit(REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT, 0);
         assertEq(hypLSP7Token.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
     }
 
     function testRemoteTransfer_invalidAmount() public {
         vm.expectRevert();
-        _performRemoteTransfer(REQUIRED_VALUE, TRANSFER_AMOUNT * 11);
+        _performRemoteTransfer(REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT * 11);
         assertEq(hypLSP7Token.balanceOf(ALICE), 1000e18);
     }
 
@@ -200,7 +205,9 @@ contract HypLSP7Test is HypTokenTest {
 
         uint256 balanceBefore = hypLSP7Token.balanceOf(ALICE);
 
-        _performRemoteTransferAndGas(REQUIRED_VALUE, TRANSFER_AMOUNT, GAS_LIMIT * igp.gasPrice());
+        _performRemoteTransferAndGas(
+            REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT, GAS_LIMIT * interchainGasPaymaster.gasPrice()
+        );
 
         assertEq(hypLSP7Token.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
     }
@@ -216,13 +223,16 @@ contract HypLSP7CollateralTest is HypTokenTest {
 
         lsp7Collateral = HypLSP7Collateral(address(localToken));
 
-        lsp7Collateral.initialize(address(noopHook), address(0), OWNER);
+        // TODO: should we put a dummy Mock ISM to clarify? (Instead of `address(0)`)
+        lsp7Collateral.initialize(address(noopHook), address(0), WARP_ROUTE_OWNER);
 
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         lsp7Collateral.enrollRemoteRouter(DESTINATION, TypeCasts.addressToBytes32(address(remoteToken)));
 
+        // This is used for when transferring back to perform `handle(...)` (unlock tokens)
         primaryToken.transfer(address(this), address(localToken), 1000e18, true, "");
 
+        // This is used when transferring from origin to destination (approve + transferFrom) -> `Mailbox.dispatch(...)`
         primaryToken.transfer(address(this), ALICE, 1000e18, true, "");
 
         _enrollRemoteTokenRouter();
@@ -239,13 +249,13 @@ contract HypLSP7CollateralTest is HypTokenTest {
         vm.prank(ALICE);
         primaryToken.authorizeOperator(address(localToken), TRANSFER_AMOUNT, "");
 
-        _performRemoteTransferWithEmit(REQUIRED_VALUE, TRANSFER_AMOUNT, 0);
+        _performRemoteTransferWithEmit(REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT, 0);
         assertEq(localToken.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
     }
 
     function testRemoteTransfer_invalidAllowance() public {
         vm.expectRevert();
-        _performRemoteTransfer(REQUIRED_VALUE, TRANSFER_AMOUNT);
+        _performRemoteTransfer(REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT);
         assertEq(localToken.balanceOf(ALICE), 1000e18);
     }
 
@@ -256,7 +266,9 @@ contract HypLSP7CollateralTest is HypTokenTest {
 
         vm.prank(ALICE);
         primaryToken.authorizeOperator(address(localToken), TRANSFER_AMOUNT, "");
-        _performRemoteTransferAndGas(REQUIRED_VALUE, TRANSFER_AMOUNT, GAS_LIMIT * igp.gasPrice());
+        _performRemoteTransferAndGas(
+            REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT, GAS_LIMIT * interchainGasPaymaster.gasPrice()
+        );
         assertEq(localToken.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
     }
 }
@@ -270,9 +282,9 @@ contract HypNativeTest is HypTokenTest {
         localToken = new HypNative(address(localMailbox));
         nativeToken = HypNative(payable(address(localToken)));
 
-        nativeToken.initialize(address(noopHook), address(0), OWNER);
+        nativeToken.initialize(address(noopHook), address(0), WARP_ROUTE_OWNER);
 
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         nativeToken.enrollRemoteRouter(DESTINATION, TypeCasts.addressToBytes32(address(remoteToken)));
 
         vm.deal(address(localToken), 1000e18);
@@ -285,7 +297,7 @@ contract HypNativeTest is HypTokenTest {
         TestPostDispatchHook hook = new TestPostDispatchHook();
         hook.setFee(fee);
 
-        uint256 value = REQUIRED_VALUE + TRANSFER_AMOUNT;
+        uint256 value = REQUIRED_INTERCHAIN_GAS_PAYMENT + TRANSFER_AMOUNT;
 
         vm.prank(ALICE);
         primaryToken.authorizeOperator(address(localToken), TRANSFER_AMOUNT, "");
@@ -294,19 +306,23 @@ contract HypNativeTest is HypTokenTest {
     }
 
     function testRemoteTransfer() public {
-        _performRemoteTransferWithEmit(REQUIRED_VALUE, TRANSFER_AMOUNT, TRANSFER_AMOUNT);
+        _performRemoteTransferWithEmit(REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT, TRANSFER_AMOUNT);
     }
 
     function testRemoteTransfer_invalidAmount() public {
         vm.expectRevert("Native: amount exceeds msg.value");
-        _performRemoteTransfer(REQUIRED_VALUE + TRANSFER_AMOUNT, TRANSFER_AMOUNT * 10);
+        _performRemoteTransfer(REQUIRED_INTERCHAIN_GAS_PAYMENT + TRANSFER_AMOUNT, TRANSFER_AMOUNT * 10);
         assertEq(localToken.balanceOf(ALICE), 1000e18);
     }
 
     function testRemoteTransfer_withCustomGasConfig() public {
         _setCustomGasConfig();
 
-        _performRemoteTransferAndGas(REQUIRED_VALUE, TRANSFER_AMOUNT, TRANSFER_AMOUNT + GAS_LIMIT * igp.gasPrice());
+        _performRemoteTransferAndGas(
+            REQUIRED_INTERCHAIN_GAS_PAYMENT,
+            TRANSFER_AMOUNT,
+            TRANSFER_AMOUNT + GAS_LIMIT * interchainGasPaymaster.gasPrice()
+        );
     }
 
     function test_transferRemote_reverts_whenAmountExceedsValue(uint256 nativeValue) public {
