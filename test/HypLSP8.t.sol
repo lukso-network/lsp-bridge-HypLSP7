@@ -3,14 +3,10 @@ pragma solidity ^0.8.13;
 
 // test utilities
 import { Vm } from "forge-std/src/Vm.sol";
-import { Test } from "forge-std/src/Test.sol";
-import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
-import { TestMailbox } from "@hyperlane-xyz/core/contracts/test/TestMailbox.sol";
-import { TestPostDispatchHook } from "@hyperlane-xyz/core/contracts/test/TestPostDispatchHook.sol";
+import { HypNFTCollectionTest } from "./HypNFTCollectionTest.sol";
 
-// libraries
-import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
-import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMessage.sol";
+// - Hyperlane types and modules
+import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 
 // Mock + contracts to test
 import { HypLSP8 } from "../src/HypLSP8.sol";
@@ -40,136 +36,12 @@ import {
 } from "@lukso/lsp4-contracts/contracts/LSP4Errors.sol";
 import { ERC725Y_DataKeysValuesLengthMismatch } from "@erc725/smart-contracts/contracts/errors.sol";
 
-abstract contract HypTokenTest is Test {
-    using TypeCasts for address;
+// constants
+uint256 constant INITIAL_SUPPLY = 10;
+bytes32 constant TOKEN_ID = bytes32(uint256(1));
+string constant URI = "http://example.com/token/";
 
-    uint256 internal constant INITIAL_SUPPLY = 10;
-    string internal constant NAME = "Hyperlane NFTs";
-    string internal constant SYMBOL = "HNFT";
-
-    address internal ALICE = makeAddr("alice");
-    address internal BOB = makeAddr("bob");
-    address internal OWNER = makeAddr("owner");
-    address internal CIRCUIT_BREAKER = makeAddr("circuit_breaker");
-    uint32 internal constant ORIGIN = 11;
-    uint32 internal constant DESTINATION = 22;
-    bytes32 internal constant TOKEN_ID = bytes32(uint256(1));
-    string internal constant URI = "http://example.com/token/";
-    bytes internal constant SAMPLE_METADATA_BYTES =
-        hex"00006f357c6a0020820464ddfac1bec070cc14a8daf04129871d458f2ca94368aae8391311af6361696670733a2f2f516d597231564a4c776572673670456f73636468564775676f3339706136727963455a4c6a7452504466573834554178";
-
-    LSP8Mock internal localPrimaryToken;
-    LSP8Mock internal remotePrimaryToken;
-    TestMailbox internal localMailbox;
-    TestMailbox internal remoteMailbox;
-    TokenRouter internal localToken;
-    HypLSP8 internal remoteToken;
-    TestPostDispatchHook internal noopHook;
-
-    function setUp() public virtual {
-        localMailbox = new TestMailbox(ORIGIN);
-        remoteMailbox = new TestMailbox(DESTINATION);
-
-        localPrimaryToken = new LSP8Mock(NAME, SYMBOL, OWNER);
-
-        noopHook = new TestPostDispatchHook();
-        localMailbox.setDefaultHook(address(noopHook));
-        localMailbox.setRequiredHook(address(noopHook));
-
-        vm.deal(ALICE, 1 ether);
-    }
-
-    function _deployRemoteToken() internal {
-        remoteToken = new HypLSP8(address(remoteMailbox));
-        vm.prank(OWNER);
-        (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
-        remoteToken.initialize(0, NAME, SYMBOL, address(noopHook), address(0), OWNER, dataKeys, dataValues);
-        vm.prank(OWNER);
-        remoteToken.enrollRemoteRouter(ORIGIN, address(localToken).addressToBytes32());
-    }
-
-    function _processTransfers(address _recipient, bytes32 _tokenId) internal {
-        vm.prank(address(remoteMailbox));
-        remoteToken.handle(
-            ORIGIN, address(localToken).addressToBytes32(), abi.encodePacked(_recipient.addressToBytes32(), _tokenId)
-        );
-    }
-
-    function _performRemoteTransfer(uint256 _msgValue, bytes32 _tokenId) internal {
-        vm.prank(ALICE);
-        localToken.transferRemote{ value: _msgValue }(DESTINATION, BOB.addressToBytes32(), uint256(_tokenId));
-        _processTransfers(BOB, _tokenId);
-        assertEq(remoteToken.balanceOf(BOB), 1);
-    }
-
-    // This is a work around for creating a message to Mailbox.process()
-    // that doesn't use Message.formatMessage because that requires calldata
-    // that foundry really doesn't like
-    function _formatMessage(
-        uint8 _version,
-        uint32 _nonce,
-        uint32 _originDomain,
-        bytes32 _sender,
-        uint32 _destinationDomain,
-        bytes32 _recipient,
-        bytes memory _messageBody // uses memory instead of calldata ftw
-    )
-        internal
-        pure
-        returns (bytes memory)
-    {
-        return abi.encodePacked(_version, _nonce, _originDomain, _sender, _destinationDomain, _recipient, _messageBody);
-    }
-
-    function _prepareProcessCall(bytes32 _tokenId) internal view returns (bytes memory) {
-        // ============== WTF IS THIS ? ===========================
-        // To test whether the ISM is Paused we must call
-        // Mailbox.process(_metadata, _message) on the destination side
-        // calling remoteToken.handle() finalizes the cross chain transfer
-        // and is only called if the ISM.verify() function returns true
-        // so that method cannot be used here
-        bytes memory _tokenMessage = TokenMessage.format(BOB.addressToBytes32(), uint256(_tokenId), "");
-        bytes32 remoteTokenAddress = address(remoteToken).addressToBytes32();
-        bytes32 localRouter = remoteToken.routers(ORIGIN);
-        bytes32 localTokenAddress = address(localToken).addressToBytes32();
-        assertEq(localRouter, localTokenAddress);
-
-        // solhint-disable-line no-spaces-before-semicolon
-        bytes memory message = _formatMessage(
-            3, // _version
-            1, // _nonce
-            ORIGIN, // _originDomain
-            localTokenAddress, // _sender is the Router of ORIGIN
-            DESTINATION, // _destinationDomain
-            remoteTokenAddress, // _recipient is the remote HypLSP7
-            _tokenMessage //_messageBody IS instructions on how much to send to what address
-        );
-
-        return message;
-    }
-
-    // setting data keys for the following:
-    // - 1 x creator in the creator array
-    // - creator's info under the map key
-    // - the token metadata
-    function _getInitDataKeysAndValues() internal view returns (bytes32[] memory dataKeys, bytes[] memory dataValues) {
-        dataKeys = new bytes32[](4);
-        dataKeys[0] = _LSP4_CREATORS_ARRAY_KEY;
-        dataKeys[1] = bytes32(abi.encodePacked(bytes16(_LSP4_CREATORS_ARRAY_KEY), bytes16(uint128(0))));
-        dataKeys[2] = bytes32(abi.encodePacked(_LSP4_CREATORS_MAP_KEY_PREFIX, bytes2(0), bytes20(msg.sender)));
-        dataKeys[3] = _LSP4_METADATA_KEY;
-
-        dataValues = new bytes[](4);
-        dataValues[0] = abi.encodePacked(bytes16(uint128(1)));
-        dataValues[1] = abi.encodePacked(bytes20(msg.sender));
-        dataValues[2] = abi.encodePacked(_INTERFACEID_LSP0, bytes16(uint128(0)));
-        dataValues[3] = SAMPLE_METADATA_BYTES;
-    }
-}
-
-contract HypLSP8Test is HypTokenTest {
-    using TypeCasts for address;
-
+contract HypLSP8Test is HypNFTCollectionTest {
     HypLSP8 internal hypLSP8Token;
 
     function setUp() public override {
@@ -185,7 +57,7 @@ contract HypLSP8Test is HypTokenTest {
         );
 
         vm.prank(OWNER);
-        hypLSP8Token.enrollRemoteRouter(DESTINATION, address(remoteToken).addressToBytes32());
+        hypLSP8Token.enrollRemoteRouter(DESTINATION, TypeCasts.addressToBytes32(address(remoteToken)));
 
         // Give accounts some ETH for gas
         vm.deal(OWNER, 1 ether);
@@ -318,7 +190,7 @@ contract HypLSP8Test is HypTokenTest {
 
     function testRemoteTransferHere() public {
         vm.prank(OWNER);
-        remoteToken.enrollRemoteRouter(DESTINATION, address(remoteToken).addressToBytes32());
+        remoteToken.enrollRemoteRouter(DESTINATION, TypeCasts.addressToBytes32(address(remoteToken)));
 
         _performRemoteTransfer(25_000, TOKEN_ID);
         assertEq(hypLSP8Token.balanceOf(ALICE), 0);
@@ -327,7 +199,7 @@ contract HypLSP8Test is HypTokenTest {
     function testRemoteTransfer_revert_unauthorizedOperator() public {
         vm.prank(OWNER);
         vm.expectRevert("!owner");
-        localToken.transferRemote{ value: 25_000 }(DESTINATION, BOB.addressToBytes32(), uint256(TOKEN_ID));
+        localToken.transferRemote{ value: 25_000 }(DESTINATION, TypeCasts.addressToBytes32(BOB), uint256(TOKEN_ID));
     }
 
     function testRemoteTransfer_revert_invalidTokenId() public {
@@ -337,9 +209,7 @@ contract HypLSP8Test is HypTokenTest {
     }
 }
 
-contract HypLSP8CollateralTest is HypTokenTest {
-    using TypeCasts for address;
-
+contract HypLSP8CollateralTest is HypNFTCollectionTest {
     HypLSP8Collateral internal lsp8Collateral;
 
     function setUp() public override {
@@ -366,7 +236,7 @@ contract HypLSP8CollateralTest is HypTokenTest {
 
         // Enroll routers for both chains
         vm.prank(OWNER);
-        lsp8Collateral.enrollRemoteRouter(DESTINATION, address(remoteToken).addressToBytes32());
+        lsp8Collateral.enrollRemoteRouter(DESTINATION, TypeCasts.addressToBytes32(address(remoteToken)));
     }
 
     function testRemoteTransferXYZ() public {
@@ -382,7 +252,7 @@ contract HypLSP8CollateralTest is HypTokenTest {
             abi.encodeWithSignature("LSP8NotTokenOperator(bytes32,address)", TOKEN_ID, address(lsp8Collateral))
         );
         vm.prank(BOB);
-        localToken.transferRemote{ value: 25_000 }(DESTINATION, BOB.addressToBytes32(), uint256(TOKEN_ID));
+        localToken.transferRemote{ value: 25_000 }(DESTINATION, TypeCasts.addressToBytes32(BOB), uint256(TOKEN_ID));
     }
 
     function testRemoteTransfer_revert_invalidTokenId() public {
