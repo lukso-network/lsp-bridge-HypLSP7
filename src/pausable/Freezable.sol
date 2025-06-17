@@ -8,12 +8,10 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/securit
 // events
 event FreezerAddressChanged(address previousFreezer, address newFreezer);
 
-
 error NotFreezer(address caller);
 error FrozenForever();
 
 abstract contract Freezable is OwnableUpgradeable, PausableUpgradeable {
-
     address public freezer;
     bool public frozenForever;
 
@@ -26,7 +24,7 @@ abstract contract Freezable is OwnableUpgradeable, PausableUpgradeable {
 
     // Owner functions to add/remove
     function changeFreezer(address newFreezer) external onlyOwner {
-        if(frozenForever) revert FrozenForever();
+        if (frozenForever) revert FrozenForever();
         address previousFreezer = freezer;
         freezer = newFreezer;
         emit FreezerAddressChanged(previousFreezer, newFreezer);

@@ -3,10 +3,10 @@ pragma solidity >=0.8.19;
 
 // modules
 import { Freezable } from "./Freezable.sol";
-import { HypLSP7Collateral } from "../HypLSP7Collateral.sol";
+import { HypLSP8Collateral } from "../HypLSP8Collateral.sol";
 
-contract HypLSP7CollateralPausable is HypLSP7Collateral, Freezable {
-    constructor(address lsp7_, address mailbox_) HypLSP7Collateral(lsp7_, mailbox_) { }
+contract HypLSP8CollateralPausable is HypLSP8Collateral, Freezable {
+    constructor(address lsp8_, address mailbox_) HypLSP8Collateral(lsp8_, mailbox_) { }
 
     function _transferRemote(
         uint32 _destination,
@@ -35,6 +35,6 @@ contract HypLSP7CollateralPausable is HypLSP7Collateral, Freezable {
         override
         whenNotPaused
     {
-        HypLSP7Collateral._transferTo(_recipient, _amount, _metadata);
+        HypLSP8Collateral._transferTo(_recipient, _amount, _metadata);
     }
 }

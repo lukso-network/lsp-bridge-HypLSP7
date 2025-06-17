@@ -70,6 +70,7 @@ contract HypLSP8Collateral is TokenRouter {
         bytes calldata // no metadata
     )
         internal
+        virtual
         override
     {
         wrappedToken.transfer(address(this), _recipient, bytes32(_tokenId), true, "");
