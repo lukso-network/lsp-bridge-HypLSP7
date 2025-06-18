@@ -22,13 +22,7 @@ abstract contract Freezable is OwnableUpgradeable, PausableUpgradeable {
         _;
     }
 
-    // Owner functions to add/remove
-    function changeFreezer(address newFreezer) external onlyOwner {
-        if (frozenForever) revert FrozenForever();
-        address previousFreezer = freezer;
-        freezer = newFreezer;
-        emit FreezerAddressChanged(previousFreezer, newFreezer);
-    }
+    // Pausing functions
 
     function pause() external onlyFreezer {
         _pause();
@@ -38,8 +32,23 @@ abstract contract Freezable is OwnableUpgradeable, PausableUpgradeable {
         _unpause();
     }
 
-    function revokeFreezerForever() external onlyOwner {
-        this.changeFreezer(address(0));
+    // Configuration functions
+
+    function changeFreezer(address newFreezer) public onlyOwner {
+        _changeFreezer(newFreezer);
+    }
+
+    function revokeFreezerForever() public onlyOwner {
+        _changeFreezer(address(0));
         frozenForever = true;
+    }
+
+    // Internal functions
+
+    function _changeFreezer(address newFreezer) internal {
+        if (frozenForever) revert FrozenForever();
+        address previousFreezer = freezer;
+        freezer = newFreezer;
+        emit FreezerAddressChanged(previousFreezer, newFreezer);
     }
 }
