@@ -6,8 +6,8 @@ import { Freezable } from "./Freezable.sol";
 import { HypLSP8 } from "../HypLSP8.sol";
 
 /**
- * @title LSP7 version of the Hyperlane ERC20 Token Router with Pausable feature
- * @dev See the `CircuitBreaker` contract for more infos on pausing
+ * @title HypLSP8 with Pausable functionalities
+ * @dev See the `Freezable` contract for more details
  */
 contract HypLSP8Pausable is HypLSP8, Freezable {
     constructor(address _mailbox) HypLSP8(_mailbox) { }
@@ -40,7 +40,7 @@ contract HypLSP8Pausable is HypLSP8, Freezable {
         override
         whenNotPaused
     {
-        HypLSP8._transferTo(_recipient, _amount, _metadata);
+        super._transferTo(_recipient, _amount, _metadata);
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {

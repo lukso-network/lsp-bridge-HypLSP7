@@ -5,6 +5,10 @@ pragma solidity >=0.8.19;
 import { Freezable } from "./Freezable.sol";
 import { HypLSP7Collateral } from "../HypLSP7Collateral.sol";
 
+/**
+ * @title HypLSP7Collateral with Pausable functionalities
+ * @dev See the `Freezable` contract for more details
+ */
 contract HypLSP7CollateralPausable is HypLSP7Collateral, Freezable {
     constructor(address lsp7_, address mailbox_) HypLSP7Collateral(lsp7_, mailbox_) { }
 
@@ -35,6 +39,6 @@ contract HypLSP7CollateralPausable is HypLSP7Collateral, Freezable {
         override
         whenNotPaused
     {
-        HypLSP7Collateral._transferTo(_recipient, _amount, _metadata);
+        super._transferTo(_recipient, _amount, _metadata);
     }
 }

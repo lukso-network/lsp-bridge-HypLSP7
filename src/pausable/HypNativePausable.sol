@@ -5,6 +5,10 @@ pragma solidity >=0.8.19;
 import { HypNative } from "@hyperlane-xyz/core/contracts/token/HypNative.sol";
 import { Freezable } from "./Freezable.sol";
 
+/**
+ * @title Hyperlane Native Token Router with Pausable functionalities
+ * @dev See the `Freezable` contract for more details
+ */
 contract HypNativePausable is HypNative, Freezable {
     constructor(address _mailbox) HypNative(_mailbox) { }
 
@@ -35,6 +39,6 @@ contract HypNativePausable is HypNative, Freezable {
         override
         whenNotPaused
     {
-        HypNative._transferTo(_recipient, _amount, _metadata);
+        super._transferTo(_recipient, _amount, _metadata);
     }
 }
