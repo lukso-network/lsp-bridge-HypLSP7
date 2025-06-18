@@ -11,7 +11,12 @@ import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRoute
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 /**
- * @title Hyperlane + LUKSO LSP7 Token Collateral that wraps an existing LSP7 with remote transfer functionality.
+ * @title LSP7 version of the Hyperlane ERC20 Token Collateral that wraps an existing LSP7 with remote transfer
+ * functionality
+ * @dev See following links for reference:
+ * - HypERC20Collateral implementation:
+ * https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/main/solidity/contracts/token/HypERC20Collateral.sol
+ * - LSP7 standard: https://github.com/lukso-network/LIPs/blob/main/LSPs/LSP-7-DigitalAsset.md
  */
 contract HypLSP7Collateral is TokenRouter {
     // solhint-disable-next-line immutable-vars-naming

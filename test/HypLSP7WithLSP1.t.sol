@@ -158,13 +158,13 @@ abstract contract HypTokenTest is Test {
         vm.skip(true);
         vm.prank(address(localMailbox));
 
-        uint256 gasBefore = gasleft();
+        // uint256 gasBefore = gasleft();
         localToken.handle(
             DESTINATION,
             address(remoteToken).addressToBytes32(),
             abi.encodePacked(BOB.addressToBytes32(), TRANSFER_AMOUNT)
         );
-        uint256 gasAfter = gasleft();
+        // uint256 gasAfter = gasleft();
     }
 }
 

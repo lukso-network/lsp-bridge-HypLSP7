@@ -12,7 +12,12 @@ import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRoute
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 /**
- * @title Hyperlane LSP8 Token Collateral that wraps an existing LSP8 with remote transfer functionality.
+ * @title LSP8 version of the Hyperlane ERC721 Token Collateral that wraps an existing LSP8 with remote transfer
+ * functionality
+ * @dev See following links for reference:
+ * - HypERC721Collateral implementation:
+ * https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/main/solidity/contracts/token/HypERC721Collateral.sol
+ * - LSP8 standard: https://github.com/lukso-network/LIPs/blob/main/LSPs/LSP-8-IdentifiableDigitalAsset.md
  */
 contract HypLSP8Collateral is TokenRouter {
     // solhint-disable-next-line immutable-vars-naming
@@ -77,6 +82,7 @@ contract HypLSP8Collateral is TokenRouter {
         bytes calldata // no metadata
     )
         internal
+        virtual
         override
     {
         wrappedToken.transfer(address(this), _recipient, bytes32(_tokenId), true, "");
