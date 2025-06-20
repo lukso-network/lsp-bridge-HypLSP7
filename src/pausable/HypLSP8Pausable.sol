@@ -42,8 +42,4 @@ contract HypLSP8Pausable is HypLSP8, Freezable {
     {
         super._transferTo(_recipient, _amount, _metadata);
     }
-
-    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
-        return super.supportsInterface(interfaceId);
-    }
 }

@@ -52,7 +52,12 @@ abstract contract HypTokenTest is Test {
     address internal FREEZER = makeAddr("circuit_breaker");
     uint256 internal REQUIRED_VALUE; // initialized in setUp
 
+    // Native warp route
     HypNativePausable internal nativeToken;
+    // parameter used for native tokens that use different number of decimals than 1e18 (e.g: Solana Sealevel with
+    // 1e9 for 9 decimals)
+    uint256 constant SCALE_NATIVE = 1;
+
     HypLSP7Pausable internal remoteToken;
     // FreezerUP internal freezerLocal;
     // FreezerUP internal freezerRemote;
@@ -82,13 +87,13 @@ abstract contract HypTokenTest is Test {
 
         REQUIRED_VALUE = noopHook.quoteDispatch("", "");
 
-        HypNativePausable localToken = new HypNativePausable(address(localMailbox));
+        HypNativePausable localToken = new HypNativePausable(SCALE_NATIVE, address(localMailbox));
         localToken.initialize(address(noopHook), address(0), OWNER);
         nativeToken = HypNativePausable(payable(address(localToken)));
 
         (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
 
-        remoteToken = new HypLSP7Pausable(DECIMALS, address(remoteMailbox));
+        remoteToken = new HypLSP7Pausable(DECIMALS, SCALE_NATIVE, address(remoteMailbox));
         remoteToken.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, dataKeys, dataValues);
 
         vm.startPrank(OWNER);
@@ -184,7 +189,7 @@ abstract contract HypTokenTest is Test {
     }
 
     function _performRemoteTransferWithEmit(uint256 _msgValue, uint256 _amount, uint256 _gasOverhead) internal {
-        vm.expectEmit(true, true, false, true);
+        vm.expectEmit(true, true, true, true);
         emit SentTransferRemote(DESTINATION, BOB.addressToBytes32(), _amount);
         _performRemoteTransferAndGas(_msgValue, _amount, _gasOverhead);
     }

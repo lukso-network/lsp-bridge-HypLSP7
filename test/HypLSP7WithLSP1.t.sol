@@ -33,6 +33,7 @@ abstract contract HypTokenTest is Test {
     address internal BOB = makeAddr("bob");
     address internal OWNER = makeAddr("owner");
     uint256 internal REQUIRED_VALUE; // initialized in setUp
+    uint256 constant SCALE = 1;
 
     LSP7Mock internal primaryToken;
     TokenRouter internal localToken;
@@ -58,7 +59,7 @@ abstract contract HypTokenTest is Test {
 
         REQUIRED_VALUE = noopHook.quoteDispatch("", "");
 
-        remoteToken = new HypLSP7(DECIMALS, address(remoteMailbox));
+        remoteToken = new HypLSP7(DECIMALS, SCALE, address(remoteMailbox));
 
         bytes32[] memory dataKeys = new bytes32[](0);
         bytes[] memory dataValues = new bytes[](0);

@@ -67,6 +67,7 @@ abstract contract HypTokenTest is Test {
     address internal OWNER = makeAddr("owner");
     address internal CIRCUIT_BREAKER = makeAddr("circuit_breaker");
     uint256 internal REQUIRED_VALUE; // initialized in setUp
+    uint256 constant SCALE_SYNTHETIC = 1;
 
     LSP7Mock internal primaryToken;
     TokenRouter internal localToken;
@@ -98,7 +99,7 @@ abstract contract HypTokenTest is Test {
 
         REQUIRED_VALUE = noopHook.quoteDispatch("", "");
 
-        remoteToken = new HypLSP7(DECIMALS, address(remoteMailbox));
+        remoteToken = new HypLSP7(DECIMALS, SCALE_SYNTHETIC, address(remoteMailbox));
 
         (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
 
@@ -365,7 +366,7 @@ contract HypLSP7Test is HypTokenTest {
     function setUp() public override {
         super.setUp();
 
-        localToken = new HypLSP7(DECIMALS, address(localMailbox));
+        localToken = new HypLSP7(DECIMALS, SCALE_SYNTHETIC, address(localMailbox));
         hypLSP7Token = HypLSP7(payable(address(localToken)));
 
         vm.prank(OWNER);
@@ -393,7 +394,7 @@ contract HypLSP7Test is HypTokenTest {
         // Capture logs before the transaction
         vm.recordLogs();
 
-        HypLSP7 someHypLSP7Token = new HypLSP7(DECIMALS, address(localMailbox));
+        HypLSP7 someHypLSP7Token = new HypLSP7(DECIMALS, SCALE_SYNTHETIC, address(localMailbox));
 
         // initialize token without metadata bytes
         vm.prank(OWNER);
@@ -435,7 +436,7 @@ contract HypLSP7Test is HypTokenTest {
 
     function testEmitDataChangedEventWhenMetadataBytesProvided() public {
         vm.prank(OWNER);
-        HypLSP7 someHypLSP7Token = new HypLSP7(DECIMALS, address(localMailbox));
+        HypLSP7 someHypLSP7Token = new HypLSP7(DECIMALS, SCALE_SYNTHETIC, address(localMailbox));
 
         vm.expectEmit({ checkTopic1: true, checkTopic2: false, checkTopic3: false, checkData: true });
         emit IERC725Y.DataChanged(_LSP4_METADATA_KEY, SAMPLE_METADATA_BYTES);
@@ -450,7 +451,7 @@ contract HypLSP7Test is HypTokenTest {
         // Capture logs before the transaction
         vm.recordLogs();
 
-        HypLSP7 someHypLSP7Token = new HypLSP7(DECIMALS, address(localMailbox));
+        HypLSP7 someHypLSP7Token = new HypLSP7(DECIMALS, SCALE_SYNTHETIC, address(localMailbox));
 
         // initialize token without setting any additional data key / value pairs
         vm.prank(OWNER);
@@ -545,7 +546,7 @@ contract HypLSP7CollateralTest is HypTokenTest {
     function setUp() public override {
         super.setUp();
 
-        localToken = new HypLSP7Collateral(address(primaryToken), address(localMailbox));
+        localToken = new HypLSP7Collateral(address(primaryToken), SCALE_SYNTHETIC, address(localMailbox));
 
         lsp7Collateral = HypLSP7Collateral(address(localToken));
 
@@ -564,7 +565,7 @@ contract HypLSP7CollateralTest is HypTokenTest {
 
     function test_constructor_revert_ifInvalidToken() public {
         vm.expectRevert("HypLSP7Collateral: invalid token");
-        new HypLSP7Collateral(address(0), address(localMailbox));
+        new HypLSP7Collateral(address(0), SCALE_SYNTHETIC, address(localMailbox));
     }
 
     function testRemoteTransfer() public {
@@ -622,11 +623,13 @@ contract HypNativeTest is HypTokenTest {
     using TypeCasts for address;
 
     HypNative internal nativeToken;
+    // parameter used for native tokens that use different number of decimals than 1e18
+    uint256 constant SCALE_NATIVE = 1;
 
     function setUp() public override {
         super.setUp();
 
-        localToken = new HypNative(address(localMailbox));
+        localToken = new HypNative(SCALE_NATIVE, address(localMailbox));
         nativeToken = HypNative(payable(address(localToken)));
 
         nativeToken.initialize(address(noopHook), address(0), OWNER);

@@ -8,13 +8,13 @@
   },
   "dependencies": {
     "@erc725/smart-contracts-v8": "npm:@erc725/smart-contracts@8.0.0",
-    "@hyperlane-xyz/core": "^5.12.0",
-    "@lukso/lsp7-contracts": "0.16.3",
-    "@lukso/lsp8-contracts": "0.16.2"
+    "@hyperlane-xyz/core": "^8.0.0",
+    "@lukso/lsp7-contracts": "^0.16.8",
+    "@lukso/lsp8-contracts": "^0.16.7"
   },
   "devDependencies": {
-    "@lukso/lsp0-contracts": "^0.15.1",
-    "@lukso/lsp17contractextension-contracts": "^0.16.3",
+    "@lukso/lsp0-contracts": "^0.15.2",
+    "@lukso/lsp17contractextension-contracts": "^0.16.4",
     "forge-std": "github:foundry-rs/forge-std#v1.8.1",
     "prettier": "^3.0.0",
     "solhint": "^3.6.2"

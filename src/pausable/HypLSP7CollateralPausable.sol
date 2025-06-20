@@ -10,7 +10,7 @@ import { HypLSP7Collateral } from "../HypLSP7Collateral.sol";
  * @dev See the `Freezable` contract for more details
  */
 contract HypLSP7CollateralPausable is HypLSP7Collateral, Freezable {
-    constructor(address lsp7_, address mailbox_) HypLSP7Collateral(lsp7_, mailbox_) { }
+    constructor(address lsp7_, uint256 _scale, address mailbox_) HypLSP7Collateral(lsp7_, _scale, mailbox_) { }
 
     function _transferRemote(
         uint32 _destination,

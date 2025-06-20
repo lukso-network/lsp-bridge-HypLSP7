@@ -63,6 +63,7 @@ abstract contract HypTokenPausableTest is Test {
     address internal OWNER = makeAddr("owner");
     address internal FREEZER = makeAddr("freezer");
     uint256 internal REQUIRED_VALUE; // initialized in setUp
+    uint256 constant SCALE_SYNTHETIC = 1;
 
     LSP7Mock internal primaryToken;
     TokenRouter internal localToken;
@@ -90,7 +91,7 @@ abstract contract HypTokenPausableTest is Test {
 
         REQUIRED_VALUE = noopHook.quoteDispatch("", "");
 
-        remoteToken = new HypLSP7Pausable(DECIMALS, address(remoteMailbox));
+        remoteToken = new HypLSP7Pausable(DECIMALS, SCALE_SYNTHETIC, address(remoteMailbox));
 
         (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
 
@@ -383,7 +384,7 @@ contract HypLSP7PausableTest is HypTokenPausableTest {
     function setUp() public override {
         super.setUp();
 
-        localToken = new HypLSP7Pausable(DECIMALS, address(localMailbox));
+        localToken = new HypLSP7Pausable(DECIMALS, SCALE_SYNTHETIC, address(localMailbox));
         hypLSP7Token = HypLSP7Pausable(payable(address(localToken)));
 
         (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
@@ -418,7 +419,7 @@ contract HypLSP7PausableTest is HypTokenPausableTest {
 
     function testEmitDataChangedEventWhenMetadataBytesProvided() public {
         vm.prank(OWNER);
-        HypLSP7Pausable someHypLSP7Token = new HypLSP7Pausable(DECIMALS, address(localMailbox));
+        HypLSP7Pausable someHypLSP7Token = new HypLSP7Pausable(DECIMALS, SCALE_SYNTHETIC, address(localMailbox));
 
         vm.expectEmit({ checkTopic1: true, checkTopic2: false, checkTopic3: false, checkData: true });
         emit IERC725Y.DataChanged(_LSP4_METADATA_KEY, SAMPLE_METADATA_BYTES);
@@ -434,7 +435,7 @@ contract HypLSP7PausableTest is HypTokenPausableTest {
         // Capture logs before the transaction
         vm.recordLogs();
 
-        HypLSP7Pausable someHypLSP7Token = new HypLSP7Pausable(DECIMALS, address(localMailbox));
+        HypLSP7Pausable someHypLSP7Token = new HypLSP7Pausable(DECIMALS, SCALE_SYNTHETIC, address(localMailbox));
 
         (bytes32[] memory dataKeys, bytes[] memory dataValues) = (new bytes32[](0), new bytes[](0));
 
@@ -528,7 +529,7 @@ contract HypLSP7CollateralPausableTest is HypTokenPausableTest {
     function setUp() public override {
         super.setUp();
 
-        localToken = new HypLSP7CollateralPausable(address(primaryToken), address(localMailbox));
+        localToken = new HypLSP7CollateralPausable(address(primaryToken), SCALE_SYNTHETIC, address(localMailbox));
 
         lsp7Collateral = HypLSP7CollateralPausable(address(localToken));
 
@@ -548,7 +549,7 @@ contract HypLSP7CollateralPausableTest is HypTokenPausableTest {
 
     function test_constructor_revert_ifInvalidToken() public {
         vm.expectRevert("HypLSP7Collateral: invalid token");
-        new HypLSP7CollateralPausable(address(0), address(localMailbox));
+        new HypLSP7CollateralPausable(address(0), SCALE_SYNTHETIC, address(localMailbox));
     }
 
     function testRemoteTransfer() public {
@@ -610,7 +611,7 @@ contract HypLSP7CollateralPausableTest is HypTokenPausableTest {
     function testNoCircuitBreakerDoesNotCauseRevert() public {
         // vm.prank(address(this));
         HypLSP7CollateralPausable lsp7CollateralNoFreezer =
-            new HypLSP7CollateralPausable(address(localToken), address(localMailbox));
+            new HypLSP7CollateralPausable(address(localToken), SCALE_SYNTHETIC, address(localMailbox));
         lsp7CollateralNoFreezer.initialize(address(noopHook), address(testIsm), OWNER);
 
         bytes memory _message = TokenMessage.format(BOB.addressToBytes32(), TRANSFER_AMOUNT, "");
