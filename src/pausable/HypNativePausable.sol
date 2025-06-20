@@ -10,7 +10,12 @@ import { Freezable } from "./Freezable.sol";
  * @dev See the `Freezable` contract for more details
  */
 contract HypNativePausable is HypNative, Freezable {
-    constructor(address _mailbox) HypNative(_mailbox) { }
+    /**
+     * @param _scale A parameter used for native tokens that use different number of decimals than 1e18 (e.g: Solana
+     * Sealevel with 1e9 for 9 decimals)
+     * @param _mailbox The mailbox configured with this warp route
+     */
+    constructor(uint256 _scale, address _mailbox) HypNative(_scale, _mailbox) { }
 
     function _transferRemote(
         uint32 _destination,

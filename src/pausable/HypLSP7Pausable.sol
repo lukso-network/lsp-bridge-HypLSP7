@@ -11,7 +11,7 @@ import { HypLSP7 } from "../HypLSP7.sol";
  * @dev See the `Freezable` contract for more details
  */
 contract HypLSP7Pausable is HypLSP7, Freezable {
-    constructor(uint8 __decimals, address _mailbox) HypLSP7(__decimals, _mailbox) { }
+    constructor(uint8 __decimals, uint256 _scale, address _mailbox) HypLSP7(__decimals, _scale, _mailbox) { }
 
     // overriden functions
     function _transferRemote(
