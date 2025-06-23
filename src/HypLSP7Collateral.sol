@@ -8,9 +8,13 @@ import { ILSP7DigitalAsset as ILSP7 } from "@lukso/lsp7-contracts/contracts/ILSP
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
 import { FungibleTokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/FungibleTokenRouter.sol";
 import { MovableCollateralRouter } from "@hyperlane-xyz/core/contracts/token/libs/MovableCollateralRouter.sol";
+import { ValueTransferBridge } from "@hyperlane-xyz/core/contracts/token/interfaces/ValueTransferBridge.sol";
 
 // Libraries
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+
+// Constants
+import { Quote } from "@hyperlane-xyz/core/contracts/interfaces/ITokenBridge.sol";
 
 /**
  * @title LSP7 version of the Hyperlane ERC20 Token Collateral that wraps an existing LSP7 with remote transfer
@@ -50,6 +54,22 @@ contract HypLSP7Collateral is MovableCollateralRouter {
         return wrappedToken.balanceOf(_account);
     }
 
+    function quoteTransferRemote(
+        uint32 _destinationDomain,
+        bytes32 _recipient,
+        uint256 _amount
+    )
+        external
+        view
+        virtual
+        override
+        returns (Quote[] memory quotes)
+    {
+        quotes = new Quote[](2);
+        quotes[0] = Quote({ token: address(0), amount: _quoteGasPayment(_destinationDomain, _recipient, _amount) });
+        quotes[1] = Quote({ token: address(wrappedToken), amount: _amount });
+    }
+
     /**
      * @dev Transfers `_amount` of `wrappedToken` from `msg.sender` to this contract.
      * Note that this function will also trigger a callback to the `universalReceiver(...)` function
@@ -79,5 +99,18 @@ contract HypLSP7Collateral is MovableCollateralRouter {
         override
     {
         wrappedToken.transfer(address(this), _recipient, _amount, true, "");
+    }
+
+    function _rebalance(
+        uint32 domain,
+        bytes32 recipient,
+        uint256 amount,
+        ValueTransferBridge bridge
+    )
+        internal
+        override
+    {
+        wrappedToken.authorizeOperator({ operator: address(bridge), amount: amount, operatorNotificationData: "" });
+        MovableCollateralRouter._rebalance({ domain: domain, recipient: recipient, amount: amount, bridge: bridge });
     }
 }

@@ -16,12 +16,12 @@ import { _LSP4_TOKEN_TYPE_TOKEN, _LSP4_METADATA_KEY } from "@lukso/lsp4-contract
  * https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/main/solidity/contracts/token/HypERC20.sol
  * - LSP7 standard: https://github.com/lukso-network/LIPs/blob/main/LSPs/LSP-7-DigitalAsset.md
  */
-contract HypLSP7 is FungibleTokenRouter, LSP7DigitalAssetInitAbstract {
+contract HypLSP7 is LSP7DigitalAssetInitAbstract, FungibleTokenRouter {
     // solhint-disable-next-line immutable-vars-naming
     uint8 private immutable _decimals;
 
-    constructor(uint8 __decimals, uint256 _scale, address _mailbox) FungibleTokenRouter(_scale, _mailbox) {
-        _decimals = __decimals;
+    constructor(uint8 decimals_, uint256 scale_, address mailbox_) FungibleTokenRouter(scale_, mailbox_) {
+        _decimals = decimals_;
     }
 
     /**
@@ -67,7 +67,7 @@ contract HypLSP7 is FungibleTokenRouter, LSP7DigitalAssetInitAbstract {
         // mints initial supply to deployer
         LSP7DigitalAssetInitAbstract._mint({ to: msg.sender, amount: _totalSupply, force: true, data: "" });
 
-        // Initializes the Hyperlane router
+        // Initializes the warp route
         _MailboxClient_initialize(_hook, _interchainSecurityModule, _owner);
     }
 
