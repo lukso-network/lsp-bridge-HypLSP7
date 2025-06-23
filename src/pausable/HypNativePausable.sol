@@ -20,7 +20,7 @@ contract HypNativePausable is HypNative, Freezable {
     function _transferRemote(
         uint32 _destination,
         bytes32 _recipient,
-        uint256 _amountOrId,
+        uint256 _amount,
         uint256 _value,
         bytes memory _hookMetadata,
         address _hook
@@ -31,7 +31,7 @@ contract HypNativePausable is HypNative, Freezable {
         whenNotPaused
         returns (bytes32 messageId)
     {
-        return super._transferRemote(_destination, _recipient, _amountOrId, _value, _hookMetadata, _hook);
+        return super._transferRemote(_destination, _recipient, _amount, _value, _hookMetadata, _hook);
     }
 
     function _transferTo(
