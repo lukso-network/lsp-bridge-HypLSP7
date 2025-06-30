@@ -2,7 +2,6 @@
 pragma solidity >=0.8.19;
 
 // modules
-import { LSP7DigitalAssetInitAbstract } from "@lukso/lsp7-contracts/contracts/LSP7DigitalAssetInitAbstract.sol";
 import { Freezable } from "./Freezable.sol";
 import { HypLSP7 } from "../HypLSP7.sol";
 

@@ -12,8 +12,6 @@ import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 import { HypLSP8 } from "../src/HypLSP8.sol";
 import { HypLSP8Collateral } from "../src/HypLSP8Collateral.sol";
 import { LSP8Mock } from "./Mocks/LSP8Mock.sol";
-import { PausableCircuitBreakerIsm } from "../src/ISM/PausableCircuitBreakerISM.sol";
-import { PausableCircuitBreakerHook } from "../src/ISM/PausableCircuitBreakerHook.sol";
 import { IERC725Y } from "@erc725/smart-contracts/contracts/interfaces/IERC725Y.sol";
 
 // constants
