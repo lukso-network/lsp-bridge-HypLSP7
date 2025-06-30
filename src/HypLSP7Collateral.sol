@@ -42,12 +42,20 @@ contract HypLSP7Collateral is MovableCollateralRouter {
     /**
      * @notice Initializes the Hyperlane router
      *
-     * @param _hook The post-dispatch hook contract.
-     * @param _interchainSecurityModule The interchain security module contract.
-     * @param _owner The this contract.
+     * @param defaultHook The post-dispatch hook contract.
+     * @param defaultInterchainSecurityModule The interchain security module contract.
+     * @param contractOwner The this contract.
      */
-    function initialize(address _hook, address _interchainSecurityModule, address _owner) public virtual initializer {
-        _MailboxClient_initialize(_hook, _interchainSecurityModule, _owner);
+    function initialize(
+        address defaultHook,
+        address defaultInterchainSecurityModule,
+        address contractOwner
+    )
+        public
+        virtual
+        initializer
+    {
+        _MailboxClient_initialize(defaultHook, defaultInterchainSecurityModule, contractOwner);
     }
 
     function balanceOf(address _account) external view override returns (uint256) {
