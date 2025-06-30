@@ -77,44 +77,44 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, FungibleTokenRouter {
         return _decimals;
     }
 
-    function balanceOf(address _account)
+    function balanceOf(address account)
         public
         view
         virtual
         override(TokenRouter, LSP7DigitalAssetInitAbstract)
         returns (uint256)
     {
-        return LSP7DigitalAssetInitAbstract.balanceOf(_account);
+        return LSP7DigitalAssetInitAbstract.balanceOf(account);
     }
 
     /**
-     * @dev Burns `_amount` of token from `msg.sender` balance.
+     * @dev Burns `amount` of token from `msg.sender` balance.
      * Note that this function will also trigger a callback to the `universalReceiver(...)` function
      * on the sender contract address.
      *
      * @inheritdoc TokenRouter
      */
-    function _transferFromSender(uint256 _amount) internal override returns (bytes memory) {
-        LSP7DigitalAssetInitAbstract._burn(msg.sender, _amount, "");
+    function _transferFromSender(uint256 amount) internal override returns (bytes memory) {
+        LSP7DigitalAssetInitAbstract._burn(msg.sender, amount, "");
         return bytes(""); // no metadata
     }
 
     /**
-     * @dev Mints `_amount` of token to `_recipient` balance.
+     * @dev Mints `amount` of token to `recipient` balance.
      * Note that this function will also trigger a callback to the `universalReceiver(...)` function
      * on the recipient contract address.
      *
      * @inheritdoc TokenRouter
      */
     function _transferTo(
-        address _recipient,
-        uint256 _amount,
+        address recipient,
+        uint256 amount,
         bytes calldata // no metadata
     )
         internal
         virtual
         override
     {
-        LSP7DigitalAssetInitAbstract._mint(_recipient, _amount, true, "");
+        LSP7DigitalAssetInitAbstract._mint(recipient, amount, true, "");
     }
 }
