@@ -73,46 +73,46 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter {
         }
     }
 
-    function balanceOf(address _account)
+    function balanceOf(address account)
         public
         view
         virtual
         override(TokenRouter, LSP8IdentifiableDigitalAssetInitAbstract)
         returns (uint256)
     {
-        return LSP8IdentifiableDigitalAssetInitAbstract.balanceOf(_account);
+        return LSP8IdentifiableDigitalAssetInitAbstract.balanceOf(account);
     }
 
     /**
-     * @dev Asserts `msg.sender` is owner and burns `_tokenId`.
+     * @dev Asserts `msg.sender` is owner and burns `tokenId`.
      * Note that this function will also trigger a callback to the `universalReceiver(...)` function
      * on the sender contract address.
      *
      * @inheritdoc TokenRouter
      */
-    function _transferFromSender(uint256 _tokenId) internal virtual override returns (bytes memory) {
-        bytes32 tokenIdAsBytes32 = bytes32(_tokenId);
+    function _transferFromSender(uint256 tokenId) internal virtual override returns (bytes memory) {
+        bytes32 tokenIdAsBytes32 = bytes32(tokenId);
         require(tokenOwnerOf(tokenIdAsBytes32) == msg.sender, "!owner");
         _burn(tokenIdAsBytes32, "");
         return bytes(""); // no metadata
     }
 
     /**
-     * @dev Mints `_tokenId` to `_recipient`.
+     * @dev Mints `tokenId` to `recipient`.
      * Note that this function will also trigger a callback to the `universalReceiver(...)` function
      * on the recipient contract address.
      *
      * @inheritdoc TokenRouter
      */
     function _transferTo(
-        address _recipient,
-        uint256 _tokenId,
+        address recipient,
+        uint256 tokenId,
         bytes calldata // no metadata
     )
         internal
         virtual
         override
     {
-        _mint(_recipient, bytes32(_tokenId), true, "");
+        _mint(recipient, bytes32(tokenId), true, "");
     }
 }
