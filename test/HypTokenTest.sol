@@ -38,61 +38,85 @@ import {
     _LSP4_METADATA_KEY
 } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
 
-/// @dev TODO: write basic description
+/// @dev TODO: write basic description of this test setup
 abstract contract HypTokenTest is Test {
     using TypeCasts for address;
 
+    // origin chain
+    // ---------------------------
     uint32 internal constant ORIGIN = 11;
+    TokenRouter internal localToken; // TODO: rename to originToken
+    TestMailbox internal localMailbox;
+
+    // destination chain
+    // ---------------------------
     uint32 internal constant DESTINATION = 12;
-    uint8 internal constant DECIMALS = 18;
-    uint256 internal constant TOTAL_SUPPLY = 1_000_000e18;
-    uint256 internal constant GAS_LIMIT = 10_000;
-    uint256 internal constant TRANSFER_AMOUNT = 100e18;
+    HypLSP7 internal remoteToken;
+    TestMailbox internal remoteMailbox;
+
+    // token being bridged
+    // TODO: initialization of this token should be moved in the HypLSP7Test `setUp()` function
+    // ---------------------------
+    LSP7Mock internal primaryToken;
     string internal constant NAME = "HyperlaneInu";
     string internal constant SYMBOL = "HYP";
     bytes internal constant SAMPLE_METADATA_BYTES =
         hex"00006f357c6a0020820464ddfac1bec070cc14a8daf04129871d458f2ca94368aae8391311af6361696670733a2f2f516d597231564a4c776572673670456f73636468564775676f3339706136727963455a4c6a7452504466573834554178";
 
-    address internal ALICE = makeAddr("alice");
-    address internal BOB = makeAddr("bob");
-    address internal OWNER = makeAddr("owner");
-    address internal CIRCUIT_BREAKER = makeAddr("circuit_breaker");
-    uint256 internal REQUIRED_VALUE; // initialized in setUp
+    // warp route parameters
+    // ---------------------------
+    TestPostDispatchHook internal noopHook;
+    TestInterchainGasPaymaster internal interchainGasPaymaster;
+
+    address internal WARP_ROUTE_OWNER = makeAddr("warp route owner");
+    uint8 internal constant DECIMALS = 18;
+    uint256 internal constant TOTAL_SUPPLY = 1_000_000e18;
+    uint256 internal constant GAS_LIMIT = 10_000;
     uint256 constant SCALE_SYNTHETIC = 1;
 
-    LSP7Mock internal primaryToken;
-    TokenRouter internal localToken;
-    HypLSP7 internal remoteToken;
-    TestMailbox internal localMailbox;
-    TestMailbox internal remoteMailbox;
-    TestPostDispatchHook internal noopHook;
-    TestInterchainGasPaymaster internal igp;
+    // Interchain Gas Payment amount required to performed remote transfers (initialized in setUp).
+    uint256 internal REQUIRED_INTERCHAIN_GAS_PAYMENT;
+
+    // constants used for testing
+    // ---------------------------
+    uint256 internal constant TRANSFER_AMOUNT = 100e18;
+    address internal ALICE = makeAddr("alice");
+    address internal BOB = makeAddr("bob");
 
     function setUp() public virtual {
-        localMailbox = new TestMailbox(ORIGIN);
-        remoteMailbox = new TestMailbox(DESTINATION);
-
+        // 1. deploy the initial token that we will bridge from the origin chainAdd commentMore actions
+        // (in production this is assumed that this token already exists)
+        // TODO: to be moved inside the `HypLSP7Test` suite
         primaryToken = new LSP7Mock(NAME, SYMBOL, address(this), TOTAL_SUPPLY);
+
+        // 2. setup the Hyperlane core contracts on the origin chain
+        localMailbox = new TestMailbox(ORIGIN);
 
         noopHook = new TestPostDispatchHook();
         localMailbox.setDefaultHook(address(noopHook));
         localMailbox.setRequiredHook(address(noopHook));
 
-        REQUIRED_VALUE = noopHook.quoteDispatch("", "");
+        REQUIRED_INTERCHAIN_GAS_PAYMENT = noopHook.quoteDispatch("", "");
+        interchainGasPaymaster = new TestInterchainGasPaymaster();
+
+        // setup the destination chain
+        // TODO: shouldn't we setup the ISM here?
+        remoteMailbox = new TestMailbox(DESTINATION);
 
         remoteToken = new HypLSP7(DECIMALS, SCALE_SYNTHETIC, address(remoteMailbox));
 
+        // initialize the warp route
         (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
 
-        remoteToken.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, dataKeys, dataValues);
-
-        igp = new TestInterchainGasPaymaster();
+        remoteToken.initialize(
+            TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER, dataKeys, dataValues
+        );
 
         vm.deal(ALICE, 125_000);
     }
 
     function _enrollRemoteTokenRouter() internal {
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         remoteToken.enrollRemoteRouter(ORIGIN, address(localToken).addressToBytes32());
     }
 
@@ -108,13 +132,13 @@ abstract contract HypTokenTest is Test {
     }
 
     function _setCustomGasConfig() internal {
-        vm.prank(OWNER);
-        localToken.setHook(address(igp));
+        vm.prank(WARP_ROUTE_OWNER);
+        localToken.setHook(address(interchainGasPaymaster));
 
         TokenRouter.GasRouterConfig[] memory config = new TokenRouter.GasRouterConfig[](1);
         config[0] = GasRouter.GasRouterConfig({ domain: DESTINATION, gas: GAS_LIMIT });
 
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         localToken.setDestinationGas(config);
     }
 
@@ -136,7 +160,7 @@ abstract contract HypTokenTest is Test {
 
         _performRemoteTransfer(_msgValue + _gasOverhead, _amount);
 
-        assertEq(ALICE.balance, ethBalance - REQUIRED_VALUE - _gasOverhead);
+        assertEq(ALICE.balance, ethBalance - REQUIRED_INTERCHAIN_GAS_PAYMENT - _gasOverhead);
     }
 
     function _performRemoteTransferWithEmit(uint256 _msgValue, uint256 _amount, uint256 _gasOverhead) internal {
@@ -168,7 +192,8 @@ abstract contract HypTokenTest is Test {
 
         vm.prank(ALICE);
         primaryToken.authorizeOperator(address(localToken), TRANSFER_AMOUNT, "");
-        bytes32 messageId = _performRemoteTransferWithHook(REQUIRED_VALUE, TRANSFER_AMOUNT, address(hook), metadata);
+        bytes32 messageId =
+            _performRemoteTransferWithHook(REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT, address(hook), metadata);
         assertTrue(hook.messageDispatched(messageId));
     }
 

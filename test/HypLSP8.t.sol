@@ -41,6 +41,7 @@ uint256 constant INITIAL_SUPPLY = 10;
 bytes32 constant TOKEN_ID = bytes32(uint256(1));
 string constant URI = "http://example.com/token/";
 
+/// @dev TODO: write basic description of this test setup
 contract HypLSP8Test is HypNFTCollectionTest {
     HypLSP8 internal hypLSP8Token;
 
@@ -50,23 +51,23 @@ contract HypLSP8Test is HypNFTCollectionTest {
         localToken = new HypLSP8(address(localMailbox));
         hypLSP8Token = HypLSP8(payable(address(localToken)));
 
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
         hypLSP8Token.initialize(
-            INITIAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, dataKeys, dataValues
+            INITIAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER, dataKeys, dataValues
         );
 
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         hypLSP8Token.enrollRemoteRouter(DESTINATION, TypeCasts.addressToBytes32(address(remoteToken)));
 
-        // Give accounts some ETH for gas
-        vm.deal(OWNER, 1 ether);
+        // Give accounts some native tokens for gas
+        vm.deal(WARP_ROUTE_OWNER, 1 ether);
         vm.deal(ALICE, 1 ether);
         vm.deal(BOB, 1 ether);
 
         // Transfer some tokens to ALICE for testing
-        vm.prank(OWNER);
-        hypLSP8Token.transfer(OWNER, ALICE, TOKEN_ID, true, "");
+        vm.prank(WARP_ROUTE_OWNER);
+        hypLSP8Token.transfer(WARP_ROUTE_OWNER, ALICE, TOKEN_ID, true, "");
 
         _deployRemoteToken();
     }
@@ -75,7 +76,7 @@ contract HypLSP8Test is HypNFTCollectionTest {
         vm.expectRevert("Initializable: contract is already initialized");
         (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
         hypLSP8Token.initialize(
-            INITIAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, dataKeys, dataValues
+            INITIAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER, dataKeys, dataValues
         );
     }
 
@@ -86,31 +87,31 @@ contract HypLSP8Test is HypNFTCollectionTest {
         HypLSP8 someHypLSP8Token = new HypLSP8(address(localMailbox));
 
         // initialize token without metadata bytes
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         bytes32[] memory dataKeys = new bytes32[](1);
         dataKeys[0] = _LSP4_METADATA_KEY;
         bytes[] memory dataValues = new bytes[](0);
 
         vm.expectRevert(ERC725Y_DataKeysValuesLengthMismatch.selector);
         someHypLSP8Token.initialize(
-            INITIAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, dataKeys, dataValues
+            INITIAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER, dataKeys, dataValues
         );
     }
 
     function test_SetData_ChangeTokenName_Reverts(bytes memory name) public {
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         vm.expectRevert(LSP4TokenNameNotEditable.selector);
         hypLSP8Token.setData(_LSP4_TOKEN_NAME_KEY, name);
     }
 
     function test_SetData_ChangeTokenSymbol_Reverts(bytes memory name) public {
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         vm.expectRevert(LSP4TokenSymbolNotEditable.selector);
         hypLSP8Token.setData(_LSP4_TOKEN_SYMBOL_KEY, name);
     }
 
     function test_SetData_ChangeTokenType_Reverts(bytes memory name) public {
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         vm.expectRevert(LSP4TokenTypeNotEditable.selector);
         hypLSP8Token.setData(_LSP4_TOKEN_TYPE_KEY, name);
     }
@@ -124,7 +125,7 @@ contract HypLSP8Test is HypNFTCollectionTest {
     }
 
     function testEmitDataChangedEventWhenMetadataBytesProvided() public {
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         HypLSP8 someHypLSP8Token = new HypLSP8(address(localMailbox));
 
         vm.expectEmit({ checkTopic1: true, checkTopic2: false, checkTopic3: false, checkData: true });
@@ -132,7 +133,7 @@ contract HypLSP8Test is HypNFTCollectionTest {
 
         (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
         someHypLSP8Token.initialize(
-            INITIAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, dataKeys, dataValues
+            INITIAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER, dataKeys, dataValues
         );
     }
 
@@ -145,9 +146,9 @@ contract HypLSP8Test is HypNFTCollectionTest {
         // initialize token without setting any additional data key / value pairs
         bytes32[] memory dataKeys = new bytes32[](0);
         bytes[] memory dataValues = new bytes[](0);
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         someHypLSP8Token.initialize(
-            INITIAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, dataKeys, dataValues
+            INITIAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER, dataKeys, dataValues
         );
 
         // Search all the logs
@@ -189,7 +190,7 @@ contract HypLSP8Test is HypNFTCollectionTest {
     }
 
     function testRemoteTransferHere() public {
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         remoteToken.enrollRemoteRouter(DESTINATION, TypeCasts.addressToBytes32(address(remoteToken)));
 
         _performRemoteTransfer(25_000, TOKEN_ID);
@@ -197,7 +198,7 @@ contract HypLSP8Test is HypNFTCollectionTest {
     }
 
     function testRemoteTransfer_revert_unauthorizedOperator() public {
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         vm.expectRevert("!owner");
         localToken.transferRemote{ value: 25_000 }(DESTINATION, TypeCasts.addressToBytes32(BOB), uint256(TOKEN_ID));
     }
@@ -215,36 +216,36 @@ contract HypLSP8CollateralTest is HypNFTCollectionTest {
     function setUp() public override {
         super.setUp();
 
-        localToken = new HypLSP8Collateral(address(localPrimaryToken), address(localMailbox));
+        localToken = new HypLSP8Collateral(address(primaryNFTCollection), address(localMailbox));
         lsp8Collateral = HypLSP8Collateral(address(localToken));
 
-        vm.prank(OWNER);
-        lsp8Collateral.initialize(address(noopHook), address(0), OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
+        lsp8Collateral.initialize(address(noopHook), address(0), WARP_ROUTE_OWNER);
 
-        // Give accounts some ETH for gas
-        vm.deal(OWNER, 1 ether);
+        // Give accounts some native tokens for gas
+        vm.deal(WARP_ROUTE_OWNER, 1 ether);
         vm.deal(ALICE, 1 ether);
         vm.deal(BOB, 1 ether);
 
         // Mint test tokens
-        vm.startPrank(OWNER);
-        localPrimaryToken.mint(OWNER, TOKEN_ID, true, "");
-        localPrimaryToken.transfer(OWNER, ALICE, TOKEN_ID, true, "");
+        vm.startPrank(WARP_ROUTE_OWNER);
+        primaryNFTCollection.mint(WARP_ROUTE_OWNER, TOKEN_ID, true, "");
+        primaryNFTCollection.transfer(WARP_ROUTE_OWNER, ALICE, TOKEN_ID, true, "");
         vm.stopPrank();
 
         _deployRemoteToken();
 
         // Enroll routers for both chains
-        vm.prank(OWNER);
+        vm.prank(WARP_ROUTE_OWNER);
         lsp8Collateral.enrollRemoteRouter(DESTINATION, TypeCasts.addressToBytes32(address(remoteToken)));
     }
 
     function testRemoteTransferXYZ() public {
         vm.prank(ALICE);
-        localPrimaryToken.authorizeOperator(address(lsp8Collateral), TOKEN_ID, "");
+        primaryNFTCollection.authorizeOperator(address(lsp8Collateral), TOKEN_ID, "");
         _performRemoteTransfer(25_000, TOKEN_ID);
 
-        assertEq(localPrimaryToken.tokenOwnerOf(TOKEN_ID), address(lsp8Collateral));
+        assertEq(primaryNFTCollection.tokenOwnerOf(TOKEN_ID), address(lsp8Collateral));
     }
 
     function testRemoteTransfer_revert_unauthorized() public {
@@ -262,9 +263,9 @@ contract HypLSP8CollateralTest is HypNFTCollectionTest {
     }
 
     function testRemoteTransferIsmCollateral_paused() public {
-        assertEq(localPrimaryToken.tokenOwnerOf(TOKEN_ID), ALICE);
+        assertEq(primaryNFTCollection.tokenOwnerOf(TOKEN_ID), ALICE);
 
         vm.prank(ALICE);
-        localPrimaryToken.authorizeOperator(address(lsp8Collateral), TOKEN_ID, "");
+        primaryNFTCollection.authorizeOperator(address(lsp8Collateral), TOKEN_ID, "");
     }
 }
