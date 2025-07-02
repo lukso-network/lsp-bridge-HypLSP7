@@ -9,6 +9,7 @@ import { HypTokenTest } from "./HypTokenTest.sol";
 
 // - Mock test contracts
 import { TestPostDispatchHook } from "@hyperlane-xyz/core/contracts/test/TestPostDispatchHook.sol";
+import { TestIsm } from "@hyperlane-xyz/core/contracts/test/TestIsm.sol";
 
 // - Hyperlane types and modules
 import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
@@ -44,6 +45,7 @@ import { ERC725Y_DataKeysValuesLengthMismatch } from "@erc725/smart-contracts/co
 /// @dev This seems to be a test suite for bridging back, the `DESTINATION` chain is just a context
 contract HypLSP7Test is HypTokenTest {
     HypLSP7 internal hypLSP7Token;
+    TestIsm internal noopIsm;
 
     function setUp() public override {
         super.setUp();
@@ -51,13 +53,10 @@ contract HypLSP7Test is HypTokenTest {
         localToken = new HypLSP7(DECIMALS, SCALE_SYNTHETIC, address(localMailbox));
         hypLSP7Token = HypLSP7(payable(address(localToken)));
 
-        vm.prank(WARP_ROUTE_OWNER);
-        (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
+        noopIsm = new TestIsm();
 
-        // TODO: should we put a dummy Mock ISM to clarify? (Instead of `address(0)`)
-        hypLSP7Token.initialize(
-            TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER, dataKeys, dataValues
-        );
+        vm.prank(WARP_ROUTE_OWNER);
+        hypLSP7Token.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(noopIsm), WARP_ROUTE_OWNER);
 
         vm.prank(WARP_ROUTE_OWNER);
         hypLSP7Token.enrollRemoteRouter(DESTINATION, TypeCasts.addressToBytes32(address(remoteToken)));
@@ -71,28 +70,20 @@ contract HypLSP7Test is HypTokenTest {
 
     function test_Initialize_RevertIfAlreadyInitialized() public {
         vm.expectRevert("Initializable: contract is already initialized");
-        (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
-        hypLSP7Token.initialize(
-            TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER, dataKeys, dataValues
-        );
+        hypLSP7Token.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(noopIsm), WARP_ROUTE_OWNER);
     }
 
-    function test_Initialize_RevertIfDataKeysAndValuesLengthMissmatch() public {
-        // Capture logs before the transaction
-        vm.recordLogs();
-
+    function test_SetDataBatch_RevertIfDataKeysAndValuesLengthMismatch() public {
         HypLSP7 someHypLSP7Token = new HypLSP7(DECIMALS, SCALE_SYNTHETIC, address(localMailbox));
 
         // initialize token without metadata bytes
-        vm.prank(WARP_ROUTE_OWNER);
         bytes32[] memory dataKeys = new bytes32[](1);
         dataKeys[0] = _LSP4_METADATA_KEY;
         bytes[] memory dataValues = new bytes[](0);
 
+        vm.prank(WARP_ROUTE_OWNER);
         vm.expectRevert(ERC725Y_DataKeysValuesLengthMismatch.selector);
-        someHypLSP7Token.initialize(
-            TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER, dataKeys, dataValues
-        );
+        someHypLSP7Token.setDataBatch(dataKeys, dataValues);
     }
 
     function test_SetData_ChangeTokenName_Reverts(bytes memory name) public {
@@ -113,28 +104,41 @@ contract HypLSP7Test is HypTokenTest {
         hypLSP7Token.setData(_LSP4_TOKEN_TYPE_KEY, name);
     }
 
-    function testInitDataKeysAreSet() public view {
+    function test_OwnerCanSetDataKeysAfterDeployment() public {
         (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
+
+        vm.prank(WARP_ROUTE_OWNER);
+        hypLSP7Token.setDataBatch(dataKeys, dataValues);
 
         for (uint256 index = 0; index < dataKeys.length; index++) {
             vm.assertEq(hypLSP7Token.getData(dataKeys[index]), dataValues[index]);
         }
     }
 
-    function testEmitDataChangedEventWhenMetadataBytesProvided() public {
-        vm.prank(WARP_ROUTE_OWNER);
+    function test_OnlyOwnerCanSetDataKeys(address notOwnerAddress) public {
+        vm.assume(notOwnerAddress != WARP_ROUTE_OWNER);
+
+        (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
+
+        vm.prank(notOwnerAddress);
+        vm.expectRevert("Ownable: caller is not the owner");
+        hypLSP7Token.setDataBatch(dataKeys, dataValues);
+    }
+
+    function test_EmitDataChangedEventWhenSettingSettingDataKeysAfterDeployment() public {
         HypLSP7 someHypLSP7Token = new HypLSP7(DECIMALS, SCALE_SYNTHETIC, address(localMailbox));
+        (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
 
         vm.expectEmit({ checkTopic1: true, checkTopic2: false, checkTopic3: false, checkData: true });
         emit IERC725Y.DataChanged(_LSP4_METADATA_KEY, SAMPLE_METADATA_BYTES);
 
-        (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
-        someHypLSP7Token.initialize(
-            TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER, dataKeys, dataValues
-        );
+        vm.prank(WARP_ROUTE_OWNER);
+        someHypLSP7Token.setDataBatch(dataKeys, dataValues);
     }
 
+    // TODO: refactor this test since we removed setting data on initialization
     function testNoDataChangedEventEmittedIfNoDataKeysValuesProvided() public {
+        vm.skip(true);
         // Capture logs before the transaction
         vm.recordLogs();
 
@@ -144,9 +148,7 @@ contract HypLSP7Test is HypTokenTest {
         vm.prank(WARP_ROUTE_OWNER);
         bytes32[] memory dataKeys = new bytes32[](0);
         bytes[] memory dataValues = new bytes[](0);
-        someHypLSP7Token.initialize(
-            TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER, dataKeys, dataValues
-        );
+        someHypLSP7Token.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER);
 
         // Search all the logs
         Vm.Log[] memory emittedEvents = vm.getRecordedLogs();

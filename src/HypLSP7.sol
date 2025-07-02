@@ -43,9 +43,7 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, FungibleTokenRouter {
         string memory tokenSymbol,
         address defaultHook,
         address defaultInterchainSecurityModule,
-        address contractOwner,
-        bytes32[] memory dataKeys,
-        bytes[] memory dataValues
+        address contractOwner
     )
         external
         initializer
@@ -58,11 +56,6 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, FungibleTokenRouter {
             lsp4TokenType_: _LSP4_TOKEN_TYPE_TOKEN,
             isNonDivisible_: false // isNonDivisible set to `false` as not used anyway since decimals() is overriden
          });
-
-        // set init data keys & values
-        if (dataKeys.length > 0 || dataValues.length > 0) {
-            _setDataBatch(dataKeys, dataValues);
-        }
 
         // mints initial supply to deployer
         LSP7DigitalAssetInitAbstract._mint({ to: msg.sender, amount: initialSupply, force: true, data: "" });
