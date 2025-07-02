@@ -8,6 +8,7 @@ import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 import { TestMailbox } from "@hyperlane-xyz/core/contracts/test/TestMailbox.sol";
 import { TestPostDispatchHook } from "@hyperlane-xyz/core/contracts/test/TestPostDispatchHook.sol";
 import { TestIsm } from "@hyperlane-xyz/core/contracts/test/TestIsm.sol";
+import { formatHyperlaneMessage } from "./helpers/Utils.sol";
 
 // libraries
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
@@ -16,7 +17,7 @@ import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMess
 // Mock + contracts to test
 import { HypLSP8Pausable } from "../src/pausable/HypLSP8Pausable.sol";
 import { HypLSP8CollateralPausable } from "../src/pausable/HypLSP8CollateralPausable.sol";
-import { LSP8Mock } from "./Mocks/LSP8Mock.sol";
+import { LSP8Mock } from "./helpers/LSP8Mock.sol";
 import { Freezable } from "../src/pausable/Freezable.sol";
 
 // constants
@@ -157,25 +158,6 @@ abstract contract HypTokenPausableTest is Test {
         assertEq(remoteToken.balanceOf(BOB), 1);
     }
 
-    // This is a work around for creating a message to Mailbox.process()
-    // that doesn't use Message.formatMessage because that requires calldata
-    // that foundry really doesn't like
-    function _formatMessage(
-        uint8 _version,
-        uint32 _nonce,
-        uint32 _originDomain,
-        bytes32 _sender,
-        uint32 _destinationDomain,
-        bytes32 _recipient,
-        bytes memory _messageBody // uses memory instead of calldata ftw
-    )
-        internal
-        pure
-        returns (bytes memory)
-    {
-        return abi.encodePacked(_version, _nonce, _originDomain, _sender, _destinationDomain, _recipient, _messageBody);
-    }
-
     function _prepareProcessCall(bytes32 _tokenId) internal returns (bytes memory) {
         // ============== WTF IS THIS ? ===========================
         // To test whether the ISM is Paused we must call
@@ -190,7 +172,7 @@ abstract contract HypTokenPausableTest is Test {
         assertEq(localRouter, localTokenAddress);
 
         // solhint-disable-line no-spaces-before-semicolon
-        bytes memory message = _formatMessage(
+        bytes memory message = formatHyperlaneMessage(
             3, // _version
             1, // _nonce
             ORIGIN, // _originDomain
