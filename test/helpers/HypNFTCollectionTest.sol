@@ -3,6 +3,7 @@ pragma solidity ^0.8.21;
 
 // test utilities
 import { Test } from "forge-std/src/Test.sol";
+import { formatHyperlaneMessage } from "./Utils.sol";
 
 // Hyperlane testing environnement
 
@@ -21,8 +22,8 @@ import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMess
 
 // Mock contracts to test
 // TODO: these should be changed depending on the direction (ERC20 on Ethereum, lSP7 on LUKSO)
-import { LSP8Mock } from "./Mocks/LSP8Mock.sol";
-import { HypLSP8 } from "../src/HypLSP8.sol";
+import { LSP8Mock } from "./LSP8Mock.sol";
+import { HypLSP8 } from "../../src/HypLSP8.sol";
 
 // TODO: these should be changed depending on the direction (ERC20 on Ethereum, lSP7 on LUKSO)
 // constants
@@ -113,25 +114,6 @@ abstract contract HypNFTCollectionTest is Test {
         assertEq(remoteToken.balanceOf(BOB), 1);
     }
 
-    // This is a work around for creating a message to Mailbox.process()
-    // that doesn't use Message.formatMessage because that requires calldata
-    // that foundry really doesn't like
-    function _formatMessage(
-        uint8 _version,
-        uint32 _nonce,
-        uint32 _originDomain,
-        bytes32 _sender,
-        uint32 _destinationDomain,
-        bytes32 _recipient,
-        bytes memory _messageBody // uses memory instead of calldata ftw
-    )
-        internal
-        pure
-        returns (bytes memory)
-    {
-        return abi.encodePacked(_version, _nonce, _originDomain, _sender, _destinationDomain, _recipient, _messageBody);
-    }
-
     function _prepareProcessCall(bytes32 _tokenId) internal view returns (bytes memory) {
         // ============== WTF IS THIS ? ===========================
         // To test whether the ISM is Paused we must call
@@ -146,7 +128,7 @@ abstract contract HypNFTCollectionTest is Test {
         assertEq(localRouter, localTokenAddress);
 
         // solhint-disable-line no-spaces-before-semicolon
-        bytes memory message = _formatMessage(
+        bytes memory message = formatHyperlaneMessage(
             3, // _version
             1, // _nonce
             ORIGIN, // _originDomain

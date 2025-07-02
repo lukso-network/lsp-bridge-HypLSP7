@@ -3,7 +3,8 @@ pragma solidity ^0.8.13;
 
 // test utilities
 import { Vm } from "forge-std/src/Vm.sol";
-import { HypNFTCollectionTest } from "./HypNFTCollectionTest.sol";
+import { HypNFTCollectionTest } from "./helpers/HypNFTCollectionTest.sol";
+import { generateLSP4DataKeysAndValues } from "./helpers/Utils.sol";
 
 // - Hyperlane types and modules
 import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
@@ -11,7 +12,7 @@ import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 // Mock + contracts to test
 import { HypLSP8 } from "../src/HypLSP8.sol";
 import { HypLSP8Collateral } from "../src/HypLSP8Collateral.sol";
-import { LSP8Mock } from "./Mocks/LSP8Mock.sol";
+import { LSP8Mock } from "./helpers/LSP8Mock.sol";
 import { IERC725Y } from "@erc725/smart-contracts/contracts/interfaces/IERC725Y.sol";
 
 // constants
@@ -80,6 +81,7 @@ contract HypLSP8Test is HypNFTCollectionTest {
         vm.recordLogs();
 
         HypLSP8 someHypLSP8Token = new HypLSP8(address(localMailbox));
+        someHypLSP8Token.initialize(INITIAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER);
 
         // initialize token without metadata bytes
         vm.prank(WARP_ROUTE_OWNER);
@@ -110,7 +112,7 @@ contract HypLSP8Test is HypNFTCollectionTest {
     }
 
     function testInitDataKeysAreSet() public view {
-        (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
+        (bytes32[] memory dataKeys, bytes[] memory dataValues) = generateLSP4DataKeysAndValues();
 
         for (uint256 index = 0; index < dataKeys.length; index++) {
             vm.assertEq(hypLSP8Token.getData(dataKeys[index]), dataValues[index]);
@@ -124,7 +126,7 @@ contract HypLSP8Test is HypNFTCollectionTest {
         vm.expectEmit({ checkTopic1: true, checkTopic2: false, checkTopic3: false, checkData: true });
         emit IERC725Y.DataChanged(_LSP4_METADATA_KEY, SAMPLE_METADATA_BYTES);
 
-        (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
+        (bytes32[] memory dataKeys, bytes[] memory dataValues) = generateLSP4DataKeysAndValues();
         someHypLSP8Token.setDataBatch(dataKeys, dataValues);
     }
 
