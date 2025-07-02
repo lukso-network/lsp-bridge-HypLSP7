@@ -3,34 +3,31 @@ pragma solidity ^0.8.13;
 
 // test utilities
 import { Vm } from "forge-std/src/Vm.sol";
-import { HypTokenTest } from "./HypTokenTest.sol";
+import { HypTokenTest } from "./helpers/HypTokenTest.sol";
+import { generateLSP4DataKeysAndValues, SAMPLE_METADATA_BYTES } from "./helpers/Utils.sol";
 
 // Hyperlane testing environnement
 
 // - Mock test contracts
-import { TestPostDispatchHook } from "@hyperlane-xyz/core/contracts/test/TestPostDispatchHook.sol";
 import { TestIsm } from "@hyperlane-xyz/core/contracts/test/TestIsm.sol";
 
 // - Hyperlane types and modules
 import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 
 // Mocks + contracts to test
-import { HypNative } from "@hyperlane-xyz/core/contracts/token/HypNative.sol";
-import { LSP7Mock } from "./Mocks/LSP7Mock.sol";
+import { LSP7Mock } from "./helpers/LSP7Mock.sol";
 import { HypLSP7 } from "../src/HypLSP7.sol";
 import { HypLSP7Collateral } from "../src/HypLSP7Collateral.sol";
 import { IERC725Y } from "@erc725/smart-contracts/contracts/interfaces/IERC725Y.sol";
 
 // constants
-import { _INTERFACEID_LSP0 } from "@lukso/lsp0-contracts/contracts/LSP0Constants.sol";
 import {
-    _LSP4_TOKEN_TYPE_TOKEN,
     _LSP4_SUPPORTED_STANDARDS_KEY,
     _LSP4_TOKEN_NAME_KEY,
     _LSP4_TOKEN_SYMBOL_KEY,
     _LSP4_TOKEN_TYPE_KEY,
-    _LSP4_CREATORS_ARRAY_KEY,
-    _LSP4_CREATORS_MAP_KEY_PREFIX,
+    // _LSP4_CREATORS_ARRAY_KEY,
+    // _LSP4_CREATORS_MAP_KEY_PREFIX,
     _LSP4_METADATA_KEY
 } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
 
@@ -75,6 +72,7 @@ contract HypLSP7Test is HypTokenTest {
 
     function test_SetDataBatch_RevertIfDataKeysAndValuesLengthMismatch() public {
         HypLSP7 someHypLSP7Token = new HypLSP7(DECIMALS, SCALE_SYNTHETIC, address(localMailbox));
+        someHypLSP7Token.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(noopIsm), WARP_ROUTE_OWNER);
 
         // initialize token without metadata bytes
         bytes32[] memory dataKeys = new bytes32[](1);
@@ -105,7 +103,7 @@ contract HypLSP7Test is HypTokenTest {
     }
 
     function test_OwnerCanSetDataKeysAfterDeployment() public {
-        (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
+        (bytes32[] memory dataKeys, bytes[] memory dataValues) = generateLSP4DataKeysAndValues();
 
         vm.prank(WARP_ROUTE_OWNER);
         hypLSP7Token.setDataBatch(dataKeys, dataValues);
@@ -118,7 +116,7 @@ contract HypLSP7Test is HypTokenTest {
     function test_OnlyOwnerCanSetDataKeys(address notOwnerAddress) public {
         vm.assume(notOwnerAddress != WARP_ROUTE_OWNER);
 
-        (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
+        (bytes32[] memory dataKeys, bytes[] memory dataValues) = generateLSP4DataKeysAndValues();
 
         vm.prank(notOwnerAddress);
         vm.expectRevert("Ownable: caller is not the owner");
@@ -127,7 +125,7 @@ contract HypLSP7Test is HypTokenTest {
 
     function test_EmitDataChangedEventWhenSettingSettingDataKeysAfterDeployment() public {
         HypLSP7 someHypLSP7Token = new HypLSP7(DECIMALS, SCALE_SYNTHETIC, address(localMailbox));
-        (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
+        (bytes32[] memory dataKeys, bytes[] memory dataValues) = generateLSP4DataKeysAndValues();
 
         vm.expectEmit({ checkTopic1: true, checkTopic2: false, checkTopic3: false, checkData: true });
         emit IERC725Y.DataChanged(_LSP4_METADATA_KEY, SAMPLE_METADATA_BYTES);
@@ -219,20 +217,20 @@ contract HypLSP7Test is HypTokenTest {
 
 contract HypLSP7CollateralTest is HypTokenTest {
     HypLSP7Collateral internal lsp7Collateral;
+    TestIsm internal noopIsm;
 
     function setUp() public override {
         super.setUp();
 
         localToken = new HypLSP7Collateral(address(primaryToken), SCALE_SYNTHETIC, address(localMailbox));
-
         lsp7Collateral = HypLSP7Collateral(address(localToken));
 
-        lsp7Collateral.initialize(address(noopHook), address(0), WARP_ROUTE_OWNER);
+        noopIsm = new TestIsm();
+        lsp7Collateral.initialize(address(noopHook), address(noopIsm), WARP_ROUTE_OWNER);
 
         vm.prank(WARP_ROUTE_OWNER);
         lsp7Collateral.enrollRemoteRouter(DESTINATION, TypeCasts.addressToBytes32(address(remoteToken)));
 
-        // TODO: should we put a dummy Mock ISM to clarify? (Instead of `address(0)`)
         primaryToken.transfer(address(this), address(localToken), 1000e18, true, "");
 
         // This is used for when transferring back to perform `handle(...)` (unlock tokens)
@@ -273,74 +271,5 @@ contract HypLSP7CollateralTest is HypTokenTest {
             REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT, GAS_LIMIT * interchainGasPaymaster.gasPrice()
         );
         assertEq(localToken.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
-    }
-}
-
-contract HypNativeTest is HypTokenTest {
-    HypNative internal nativeToken;
-    // parameter used for native tokens that use different number of decimals than 1e18
-    uint256 constant SCALE_NATIVE = 1;
-
-    function setUp() public override {
-        super.setUp();
-
-        localToken = new HypNative(SCALE_NATIVE, address(localMailbox));
-        nativeToken = HypNative(payable(address(localToken)));
-
-        nativeToken.initialize(address(noopHook), address(0), WARP_ROUTE_OWNER);
-
-        vm.prank(WARP_ROUTE_OWNER);
-        nativeToken.enrollRemoteRouter(DESTINATION, TypeCasts.addressToBytes32(address(remoteToken)));
-
-        vm.deal(address(localToken), 1000e18);
-        vm.deal(ALICE, 1000e18);
-
-        _enrollRemoteTokenRouter();
-    }
-
-    function testTransfer_withHookSpecified(uint256 fee, bytes calldata metadata) public override {
-        TestPostDispatchHook hook = new TestPostDispatchHook();
-        hook.setFee(fee);
-
-        uint256 value = REQUIRED_INTERCHAIN_GAS_PAYMENT + TRANSFER_AMOUNT;
-
-        vm.prank(ALICE);
-        primaryToken.authorizeOperator(address(localToken), TRANSFER_AMOUNT, "");
-        bytes32 messageId = _performRemoteTransferWithHook(value, TRANSFER_AMOUNT, address(hook), metadata);
-        assertTrue(hook.messageDispatched(messageId));
-    }
-
-    function testRemoteTransfer() public {
-        _performRemoteTransferWithEmit(REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT, TRANSFER_AMOUNT);
-    }
-
-    function testRemoteTransfer_invalidAmount() public {
-        vm.expectRevert("Native: amount exceeds msg.value");
-        _performRemoteTransfer(REQUIRED_INTERCHAIN_GAS_PAYMENT + TRANSFER_AMOUNT, TRANSFER_AMOUNT * 10);
-        assertEq(localToken.balanceOf(ALICE), 1000e18);
-    }
-
-    function testRemoteTransfer_withCustomGasConfig() public {
-        _setCustomGasConfig();
-
-        _performRemoteTransferAndGas(
-            REQUIRED_INTERCHAIN_GAS_PAYMENT,
-            TRANSFER_AMOUNT,
-            TRANSFER_AMOUNT + GAS_LIMIT * interchainGasPaymaster.gasPrice()
-        );
-    }
-
-    function test_transferRemote_reverts_whenAmountExceedsValue(uint256 nativeValue) public {
-        vm.assume(nativeValue < address(this).balance);
-
-        address recipient = address(0xdeadbeef);
-        bytes32 bRecipient = TypeCasts.addressToBytes32(recipient);
-        vm.expectRevert("Native: amount exceeds msg.value");
-        nativeToken.transferRemote{ value: nativeValue }(DESTINATION, bRecipient, nativeValue + 1);
-
-        vm.expectRevert("Native: amount exceeds msg.value");
-        nativeToken.transferRemote{ value: nativeValue }(
-            DESTINATION, bRecipient, nativeValue + 1, bytes(""), address(0)
-        );
     }
 }

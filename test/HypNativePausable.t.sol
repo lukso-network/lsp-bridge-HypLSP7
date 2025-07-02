@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 // test utilities
 import { Test } from "forge-std/src/Test.sol";
 import { Vm } from "forge-std/src/Vm.sol";
+import { formatHyperlaneMessage } from "./helpers/utils.sol";
 
 /// Hyperlane testing environnement
 /// @dev See https://docs.hyperlane.xyz/docs/guides/developer-tips/unit-testing
@@ -231,25 +232,6 @@ abstract contract HypTokenTest is Test {
         uint256 gasAfter = gasleft();
     }
 
-    // This is a work around for creating a message to Mailbox.process()
-    // that doesn't use Message.formatMessage because that requires calldata
-    // that foundry really doesn't like
-    function _formatMessage(
-        uint8 _version,
-        uint32 _nonce,
-        uint32 _originDomain,
-        bytes32 _sender,
-        uint32 _destinationDomain,
-        bytes32 _recipient,
-        bytes memory _messageBody // uses memory instead of calldata ftw
-    )
-        internal
-        pure
-        returns (bytes memory)
-    {
-        return abi.encodePacked(_version, _nonce, _originDomain, _sender, _destinationDomain, _recipient, _messageBody);
-    }
-
     function _prepareProcessCall(uint256 _amount) internal returns (bytes memory) {
         // ============== WTF IS THIS ? ===========================
         // To test whether the ISM is Paused we must call
@@ -264,7 +246,7 @@ abstract contract HypTokenTest is Test {
         bytes32 localTokenAddress = address(nativeToken).addressToBytes32();
         assertEq(localRouter, localTokenAddress);
 
-        bytes memory message = _formatMessage(
+        bytes memory message = formatHyperlaneMessage(
             3, // _version
             1, // _nonce
             ORIGIN, // _originDomain
