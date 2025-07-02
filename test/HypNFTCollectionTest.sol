@@ -94,8 +94,7 @@ abstract contract HypNFTCollectionTest is Test {
     function _deployRemoteToken() internal {
         remoteToken = new HypLSP8(address(remoteMailbox));
         vm.prank(WARP_ROUTE_OWNER);
-        (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
-        remoteToken.initialize(0, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER, dataKeys, dataValues);
+        remoteToken.initialize(0, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER);
         vm.prank(WARP_ROUTE_OWNER);
         remoteToken.enrollRemoteRouter(ORIGIN, address(localToken).addressToBytes32());
     }

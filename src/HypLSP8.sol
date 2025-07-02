@@ -43,9 +43,7 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter {
         string memory tokenSymbol,
         address defaultHook,
         address defaultInterchainSecurityModule,
-        address contractOwner,
-        bytes32[] memory dataKeys,
-        bytes[] memory dataValues
+        address contractOwner
     )
         external
         initializer
@@ -62,11 +60,6 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter {
             lsp4TokenType_: _LSP4_TOKEN_TYPE_COLLECTION,
             lsp8TokenIdFormat_: _LSP8_TOKENID_FORMAT_NUMBER
         });
-
-        // set init data keys & values
-        if (dataKeys.length > 0 || dataValues.length > 0) {
-            _setDataBatch(dataKeys, dataValues);
-        }
 
         for (uint256 i = 0; i < mintAmount; i++) {
             _mint(msg.sender, bytes32(i), true, "");
