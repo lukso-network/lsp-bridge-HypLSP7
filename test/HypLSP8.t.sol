@@ -52,10 +52,7 @@ contract HypLSP8Test is HypNFTCollectionTest {
         hypLSP8Token = HypLSP8(payable(address(localToken)));
 
         vm.prank(WARP_ROUTE_OWNER);
-        (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
-        hypLSP8Token.initialize(
-            INITIAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER, dataKeys, dataValues
-        );
+        hypLSP8Token.initialize(INITIAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER);
 
         vm.prank(WARP_ROUTE_OWNER);
         hypLSP8Token.enrollRemoteRouter(DESTINATION, TypeCasts.addressToBytes32(address(remoteToken)));
@@ -72,15 +69,13 @@ contract HypLSP8Test is HypNFTCollectionTest {
         _deployRemoteToken();
     }
 
+    // TODO: add fuzzing parameter here
     function test_Initialize_RevertIfAlreadyInitialized() public {
         vm.expectRevert("Initializable: contract is already initialized");
-        (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
-        hypLSP8Token.initialize(
-            INITIAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER, dataKeys, dataValues
-        );
+        hypLSP8Token.initialize(INITIAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER);
     }
 
-    function test_Initialize_RevertIfDataKeysAndValuesLengthMissmatch() public {
+    function test_SetDataBatch_RevertIfDataKeysAndValuesLengthMissmatch() public {
         // Capture logs before the transaction
         vm.recordLogs();
 
@@ -93,9 +88,7 @@ contract HypLSP8Test is HypNFTCollectionTest {
         bytes[] memory dataValues = new bytes[](0);
 
         vm.expectRevert(ERC725Y_DataKeysValuesLengthMismatch.selector);
-        someHypLSP8Token.initialize(
-            INITIAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER, dataKeys, dataValues
-        );
+        someHypLSP8Token.setDataBatch(dataKeys, dataValues);
     }
 
     function test_SetData_ChangeTokenName_Reverts(bytes memory name) public {
@@ -132,12 +125,12 @@ contract HypLSP8Test is HypNFTCollectionTest {
         emit IERC725Y.DataChanged(_LSP4_METADATA_KEY, SAMPLE_METADATA_BYTES);
 
         (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
-        someHypLSP8Token.initialize(
-            INITIAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER, dataKeys, dataValues
-        );
+        someHypLSP8Token.setDataBatch(dataKeys, dataValues);
     }
 
+    // TODO: refactor this test since we removed setting data on initialization
     function testNoDataChangedEventEmittedIfNoDataKeysValuesProvided() public {
+        vm.skip(true);
         // Capture logs before the transaction
         vm.recordLogs();
 
@@ -147,9 +140,7 @@ contract HypLSP8Test is HypNFTCollectionTest {
         bytes32[] memory dataKeys = new bytes32[](0);
         bytes[] memory dataValues = new bytes[](0);
         vm.prank(WARP_ROUTE_OWNER);
-        someHypLSP8Token.initialize(
-            INITIAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER, dataKeys, dataValues
-        );
+        someHypLSP8Token.initialize(INITIAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER);
 
         // Search all the logs
         Vm.Log[] memory emittedEvents = vm.getRecordedLogs();

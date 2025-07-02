@@ -4,7 +4,7 @@ pragma solidity ^0.8.21;
 // test utilities
 import { Test } from "forge-std/src/Test.sol";
 
-// Hyperlane testing environnement
+// 📬 Hyperlane testing environnement
 
 // - Mock test contracts
 import { TestMailbox } from "@hyperlane-xyz/core/contracts/test/TestMailbox.sol";
@@ -106,11 +106,7 @@ abstract contract HypTokenTest is Test {
         remoteToken = new HypLSP7(DECIMALS, SCALE_SYNTHETIC, address(remoteMailbox));
 
         // initialize the warp route
-        (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
-
-        remoteToken.initialize(
-            TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER, dataKeys, dataValues
-        );
+        remoteToken.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), WARP_ROUTE_OWNER);
 
         vm.deal(ALICE, 125_000);
     }
