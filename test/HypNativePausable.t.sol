@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 // test utilities
 import { Test } from "forge-std/src/Test.sol";
 import { Vm } from "forge-std/src/Vm.sol";
-import { formatHyperlaneMessage } from "./helpers/utils.sol";
+import { formatHyperlaneMessage } from "./helpers/Utils.sol";
 
 /// Hyperlane testing environnement
 /// @dev See https://docs.hyperlane.xyz/docs/guides/developer-tips/unit-testing
@@ -257,24 +257,6 @@ abstract contract HypTokenTest is Test {
         );
 
         return message;
-    }
-
-    // setting data keys for the following:
-    // - 1 x creator in the creator array
-    // - creator's info under the map key
-    // - the token metadata
-    function _getInitDataKeysAndValues() internal view returns (bytes32[] memory dataKeys, bytes[] memory dataValues) {
-        dataKeys = new bytes32[](4);
-        dataKeys[0] = _LSP4_CREATORS_ARRAY_KEY;
-        dataKeys[1] = bytes32(abi.encodePacked(bytes16(_LSP4_CREATORS_ARRAY_KEY), bytes16(uint128(0))));
-        dataKeys[2] = bytes32(abi.encodePacked(_LSP4_CREATORS_MAP_KEY_PREFIX, bytes2(0), bytes20(msg.sender)));
-        dataKeys[3] = _LSP4_METADATA_KEY;
-
-        dataValues = new bytes[](4);
-        dataValues[0] = abi.encodePacked(bytes16(uint128(1)));
-        dataValues[1] = abi.encodePacked(bytes20(msg.sender));
-        dataValues[2] = abi.encodePacked(_INTERFACEID_LSP0, bytes16(uint128(0)));
-        dataValues[3] = SAMPLE_METADATA_BYTES;
     }
 }
 

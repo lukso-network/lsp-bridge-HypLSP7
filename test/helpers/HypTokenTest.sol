@@ -54,20 +54,21 @@ abstract contract HypTokenTest is Test {
     TestPostDispatchHook internal noopHook;
     TestInterchainGasPaymaster internal interchainGasPaymaster;
 
-    address internal WARP_ROUTE_OWNER = makeAddr("warp route owner");
+    address internal immutable WARP_ROUTE_OWNER = makeAddr("warp route owner");
     uint8 internal constant DECIMALS = 18;
     uint256 internal constant TOTAL_SUPPLY = 1_000_000e18;
     uint256 internal constant GAS_LIMIT = 10_000;
-    uint256 constant SCALE_SYNTHETIC = 1;
+    uint256 internal constant SCALE_SYNTHETIC = 1;
 
     // Interchain Gas Payment amount required to performed remote transfers (initialized in setUp).
+    // solhint-disable-next-line var-name-mixedcase
     uint256 internal REQUIRED_INTERCHAIN_GAS_PAYMENT;
 
     // constants used for testing
     // ---------------------------
+    address internal immutable ALICE = makeAddr("alice");
+    address internal immutable BOB = makeAddr("bob");
     uint256 internal constant TRANSFER_AMOUNT = 100e18;
-    address internal ALICE = makeAddr("alice");
-    address internal BOB = makeAddr("bob");
 
     function setUp() public virtual {
         // 1. deploy the initial token that we will bridge from the origin chainAdd commentMore actions
