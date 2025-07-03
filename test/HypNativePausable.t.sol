@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: MIT OR Apache-2.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
 // test utilities
 import { Test } from "forge-std/src/Test.sol";
 import { Vm } from "forge-std/src/Vm.sol";
+import { formatHyperlaneMessage } from "./helpers/Utils.sol";
 
 /// Hyperlane testing environnement
 /// @dev See https://docs.hyperlane.xyz/docs/guides/developer-tips/unit-testing
@@ -91,10 +92,8 @@ abstract contract HypTokenTest is Test {
         localToken.initialize(address(noopHook), address(0), OWNER);
         nativeToken = HypNativePausable(payable(address(localToken)));
 
-        (bytes32[] memory dataKeys, bytes[] memory dataValues) = _getInitDataKeysAndValues();
-
         remoteToken = new HypLSP7Pausable(DECIMALS, SCALE_NATIVE, address(remoteMailbox));
-        remoteToken.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER, dataKeys, dataValues);
+        remoteToken.initialize(TOTAL_SUPPLY, NAME, SYMBOL, address(noopHook), address(0), OWNER);
 
         vm.startPrank(OWNER);
         nativeToken.changeFreezer(FREEZER);
@@ -113,7 +112,7 @@ abstract contract HypTokenTest is Test {
         vm.stopPrank();
     }
 
-    function _circuitBreakerPauseLocal() internal {
+    function _pauseLocal() internal {
         if (!nativeToken.paused()) {
             vm.prank(FREEZER);
             nativeToken.pause();
@@ -121,7 +120,7 @@ abstract contract HypTokenTest is Test {
         assertEq(nativeToken.paused(), true);
     }
 
-    function _circuitBreakerUnpauseLocal() internal {
+    function _unpauseLocal() internal {
         if (nativeToken.paused()) {
             vm.prank(OWNER);
             nativeToken.unpause();
@@ -129,7 +128,7 @@ abstract contract HypTokenTest is Test {
         assertEq(nativeToken.paused(), false);
     }
 
-    function _circuitBreakerPauseRemote() internal {
+    function _pauseRemote() internal {
         if (!remoteToken.paused()) {
             vm.prank(FREEZER);
             remoteToken.pause();
@@ -137,7 +136,7 @@ abstract contract HypTokenTest is Test {
         assertEq(remoteToken.paused(), true);
     }
 
-    function _circuitBreakerUnpauseRemote() internal {
+    function _unpauseRemote() internal {
         if (remoteToken.paused()) {
             vm.prank(OWNER);
             remoteToken.unpause();
@@ -233,25 +232,6 @@ abstract contract HypTokenTest is Test {
         uint256 gasAfter = gasleft();
     }
 
-    // This is a work around for creating a message to Mailbox.process()
-    // that doesn't use Message.formatMessage because that requires calldata
-    // that foundry really doesn't like
-    function _formatMessage(
-        uint8 _version,
-        uint32 _nonce,
-        uint32 _originDomain,
-        bytes32 _sender,
-        uint32 _destinationDomain,
-        bytes32 _recipient,
-        bytes memory _messageBody // uses memory instead of calldata ftw
-    )
-        internal
-        pure
-        returns (bytes memory)
-    {
-        return abi.encodePacked(_version, _nonce, _originDomain, _sender, _destinationDomain, _recipient, _messageBody);
-    }
-
     function _prepareProcessCall(uint256 _amount) internal returns (bytes memory) {
         // ============== WTF IS THIS ? ===========================
         // To test whether the ISM is Paused we must call
@@ -266,7 +246,7 @@ abstract contract HypTokenTest is Test {
         bytes32 localTokenAddress = address(nativeToken).addressToBytes32();
         assertEq(localRouter, localTokenAddress);
 
-        bytes memory message = _formatMessage(
+        bytes memory message = formatHyperlaneMessage(
             3, // _version
             1, // _nonce
             ORIGIN, // _originDomain
@@ -277,24 +257,6 @@ abstract contract HypTokenTest is Test {
         );
 
         return message;
-    }
-
-    // setting data keys for the following:
-    // - 1 x creator in the creator array
-    // - creator's info under the map key
-    // - the token metadata
-    function _getInitDataKeysAndValues() internal view returns (bytes32[] memory dataKeys, bytes[] memory dataValues) {
-        dataKeys = new bytes32[](4);
-        dataKeys[0] = _LSP4_CREATORS_ARRAY_KEY;
-        dataKeys[1] = bytes32(abi.encodePacked(bytes16(_LSP4_CREATORS_ARRAY_KEY), bytes16(uint128(0))));
-        dataKeys[2] = bytes32(abi.encodePacked(_LSP4_CREATORS_MAP_KEY_PREFIX, bytes2(0), bytes20(msg.sender)));
-        dataKeys[3] = _LSP4_METADATA_KEY;
-
-        dataValues = new bytes[](4);
-        dataValues[0] = abi.encodePacked(bytes16(uint128(1)));
-        dataValues[1] = abi.encodePacked(bytes20(msg.sender));
-        dataValues[2] = abi.encodePacked(_INTERFACEID_LSP0, bytes16(uint128(0)));
-        dataValues[3] = SAMPLE_METADATA_BYTES;
     }
 }
 
@@ -351,7 +313,7 @@ contract HypNativePausableTest is HypTokenTest {
     }
 
     function testPerformTransferToNativeLocalPaused() public {
-        _circuitBreakerPauseLocal();
+        _pauseLocal();
         vm.prank(ALICE);
 
         bytes memory _tokenMessage = TokenMessage.format(BOB.addressToBytes32(), TRANSFER_AMOUNT, "");
@@ -369,14 +331,14 @@ contract HypNativePausableTest is HypTokenTest {
             ORIGIN, address(nativeToken).addressToBytes32(), address(remoteToken).addressToBytes32(), _message
         );
 
-        _circuitBreakerPauseRemote();
+        _pauseRemote();
         vm.prank(ALICE);
         vm.expectRevert("Pausable: paused");
         remoteToken.transferRemote(ORIGIN, BOB.addressToBytes32(), TRANSFER_AMOUNT);
     }
 
     function testPerformTransferToSyntheticLocalPaused() public {
-        _circuitBreakerPauseLocal();
+        _pauseLocal();
 
         uint256 _msgValue = REQUIRED_VALUE + TRANSFER_AMOUNT;
 
@@ -386,7 +348,7 @@ contract HypNativePausableTest is HypTokenTest {
     }
 
     function testPerformTransferToSyntheticRemotePaused() public {
-        _circuitBreakerPauseRemote();
+        _pauseRemote();
 
         // bytes memory _message = _prepareProcessCall(_amount);
         bytes memory _tokenMessage = TokenMessage.format(BOB.addressToBytes32(), TRANSFER_AMOUNT, "");
@@ -398,8 +360,8 @@ contract HypNativePausableTest is HypTokenTest {
     }
 
     function testPerformRemoteTransferNoPause() public {
-        _circuitBreakerUnpauseLocal();
-        _circuitBreakerUnpauseRemote();
+        _unpauseLocal();
+        _unpauseRemote();
 
         assertEq(remoteToken.balanceOf(BOB), 0);
 
