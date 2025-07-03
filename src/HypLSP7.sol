@@ -3,6 +3,7 @@ pragma solidity >=0.8.19;
 
 // modules
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
+import { FungibleTokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/FungibleTokenRouter.sol";
 import { LSP7DigitalAssetInitAbstract } from "@lukso/lsp7-contracts/contracts/LSP7DigitalAssetInitAbstract.sol";
 
 // constants
@@ -15,12 +16,12 @@ import { _LSP4_TOKEN_TYPE_TOKEN, _LSP4_METADATA_KEY } from "@lukso/lsp4-contract
  * https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/main/solidity/contracts/token/HypERC20.sol
  * - LSP7 standard: https://github.com/lukso-network/LIPs/blob/main/LSPs/LSP-7-DigitalAsset.md
  */
-contract HypLSP7 is TokenRouter, LSP7DigitalAssetInitAbstract {
+contract HypLSP7 is LSP7DigitalAssetInitAbstract, FungibleTokenRouter {
     // solhint-disable-next-line immutable-vars-naming
     uint8 private immutable _decimals;
 
-    constructor(uint8 __decimals, address _mailbox) TokenRouter(_mailbox) {
-        _decimals = __decimals;
+    constructor(uint8 decimals_, uint256 scale_, address mailbox_) FungibleTokenRouter(scale_, mailbox_) {
+        _decimals = decimals_;
     }
 
     /**
@@ -66,7 +67,7 @@ contract HypLSP7 is TokenRouter, LSP7DigitalAssetInitAbstract {
         // mints initial supply to deployer
         LSP7DigitalAssetInitAbstract._mint({ to: msg.sender, amount: _totalSupply, force: true, data: "" });
 
-        // Initializes the Hyperlane router
+        // Initializes the warp route
         _MailboxClient_initialize(_hook, _interchainSecurityModule, _owner);
     }
 

@@ -6,9 +6,15 @@ import { ILSP7DigitalAsset as ILSP7 } from "@lukso/lsp7-contracts/contracts/ILSP
 
 // Modules
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
+import { FungibleTokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/FungibleTokenRouter.sol";
+import { MovableCollateralRouter } from "@hyperlane-xyz/core/contracts/token/libs/MovableCollateralRouter.sol";
+import { ValueTransferBridge } from "@hyperlane-xyz/core/contracts/token/interfaces/ValueTransferBridge.sol";
 
 // Libraries
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+
+// Constants
+import { Quote } from "@hyperlane-xyz/core/contracts/interfaces/ITokenBridge.sol";
 
 /**
  * @title LSP7 version of the Hyperlane ERC20 Token Collateral that wraps an existing LSP7 with remote transfer
@@ -18,7 +24,7 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
  * https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/main/solidity/contracts/token/HypERC20Collateral.sol
  * - LSP7 standard: https://github.com/lukso-network/LIPs/blob/main/LSPs/LSP-7-DigitalAsset.md
  */
-contract HypLSP7Collateral is TokenRouter {
+contract HypLSP7Collateral is MovableCollateralRouter {
     // solhint-disable-next-line immutable-vars-naming
     ILSP7 public immutable wrappedToken;
 
@@ -27,7 +33,7 @@ contract HypLSP7Collateral is TokenRouter {
      *
      * @param lsp7_ Address of the token to keep as collateral
      */
-    constructor(address lsp7_, address mailbox_) TokenRouter(mailbox_) {
+    constructor(address lsp7_, uint256 scale_, address mailbox_) FungibleTokenRouter(scale_, mailbox_) {
         // solhint-disable-next-line custom-errors
         require(Address.isContract(lsp7_), "HypLSP7Collateral: invalid token");
         wrappedToken = ILSP7(lsp7_);
@@ -46,6 +52,22 @@ contract HypLSP7Collateral is TokenRouter {
 
     function balanceOf(address _account) external view override returns (uint256) {
         return wrappedToken.balanceOf(_account);
+    }
+
+    function quoteTransferRemote(
+        uint32 _destinationDomain,
+        bytes32 _recipient,
+        uint256 _amount
+    )
+        external
+        view
+        virtual
+        override
+        returns (Quote[] memory quotes)
+    {
+        quotes = new Quote[](2);
+        quotes[0] = Quote({ token: address(0), amount: _quoteGasPayment(_destinationDomain, _recipient, _amount) });
+        quotes[1] = Quote({ token: address(wrappedToken), amount: _amount });
     }
 
     /**
@@ -77,5 +99,18 @@ contract HypLSP7Collateral is TokenRouter {
         override
     {
         wrappedToken.transfer(address(this), _recipient, _amount, true, "");
+    }
+
+    function _rebalance(
+        uint32 domain,
+        bytes32 recipient,
+        uint256 amount,
+        ValueTransferBridge bridge
+    )
+        internal
+        override
+    {
+        wrappedToken.authorizeOperator({ operator: address(bridge), amount: amount, operatorNotificationData: "" });
+        MovableCollateralRouter._rebalance({ domain: domain, recipient: recipient, amount: amount, bridge: bridge });
     }
 }
