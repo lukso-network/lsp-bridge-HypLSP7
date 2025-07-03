@@ -10,11 +10,9 @@ import { formatHyperlaneMessage } from "./Utils.sol";
 // - Mock test contracts
 import { TestMailbox } from "@hyperlane-xyz/core/contracts/test/TestMailbox.sol";
 import { TestPostDispatchHook } from "@hyperlane-xyz/core/contracts/test/TestPostDispatchHook.sol";
-import { TestInterchainGasPaymaster } from "@hyperlane-xyz/core/contracts/test/TestInterchainGasPaymaster.sol";
 
 // - Hyperlane types and modules
 import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
-import { GasRouter } from "@hyperlane-xyz/core/contracts/client/GasRouter.sol";
 
 // - Hyperlane libraries
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
@@ -24,20 +22,6 @@ import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMess
 // TODO: these should be changed depending on the direction (ERC20 on Ethereum, lSP7 on LUKSO)
 import { LSP8Mock } from "./LSP8Mock.sol";
 import { HypLSP8 } from "../../src/HypLSP8.sol";
-
-// TODO: these should be changed depending on the direction (ERC20 on Ethereum, lSP7 on LUKSO)
-// constants
-import { _INTERFACEID_LSP0 } from "@lukso/lsp0-contracts/contracts/LSP0Constants.sol";
-import {
-    _LSP4_TOKEN_TYPE_TOKEN,
-    _LSP4_SUPPORTED_STANDARDS_KEY,
-    _LSP4_TOKEN_NAME_KEY,
-    _LSP4_TOKEN_SYMBOL_KEY,
-    _LSP4_TOKEN_TYPE_KEY,
-    _LSP4_CREATORS_ARRAY_KEY,
-    _LSP4_CREATORS_MAP_KEY_PREFIX,
-    _LSP4_METADATA_KEY
-} from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
 
 /// @dev TODO: write basic description of this test setup
 abstract contract HypNFTCollectionTest is Test {
@@ -59,7 +43,7 @@ abstract contract HypNFTCollectionTest is Test {
     // ---------------------------
     TestPostDispatchHook internal noopHook;
 
-    address internal WARP_ROUTE_OWNER = makeAddr("warp route owner");
+    address internal immutable WARP_ROUTE_OWNER = makeAddr("warp route owner");
     uint256 internal constant INITIAL_SUPPLY = 10;
 
     // NFT collection being bridged
@@ -75,8 +59,8 @@ abstract contract HypNFTCollectionTest is Test {
 
     // constants used for testing
     // ---------------------------
-    address internal ALICE = makeAddr("alice");
-    address internal BOB = makeAddr("bob");
+    address internal immutable ALICE = makeAddr("alice");
+    address internal immutable BOB = makeAddr("bob");
     bytes32 internal constant TOKEN_ID = bytes32(uint256(1));
 
     function setUp() public virtual {
@@ -139,23 +123,5 @@ abstract contract HypNFTCollectionTest is Test {
         );
 
         return message;
-    }
-
-    // setting data keys for the following:
-    // - 1 x creator in the creator array
-    // - creator's info under the map key
-    // - the token metadata
-    function _getInitDataKeysAndValues() internal view returns (bytes32[] memory dataKeys, bytes[] memory dataValues) {
-        dataKeys = new bytes32[](4);
-        dataKeys[0] = _LSP4_CREATORS_ARRAY_KEY;
-        dataKeys[1] = bytes32(abi.encodePacked(bytes16(_LSP4_CREATORS_ARRAY_KEY), bytes16(uint128(0))));
-        dataKeys[2] = bytes32(abi.encodePacked(_LSP4_CREATORS_MAP_KEY_PREFIX, bytes2(0), bytes20(msg.sender)));
-        dataKeys[3] = _LSP4_METADATA_KEY;
-
-        dataValues = new bytes[](4);
-        dataValues[0] = abi.encodePacked(bytes16(uint128(1)));
-        dataValues[1] = abi.encodePacked(bytes20(msg.sender));
-        dataValues[2] = abi.encodePacked(_INTERFACEID_LSP0, bytes16(uint128(0)));
-        dataValues[3] = SAMPLE_METADATA_BYTES;
     }
 }
