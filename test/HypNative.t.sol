@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 // test utilities
-import { HypTokenTest } from "./helpers/HypTokenTest.sol";
+import { HypTokenTestOld } from "./helpers/HypTokenTestOld.sol";
 
 // Mocks + contracts to test
 import { HypNative } from "@hyperlane-xyz/core/contracts/token/HypNative.sol";
@@ -15,7 +15,7 @@ import { TestPostDispatchHook } from "@hyperlane-xyz/core/contracts/test/TestPos
 // - Hyperlane types and modules
 import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 
-contract HypNativeTest is HypTokenTest {
+contract HypNativeTest is HypTokenTestOld {
     HypNative internal nativeToken;
     // parameter used for native tokens that use different number of decimals than 1e18
     uint256 constant SCALE_NATIVE = 1;

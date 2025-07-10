@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 // test utilities
 import { Vm } from "forge-std/src/Vm.sol";
-import { HypTokenTest } from "./helpers/HypTokenTest.sol";
+import { HypTokenTestOld } from "./helpers/HypTokenTestOld.sol";
 import { generateLSP4DataKeysAndValues, SAMPLE_METADATA_BYTES } from "./helpers/Utils.sol";
 
 // Hyperlane testing environnement
@@ -40,7 +40,7 @@ import {
 import { ERC725Y_DataKeysValuesLengthMismatch } from "@erc725/smart-contracts/contracts/errors.sol";
 
 /// @dev This seems to be a test suite for bridging back, the `DESTINATION` chain is just a context
-contract HypLSP7Test is HypTokenTest {
+contract HypLSP7OldTest is HypTokenTestOld {
     HypLSP7 internal hypLSP7Token;
     TestIsm internal noopIsm;
 
@@ -215,7 +215,7 @@ contract HypLSP7Test is HypTokenTest {
     }
 }
 
-contract HypLSP7CollateralTest is HypTokenTest {
+contract HypLSP7CollateralTest is HypTokenTestOld {
     HypLSP7Collateral internal lsp7Collateral;
     TestIsm internal noopIsm;
 

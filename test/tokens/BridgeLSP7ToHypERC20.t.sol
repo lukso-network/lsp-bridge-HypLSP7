@@ -1,0 +1,146 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.13;
+
+import { console } from "forge-std/src/console.sol";
+
+import { TestPostDispatchHook } from "@hyperlane-xyz/core/contracts/test/TestPostDispatchHook.sol";
+import { TestIsm } from "@hyperlane-xyz/core/contracts/test/TestIsm.sol";
+import { CustomPostDispatchHook } from "../helpers/CustomPostDispatchHook.sol";
+import { LSP7Mock } from "../helpers/LSP7Mock.sol";
+
+import { HypTokenTest } from "../helpers/HypTokenTest.sol";
+import { HypLSP7Collateral } from "../../src/HypLSP7Collateral.sol";
+import { HypERC20 } from "@hyperlane-xyz/core/contracts/token/HypERC20.sol";
+
+import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
+
+/**
+ * @title Bridge token routes tests from LSP7 to HypERC20
+ *
+ * @dev Hyperlane warp route tests.
+ *  - origin chain: LSP7 tokens locked in `HypLSP7Collateral`
+ *  - destination chain: synthetic tokens minted as `HypERC20`
+ */
+contract BridgeLSP7ToHypERC20 is HypTokenTest {
+    // Token being bridged
+    // In production, we assume it is an LSP7 token already deployed
+    // (on LUKSO or any other EVM origin chain)
+    // ---------------------------
+    string internal constant NAME = "Test CHILL";
+    string internal constant SYMBOL = "tCHILL";
+    uint8 internal constant DECIMALS = 18;
+    uint256 internal constant TOTAL_SUPPLY = 1_000_000 * (10 ** DECIMALS);
+
+    LSP7Mock token;
+
+    // Warp route
+    // ---------------------------
+    HypLSP7Collateral internal lsp7Collateral;
+    TestPostDispatchHook internal originDefaultHook;
+    TestIsm internal originDefaultIsm;
+
+    HypERC20 internal syntheticToken;
+    TestPostDispatchHook internal destinationDefaultHook;
+    TestIsm internal destinationDefaultIsm;
+
+    // Scale outbount amounts down and inbound amounts up.
+    // Used when different chains of the route have different decimals place to unify semantics of amounts in message.
+    // Since we are bridging between two similar EVM chains, scaling is not required so we keep the parameter to 1.
+    uint256 internal constant SCALE_PARAM = 1;
+
+    // constants for testing
+    // ---------------------------
+    uint256 internal constant TRANSFER_AMOUNT = 100 * (10 ** DECIMALS);
+
+    function setUp() public override {
+        ORIGIN_CHAIN_ID = 42; // LUKSO
+        DESTINATION_CHAIN_ID = 1; // Ethereum
+
+        // Setup Hyperlane Mailboxes
+        super.setUp();
+
+        // 1. Deploy the initial token that we will bridge from the origin chain
+        token = new LSP7Mock(NAME, SYMBOL, TOTAL_SUPPLY, address(this));
+        token.transfer(address(this), ALICE, 100_000 * (10 ** DECIMALS), true, "");
+
+        // 2. Deploy collateral token router
+        originDefaultHook = new TestPostDispatchHook();
+        originDefaultIsm = new TestIsm();
+
+        lsp7Collateral = new HypLSP7Collateral(address(token), SCALE_PARAM, address(originMailbox));
+        lsp7Collateral.initialize(address(originDefaultHook), address(originDefaultIsm), WARP_ROUTE_OWNER);
+
+        // 3. Deploy the synthetic token on the destination chain + initialize it
+        destinationDefaultHook = new TestPostDispatchHook();
+        destinationDefaultIsm = new TestIsm();
+
+        syntheticToken = new HypERC20(DECIMALS, SCALE_PARAM, address(destinationMailbox));
+        syntheticToken.initialize(
+            TOTAL_SUPPLY,
+            NAME,
+            SYMBOL,
+            address(destinationDefaultHook),
+            address(destinationDefaultIsm),
+            WARP_ROUTE_OWNER
+        );
+
+        // 4. Connect the collateral with the synthetic contract, and vice versa
+        vm.prank(WARP_ROUTE_OWNER);
+        HypTokenTest._enrollOriginTokenRouter(lsp7Collateral, address(syntheticToken));
+
+        vm.prank(WARP_ROUTE_OWNER);
+        HypTokenTest._enrollDestinationTokenRouter(syntheticToken, address(lsp7Collateral));
+    }
+
+    function test_TransferWithHookSpecified(uint256 fee, bytes calldata metadata) public virtual {
+        CustomPostDispatchHook customHook = new CustomPostDispatchHook();
+        customHook.setFee(fee);
+
+        vm.prank(ALICE);
+        token.authorizeOperator(address(lsp7Collateral), TRANSFER_AMOUNT, "");
+
+        vm.expectEmit();
+        emit CustomPostDispatchHook.CustomPostDispatchHookCalled();
+
+        bytes32 messageId = _performBridgeTxWithHookSpecified(
+            lsp7Collateral,
+            syntheticToken,
+            REQUIRED_INTERCHAIN_GAS_PAYMENT,
+            TRANSFER_AMOUNT,
+            address(customHook),
+            metadata
+        );
+        assertTrue(customHook.messageDispatched(messageId));
+        assertEq(syntheticToken.balanceOf(BOB), TRANSFER_AMOUNT);
+    }
+
+    function test_BenchmarkOverheadGasUsageWhenBridgingBack() public {
+        // to transfer from the collateral contract, we assume some tokens have already been locked in there
+        token.transfer(address(this), address(lsp7Collateral), TRANSFER_AMOUNT, true, "");
+
+        vm.prank(address(originMailbox));
+
+        uint256 gasBefore = gasleft();
+        lsp7Collateral.handle(
+            DESTINATION_CHAIN_ID,
+            TypeCasts.addressToBytes32(address(syntheticToken)),
+            abi.encodePacked(TypeCasts.addressToBytes32(BOB), TRANSFER_AMOUNT)
+        );
+        uint256 gasAfter = gasleft();
+
+        console.log("BridgeLSP7ToHypERC20 - Overhead gas usage when bridging back: %d", gasBefore - gasAfter);
+    }
+
+    function test_TotalSupplyOfSyntheticTokenIncreasesAfterBridgeTx() public {
+        uint256 totalSupplyBefore = syntheticToken.totalSupply();
+
+        vm.prank(ALICE);
+        token.authorizeOperator(address(lsp7Collateral), TRANSFER_AMOUNT, "");
+
+        _performBridgeTx(lsp7Collateral, syntheticToken, 0, TRANSFER_AMOUNT);
+
+        assertEq(syntheticToken.totalSupply(), totalSupplyBefore + TRANSFER_AMOUNT);
+        // TODO: move this assertion to a separate test to separate concerns
+        assertEq(syntheticToken.balanceOf(BOB), TRANSFER_AMOUNT);
+    }
+}

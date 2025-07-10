@@ -1,0 +1,319 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.13;
+
+import { console } from "forge-std/src/console.sol";
+
+import { TransparentUpgradeableProxy } from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+
+import { TestPostDispatchHook } from "@hyperlane-xyz/core/contracts/test/TestPostDispatchHook.sol";
+import { TestIsm } from "@hyperlane-xyz/core/contracts/test/TestIsm.sol";
+import { CustomPostDispatchHook } from "../helpers/CustomPostDispatchHook.sol";
+import { ERC20Mock } from "../helpers/ERC20Mock.sol";
+
+import { HypTokenTest } from "../helpers/HypTokenTest.sol";
+import { HypERC20Collateral } from "@hyperlane-xyz/core/contracts/token/HypERC20Collateral.sol";
+import { HypLSP7 } from "../../src/HypLSP7.sol";
+
+import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
+
+/**
+ * @title Bridge token routes tests from ERC20 to HypLSP7
+ *
+ * @dev Hyperlane warp route tests.
+ *  - origin chain: ERC20 tokens locked in `HypERC20Collateral`
+ *  - destination chain: synthetic tokens minted as `HypLSP7`
+ */
+contract BridgeERC20ToHypLSP7 is HypTokenTest {
+    // Token being bridged
+    // In production, we assume it is an ERC20 token already deployed
+    // (on Ethereum or any other EVM origin chain)
+    // ---------------------------
+    string internal constant NAME = "Test USDC";
+    string internal constant SYMBOL = "tUSDC";
+    uint8 internal constant DECIMALS = 6; // USDC has 6 decimals points
+    uint256 internal constant TOTAL_SUPPLY = 1_000_000 * (10 ** DECIMALS);
+
+    ERC20Mock internal token;
+
+    // Warp route
+    // ---------------------------
+    HypERC20Collateral internal erc20Collateral;
+    TestPostDispatchHook internal originDefaultHook;
+    TestIsm internal originDefaultIsm;
+
+    HypLSP7 internal syntheticToken;
+    TestPostDispatchHook internal destinationDefaultHook;
+    TestIsm internal destinationDefaultIsm;
+
+    // Scale outbount amounts down and inbound amounts up.
+    // Used when different chains of the route have different decimals place to unify semantics of amounts in message.
+    // Since we are bridging between two similar EVM chains, scaling is not required so we keep the parameter to 1.
+    uint256 internal constant SCALE_PARAM = 1;
+
+    address internal immutable PROXY_ADMIN = makeAddr("Proxy Admin");
+
+    // constants for testing
+    // ---------------------------
+    uint256 internal constant TRANSFER_AMOUNT = 100 * (10 ** DECIMALS);
+
+    function setUp() public override {
+        ORIGIN_CHAIN_ID = 1; // Ethereum
+        DESTINATION_CHAIN_ID = 42; // LUKSO
+
+        // Setup Hyperlane Mailboxes
+        super.setUp();
+
+        // 1. Deploy the initial token that we will bridge from the origin chain
+        token = new ERC20Mock(NAME, SYMBOL, TOTAL_SUPPLY, DECIMALS);
+        token.transfer(ALICE, 100_000 * (10 ** DECIMALS));
+
+        // 2. Deploy collateral token router
+        originDefaultHook = new TestPostDispatchHook();
+        originDefaultIsm = new TestIsm();
+
+        erc20Collateral = new HypERC20Collateral(address(token), SCALE_PARAM, address(originMailbox));
+        erc20Collateral.initialize(address(originDefaultHook), address(originDefaultIsm), WARP_ROUTE_OWNER);
+
+        // 3. Deploy the synthetic token on the destination chain + initialize it
+        destinationDefaultHook = new TestPostDispatchHook();
+        destinationDefaultIsm = new TestIsm();
+
+        HypLSP7 implementation = new HypLSP7(DECIMALS, SCALE_PARAM, address(destinationMailbox));
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+            address(implementation),
+            PROXY_ADMIN,
+            abi.encodeCall(
+                HypLSP7.initialize,
+                (
+                    TOTAL_SUPPLY,
+                    NAME,
+                    SYMBOL,
+                    address(destinationDefaultHook),
+                    // TODO: configure like Hyperlane tests to use the Interchain Gas Paymaster as ISM
+                    address(destinationDefaultIsm),
+                    WARP_ROUTE_OWNER
+                )
+            )
+        );
+
+        syntheticToken = HypLSP7(payable(proxy));
+
+        // 4. Connect the collateral with the synthetic contract, and vice versa
+        vm.prank(WARP_ROUTE_OWNER);
+        HypTokenTest._enrollOriginTokenRouter(erc20Collateral, address(syntheticToken));
+
+        vm.prank(WARP_ROUTE_OWNER);
+        HypTokenTest._enrollDestinationTokenRouter(syntheticToken, address(erc20Collateral));
+    }
+
+    // ==========================
+    // |     Test Bridge Tx     |
+    // |  Origin -> Destination |
+    // ==========================
+
+    function test_BridgeTx() public {
+        uint256 balanceBefore = token.balanceOf(ALICE);
+
+        vm.prank(ALICE);
+        token.approve(address(erc20Collateral), TRANSFER_AMOUNT);
+
+        _performBridgeTxAndCheckSentTransferRemoteEvent(
+            erc20Collateral, syntheticToken, REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT
+        );
+        assertEq(token.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
+
+        // CHECK tokens have been locked in the collateral contract
+        assertEq(token.balanceOf(address(erc20Collateral)), TRANSFER_AMOUNT);
+    }
+
+    function test_BridgeTxWithHookSpecified(uint256 fee, bytes calldata metadata) public virtual {
+        CustomPostDispatchHook customHook = new CustomPostDispatchHook();
+        customHook.setFee(fee);
+
+        vm.prank(ALICE);
+        token.approve(address(erc20Collateral), TRANSFER_AMOUNT);
+
+        vm.expectEmit();
+        emit CustomPostDispatchHook.CustomPostDispatchHookCalled();
+
+        bytes32 messageId = _performBridgeTxWithHookSpecified(
+            erc20Collateral,
+            syntheticToken,
+            REQUIRED_INTERCHAIN_GAS_PAYMENT,
+            TRANSFER_AMOUNT,
+            address(customHook),
+            metadata
+        );
+
+        assertTrue(customHook.messageDispatched(messageId));
+        assertEq(syntheticToken.balanceOf(BOB), TRANSFER_AMOUNT);
+    }
+
+    // TODO: could add the fuzzing amount as parameter for fuzzing but need to move all the tokens to Alice
+    function test_TotalSupplyOfSyntheticTokenIncreasesAfterBridgeTx() public {
+        uint256 totalSupplyBefore = syntheticToken.totalSupply();
+
+        vm.prank(ALICE);
+        token.approve(address(erc20Collateral), TRANSFER_AMOUNT);
+
+        _performBridgeTx(erc20Collateral, syntheticToken, 0, TRANSFER_AMOUNT);
+
+        assertEq(syntheticToken.totalSupply(), totalSupplyBefore + TRANSFER_AMOUNT);
+        // TODO: move this assertion to a separate test to separate concerns
+        assertEq(syntheticToken.balanceOf(BOB), TRANSFER_AMOUNT);
+    }
+
+    function test_BridgeTxRevertsIfNoAllowanceGivenToCollateral(uint256 transferAmount) public {
+        vm.assume(transferAmount != 0);
+        uint256 aliceBalance = token.balanceOf(ALICE);
+
+        vm.expectRevert("ERC20: insufficient allowance");
+        vm.prank(ALICE);
+        erc20Collateral.transferRemote{ value: REQUIRED_INTERCHAIN_GAS_PAYMENT }(
+            DESTINATION_CHAIN_ID, TypeCasts.addressToBytes32(BOB), transferAmount
+        );
+
+        // CHECK the balances did not change
+        assertEq(token.balanceOf(ALICE), aliceBalance);
+        assertEq(syntheticToken.balanceOf(BOB), 0);
+    }
+
+    /// forge-config: default.fuzz.max_test_rejects = 1_000_000
+    function test_BridgeTxRevertsIfInvalidAllowance(uint256 approvedAmount, uint256 invalidTransferAmount) public {
+        uint256 aliceBalance = token.balanceOf(ALICE);
+        vm.assume(aliceBalance > 0);
+
+        approvedAmount = bound(approvedAmount, 1, aliceBalance); // valid approved amount
+        vm.assume(invalidTransferAmount > approvedAmount);
+
+        // Alice approve the collateral contract for X amount
+        vm.prank(ALICE);
+        token.approve(address(erc20Collateral), approvedAmount);
+
+        // Alice to try to do transferRemote with Y amount, where Y > X
+        vm.expectRevert("ERC20: insufficient allowance");
+        vm.prank(ALICE);
+        erc20Collateral.transferRemote{ value: REQUIRED_INTERCHAIN_GAS_PAYMENT }(
+            DESTINATION_CHAIN_ID, TypeCasts.addressToBytes32(BOB), invalidTransferAmount
+        );
+
+        // CHECK the balances did not change
+        assertEq(token.balanceOf(ALICE), aliceBalance);
+        assertEq(syntheticToken.balanceOf(BOB), 0);
+    }
+
+    function test_BridgeTxWithCustomGasConfig() public {
+        _setCustomGasConfig(erc20Collateral);
+
+        vm.prank(ALICE);
+        token.approve(address(erc20Collateral), TRANSFER_AMOUNT);
+
+        uint256 balanceBefore = token.balanceOf(ALICE);
+        _performBridgeTxWithCustomGasConfig({
+            originTokenRouter: erc20Collateral,
+            destinationTokenRouter: syntheticToken,
+            msgValue: REQUIRED_INTERCHAIN_GAS_PAYMENT,
+            amount: TRANSFER_AMOUNT,
+            gasOverhead: GAS_LIMIT * interchainGasPaymaster.gasPrice()
+        });
+        assertEq(token.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
+    }
+
+    /// @dev Ensure correct behaviour of `syntheticToken.transfer(from, to, amount, force, data)`
+    function test_CanTransferSyntheticTokensBetweenAddressesOnDestinationChain() public {
+        uint256 aliceTokenBalanceBefore = token.balanceOf(ALICE);
+        uint256 bobSyntheticTokenBalanceBefore = syntheticToken.balanceOf(BOB);
+
+        assertEq(bobSyntheticTokenBalanceBefore, 0);
+
+        console.log(aliceTokenBalanceBefore);
+
+        vm.prank(ALICE);
+        token.approve(address(erc20Collateral), TRANSFER_AMOUNT);
+
+        // Bridge tokens to BOB on destination chain
+        _performBridgeTxAndCheckSentTransferRemoteEvent(
+            erc20Collateral, syntheticToken, REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT
+        );
+        assertEq(token.balanceOf(ALICE), aliceTokenBalanceBefore - TRANSFER_AMOUNT);
+
+        // CHECK that BOB can transfer synthetic tokens on destination chain
+        address recipient = makeAddr("recipient");
+        uint256 amount = 20 * (10 ** DECIMALS);
+
+        uint256 bobSyntheticTokenBalanceAfter = syntheticToken.balanceOf(BOB);
+        assertEq(bobSyntheticTokenBalanceAfter, bobSyntheticTokenBalanceBefore + TRANSFER_AMOUNT);
+        assertEq(syntheticToken.balanceOf(recipient), 0);
+
+        vm.prank(BOB);
+        syntheticToken.transfer(BOB, recipient, amount, true, "");
+
+        assertEq(syntheticToken.balanceOf(BOB), bobSyntheticTokenBalanceAfter - amount);
+        assertEq(syntheticToken.balanceOf(recipient), amount);
+    }
+
+    // TODO: write this test
+    // function test_BridgeTxRevertIfISMOnDestinationChainReturnsFalse() public {
+    //     destinationDefaultIsm.setVerify(false);
+
+    //     uint256 balanceBefore = token.balanceOf(ALICE);
+
+    //     vm.prank(ALICE);
+    //     token.approve(address(erc20Collateral), TRANSFER_AMOUNT);
+
+    //     vm.expectRevert();
+    //     _performBridgeTxAndCheckSentTransferRemoteEvent(
+    //         erc20Collateral, syntheticToken, REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT
+    //     );
+    //     // assertEq(token.balanceOf(ALICE), balanceBefore);
+
+    //     // CHECK that no tokens have been locked in the collateral contract
+    //     // assertEq(token.balanceOf(address(erc20Collateral)), 0);
+
+    //     // Reset the ISM for future tests
+    //     destinationDefaultIsm.setVerify(true);
+    // }
+
+    // ==============================
+    // |     Test Bridging Back     |
+    // |    Origin <- Destination   |
+    // ==============================
+    // TODO: write this test but needs to change the parameters of `_performBridgeTx(...)` to be able to bridge back
+
+    function test_BenchmarkOverheadGasUsageWhenBridgingBack() public {
+        // to transfer from the collateral contract, we assume some tokens have already been locked in there
+        token.transfer(address(erc20Collateral), TRANSFER_AMOUNT);
+
+        vm.prank(address(originMailbox));
+
+        uint256 gasBefore = gasleft();
+        erc20Collateral.handle(
+            DESTINATION_CHAIN_ID,
+            TypeCasts.addressToBytes32(address(syntheticToken)),
+            abi.encodePacked(TypeCasts.addressToBytes32(BOB), TRANSFER_AMOUNT)
+        );
+        uint256 gasAfter = gasleft();
+
+        console.log("BridgeERC20ToHypLSP7 - Overhead gas usage when bridging back: %d", gasBefore - gasAfter);
+    }
+
+    //     function test_BridgingBackInvalidAmount() public {
+    //     vm.expectRevert();
+    //     _performRemoteTransfer(REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT * 11);
+    //     assertEq(hypLSP7Token.balanceOf(ALICE), 1000e18);
+    // }
+
+    // function test_BridgingBackTxWithCustomGasConfig() public {
+    //     _setCustomGasConfig(syntheticToken);
+
+    //     uint256 balanceBefore = syntheticToken.balanceOf(ALICE);
+    //     _performBridgeTxWithCustomGasConfig({
+    //         originTokenRouter: erc20Collateral,
+    //         destinationTokenRouter: syntheticToken,
+    //         msgValue: REQUIRED_INTERCHAIN_GAS_PAYMENT,
+    //         amount: TRANSFER_AMOUNT,
+    //         gasOverhead: GAS_LIMIT * interchainGasPaymaster.gasPrice()
+    //     });
+    //     assertEq(token.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
+    // }
+}

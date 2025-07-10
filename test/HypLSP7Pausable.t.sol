@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 // test utilities
 import { Vm } from "forge-std/src/Vm.sol";
-import { HypTokenTest } from "./helpers/HypTokenTest.sol";
+import { HypTokenTestOld } from "./helpers/HypTokenTestOld.sol";
 import { SAMPLE_METADATA_BYTES } from "./helpers/Utils.sol";
 
 /// Hyperlane testing environnement
@@ -40,7 +40,7 @@ import {
     _LSP4_METADATA_KEY
 } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
 
-abstract contract HypTokenPausableTest is HypTokenTest {
+abstract contract HypTokenPausableTest is HypTokenTestOld {
     using TypeCasts for address;
 
     address internal FREEZER = makeAddr("freezer");

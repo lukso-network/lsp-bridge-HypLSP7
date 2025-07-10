@@ -33,7 +33,7 @@ import {
 import { HypLSP7Pausable } from "../src/pausable/HypLSP7Pausable.sol";
 import { HypNativePausable } from "../src/pausable/HypNativePausable.sol";
 
-abstract contract HypTokenTest is Test {
+abstract contract HypTokenTestOld is Test {
     using TypeCasts for address;
 
     uint32 internal constant ORIGIN = 11;
@@ -260,7 +260,7 @@ abstract contract HypTokenTest is Test {
     }
 }
 
-contract HypNativePausableTest is HypTokenTest {
+contract HypNativePausableTest is HypTokenTestOld {
     using TypeCasts for address;
 
     function setUp() public override {
