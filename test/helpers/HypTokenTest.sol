@@ -41,15 +41,15 @@ abstract contract HypTokenTest is Test {
     // ---------------------------
     uint32 internal ORIGIN_CHAIN_ID;
     TestMailbox internal originMailbox;
-    TestPostDispatchHook internal mailboxDefaultHook;
-    TestPostDispatchHook internal mailboxRequiredHook;
-    TokenRouter internal localToken; // TODO: rename to originToken
+    TestPostDispatchHook internal originMailboxDefaultHook;
+    TestPostDispatchHook internal originMailboxRequiredtHook;
 
     // destination chain
     // ---------------------------
     uint32 internal DESTINATION_CHAIN_ID;
     TestMailbox internal destinationMailbox;
-    HypLSP7 internal remoteToken;
+    TestPostDispatchHook internal destinationMailboxDefaultHook;
+    TestPostDispatchHook internal destinationMailboxRequiredtHook;
 
     // warp route parameters
     // ---------------------------
@@ -70,37 +70,50 @@ abstract contract HypTokenTest is Test {
     function setUp() public virtual {
         assertGt(ORIGIN_CHAIN_ID, 0, "HypTokenTest: origin chain ID not configured");
         assertGt(DESTINATION_CHAIN_ID, 0, "HypTokenTest: destination chain ID not configured");
+        assertNotEq(ORIGIN_CHAIN_ID, DESTINATION_CHAIN_ID, "HypTokenTest:");
 
         // 1. setup the Hyperlane core contracts on the origin chain
         originMailbox = new TestMailbox({ _localDomain: ORIGIN_CHAIN_ID });
 
-        mailboxDefaultHook = new TestPostDispatchHook();
-        mailboxRequiredHook = new TestPostDispatchHook();
-        originMailbox.setDefaultHook(address(mailboxDefaultHook));
-        originMailbox.setRequiredHook(address(mailboxRequiredHook));
+        originMailboxDefaultHook = new TestPostDispatchHook();
+        originMailboxRequiredtHook = new TestPostDispatchHook();
+        originMailbox.setDefaultHook(address(originMailboxDefaultHook));
+        originMailbox.setRequiredHook(address(originMailboxRequiredtHook));
 
-        REQUIRED_INTERCHAIN_GAS_PAYMENT = mailboxDefaultHook.quoteDispatch("", "");
+        REQUIRED_INTERCHAIN_GAS_PAYMENT = originMailboxDefaultHook.quoteDispatch("", "");
         interchainGasPaymaster = new TestInterchainGasPaymaster();
 
         // 2. setup the destination chain
-        // TODO: setup default + required hook here
         destinationMailbox = new TestMailbox({ _localDomain: DESTINATION_CHAIN_ID });
 
+        destinationMailboxDefaultHook = new TestPostDispatchHook();
+        destinationMailboxRequiredtHook = new TestPostDispatchHook();
+        destinationMailbox.setDefaultHook(address(destinationMailboxDefaultHook));
+        destinationMailbox.setRequiredHook(address(destinationMailboxRequiredtHook));
+
+        // TODO: do we need that? Probably only required for the `HypNative` tests
         vm.deal(ALICE, 125_000);
     }
 
-    // TODO: ask AI for better parameters names
-    function _enrollOriginTokenRouter(TokenRouter tokenRouter, address routerOnDomain) internal {
-        tokenRouter.enrollRemoteRouter({
+    function _enrollOriginTokenRouter(TokenRouter originTokenRouter, address routerOnDestination) internal {
+        originTokenRouter.enrollRemoteRouter({
             _domain: DESTINATION_CHAIN_ID,
-            _router: address(routerOnDomain).addressToBytes32()
+            _router: address(routerOnDestination).addressToBytes32()
         });
     }
 
-    function _enrollDestinationTokenRouter(TokenRouter tokenRouter, address routerOnDomain) internal {
-        tokenRouter.enrollRemoteRouter({ _domain: ORIGIN_CHAIN_ID, _router: address(routerOnDomain).addressToBytes32() });
+    function _enrollDestinationTokenRouter(TokenRouter destinationTokenRouter, address routerOnOrigin) internal {
+        destinationTokenRouter.enrollRemoteRouter({
+            _domain: ORIGIN_CHAIN_ID,
+            _router: address(routerOnOrigin).addressToBytes32()
+        });
     }
 
+    /// @dev Configure the `tokenRouter` contract to call the `InterchainGasPaymaster` contract
+    /// as default post-dispatch hook.
+    ///
+    /// This will also configure the destination gas parameter when bridging to `DESTINATION_CHAIN_ID`
+    /// to be a maximum `GAS_LIMIT` that can run on the destination chain.
     function _setCustomGasConfig(TokenRouter tokenRouter) internal {
         vm.prank(WARP_ROUTE_OWNER);
         tokenRouter.setHook(address(interchainGasPaymaster));
@@ -221,31 +234,34 @@ abstract contract HypTokenTest is Test {
     //     );
     // }
 
-    // TODO: move this function inside the test suites for the Pausable version of the tokens
-    function _prepareProcessCall(uint256 _amount) internal view returns (bytes memory) {
-        // ============== WTF IS THIS ? ===========================
-        // To test whether the ISM is Paused we must call
-        // Mailbox.process(_metadata, _message) on the destination side
-        // calling remoteToken.handle() finalizes the cross chain transfer
-        // and is only called if the ISM.verify() function returns true
-        // so that method cannot be used here
-        bytes memory _tokenMessage = TokenMessage.format(BOB.addressToBytes32(), _amount, "");
+    /// @dev Prepare the call that the Hyperlane relayer should send on the destination chain
+    /// to `Mailbox.process()`
+    // TODO: move this function inside the test suites for the Pausable version of the tokens or inside `Utils.sol`
+    // TODO: create the version with `toeknId` as parameter
+    // function _prepareProcessCall(uint256 _amount) internal view returns (bytes memory) {
+    //     // ============== WTF IS THIS ? ===========================
+    //     // To test whether the ISM is Paused we must call
+    //     // Mailbox.process(_metadata, _message) on the destination side
+    //     // calling remoteToken.handle() finalizes the cross chain transfer
+    //     // and is only called if the ISM.verify() function returns true
+    //     // so that method cannot be used here
+    //     bytes memory _tokenMessage = TokenMessage.format(BOB.addressToBytes32(), _amount, "");
 
-        bytes32 remoteTokenAddress = address(remoteToken).addressToBytes32();
-        bytes32 localRouter = remoteToken.routers(ORIGIN_CHAIN_ID);
-        bytes32 localTokenAddress = address(localToken).addressToBytes32();
-        assertEq(localRouter, localTokenAddress);
+    //     bytes32 remoteTokenAddress = address(remoteToken).addressToBytes32();
+    //     bytes32 localRouter = remoteToken.routers(ORIGIN_CHAIN_ID);
+    //     bytes32 localTokenAddress = address(localToken).addressToBytes32();
+    //     assertEq(localRouter, localTokenAddress);
 
-        bytes memory message = formatHyperlaneMessage(
-            3, // _version
-            1, // _nonce
-            ORIGIN_CHAIN_ID, // _originDomain
-            localTokenAddress, // _sender is the Router of ORIGIN
-            DESTINATION_CHAIN_ID, // _destinationDomain
-            remoteTokenAddress, // _recipient is the remote HypLSP7
-            _tokenMessage //_messageBody IS instructions on how much to send to what address
-        );
+    //     bytes memory message = formatHyperlaneMessage(
+    //         3, // _version
+    //         1, // _nonce
+    //         ORIGIN_CHAIN_ID, // _originDomain
+    //         localTokenAddress, // _sender is the Router of ORIGIN
+    //         DESTINATION_CHAIN_ID, // _destinationDomain
+    //         remoteTokenAddress, // _recipient is the remote HypLSP7
+    //         _tokenMessage //_messageBody IS instructions on how much to send to what address
+    //     );
 
-        return message;
-    }
+    //     return message;
+    // }
 }

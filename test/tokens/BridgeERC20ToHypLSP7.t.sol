@@ -106,6 +106,11 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
         HypTokenTest._enrollDestinationTokenRouter(syntheticToken, address(erc20Collateral));
     }
 
+    function test_constructorRevertIfInvalidToken() public {
+        vm.expectRevert("HypERC20Collateral: invalid token");
+        new HypERC20Collateral(address(0), SCALE_PARAM, address(originMailbox));
+    }
+
     // ==========================
     // |     Test Bridge Tx     |
     // |  Origin -> Destination |
