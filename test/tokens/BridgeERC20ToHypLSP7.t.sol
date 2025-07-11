@@ -16,6 +16,9 @@ import { HypLSP7 } from "../../src/HypLSP7.sol";
 
 import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 
+// errors
+import { LSP7AmountExceedsBalance } from "@lukso/lsp7-contracts/contracts/LSP7Errors.sol";
+
 /**
  * @title Bridge token routes tests from ERC20 to HypLSP7
  *
@@ -85,7 +88,7 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
             abi.encodeCall(
                 HypLSP7.initialize,
                 (
-                    TOTAL_SUPPLY,
+                    0, // initial supply (do not mint any synthetic tokens on initialization)
                     NAME,
                     SYMBOL,
                     address(destinationDefaultHook),
@@ -168,6 +171,22 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
         assertEq(syntheticToken.balanceOf(BOB), TRANSFER_AMOUNT);
     }
 
+    function test_BridgeTxRevertsIfAmountGreaterThanUserERC20TokenBalance(uint256 transferAmount) public {
+        uint256 aliceBalance = token.balanceOf(ALICE);
+        vm.assume(aliceBalance > 0);
+
+        transferAmount = bound(transferAmount, aliceBalance + 1, token.totalSupply());
+
+        vm.prank(ALICE);
+        token.approve(address(erc20Collateral), transferAmount);
+
+        vm.expectRevert("ERC20: transfer amount exceeds balance");
+        vm.prank(ALICE);
+        erc20Collateral.transferRemote{ value: REQUIRED_INTERCHAIN_GAS_PAYMENT }(
+            DESTINATION_CHAIN_ID, TypeCasts.addressToBytes32(BOB), transferAmount
+        );
+    }
+
     function test_BridgeTxRevertsIfNoAllowanceGivenToCollateral(uint256 transferAmount) public {
         vm.assume(transferAmount != 0);
         uint256 aliceBalance = token.balanceOf(ALICE);
@@ -184,7 +203,12 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
     }
 
     /// forge-config: default.fuzz.max_test_rejects = 1_000_000
-    function test_BridgeTxRevertsIfInvalidAllowance(uint256 approvedAmount, uint256 invalidTransferAmount) public {
+    function test_BridgeTxRevertsIfTransferAmountIsMoreThanAllowance(
+        uint256 approvedAmount,
+        uint256 invalidTransferAmount
+    )
+        public
+    {
         uint256 aliceBalance = token.balanceOf(ALICE);
         vm.assume(aliceBalance > 0);
 
@@ -284,6 +308,29 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
     // |    Origin <- Destination   |
     // ==============================
     // TODO: write this test but needs to change the parameters of `_performBridgeTx(...)` to be able to bridge back
+
+    function test_BridgeBackTxRevertsIfAmountGreaterThanUserSyntheticTokenBalance(
+        uint256 syntheticTokenBalance,
+        uint256 transferAmount
+    )
+        public
+    {
+        vm.assume(syntheticTokenBalance <= TOTAL_SUPPLY);
+        vm.assume(syntheticTokenBalance < transferAmount);
+
+        // we assume some tokens have already been bridged on the destination chain
+        _processBridgeTxOnDestinationChain(syntheticToken, erc20Collateral, BOB, syntheticTokenBalance);
+
+        assertEq(syntheticToken.balanceOf(BOB), syntheticTokenBalance);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(LSP7AmountExceedsBalance.selector, syntheticTokenBalance, BOB, transferAmount)
+        );
+        vm.prank(BOB);
+        syntheticToken.transferRemote{ value: REQUIRED_INTERCHAIN_GAS_PAYMENT }(
+            ORIGIN_CHAIN_ID, TypeCasts.addressToBytes32(ALICE), transferAmount
+        );
+    }
 
     function test_BenchmarkOverheadGasUsageWhenBridgingBack() public {
         // to transfer from the collateral contract, we assume some tokens have already been locked in there

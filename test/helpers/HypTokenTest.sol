@@ -91,7 +91,7 @@ abstract contract HypTokenTest is Test {
         destinationMailbox.setDefaultHook(address(destinationMailboxDefaultHook));
         destinationMailbox.setRequiredHook(address(destinationMailboxRequiredtHook));
 
-        // TODO: do we need that? Probably only required for the `HypNative` tests
+        // Give some native tokens to Alice so she can pay for the interchain gas payment
         vm.deal(ALICE, 125_000);
     }
 
