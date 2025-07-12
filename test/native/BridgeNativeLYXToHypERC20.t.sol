@@ -9,25 +9,25 @@ import { CustomPostDispatchHook } from "../helpers/CustomPostDispatchHook.sol";
 
 import { HypTokenTest } from "../helpers/HypTokenTest.sol";
 import { HypNative } from "@hyperlane-xyz/core/contracts/token/HypNative.sol";
-import { HypLSP7 } from "../../src/HypLSP7.sol";
+import { HypERC20 } from "@hyperlane-xyz/core/contracts/token/HypERC20.sol";
 
 import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 
 /**
- * @title Bridge token routes tests from native tokens to `HypLSP7`
+ * @title Bridge token routes tests from native tokens to `HypERC20`
  *
  * @dev Hyperlane warp route tests.
- *  - origin chain: native tokens (ETH) locked in `HypNative`
- *  - destination chain: synthetic tokens minted as `HypLSP7`
+ *  - origin chain: native tokens (LYX) locked in `HypNative`
+ *  - destination chain: synthetic tokens minted as `HypERC20`
  */
-contract BridgeNativeETH is HypTokenTest {
+contract BridgeNativeLYXToHypERC20 is HypTokenTest {
     // Native tokens being bridged
     uint8 internal constant DECIMALS = 18;
     uint256 internal constant USER_BALANCE = 1_000_000 * (10 ** DECIMALS);
 
     // Name given to the synthetic token on the destination chain
-    string internal constant NAME = "ETH (bridged from Ethereum)";
-    string internal constant SYMBOL = "ETH";
+    string internal constant NAME = "LYX (bridged from LUKSO)";
+    string internal constant SYMBOL = "LYX";
 
     // Warp route
     // ---------------------------
@@ -35,7 +35,7 @@ contract BridgeNativeETH is HypTokenTest {
     TestPostDispatchHook internal originDefaultHook;
     TestIsm internal originDefaultIsm;
 
-    HypLSP7 internal syntheticToken;
+    HypERC20 internal syntheticToken;
     TestPostDispatchHook internal destinationDefaultHook;
     TestIsm internal destinationDefaultIsm;
 
@@ -50,9 +50,9 @@ contract BridgeNativeETH is HypTokenTest {
     // ---------------------------
     uint256 internal constant TRANSFER_AMOUNT = 100 * (10 ** DECIMALS);
 
-    function setUp() public override {
-        ORIGIN_CHAIN_ID = 1; // Ethereum
-        DESTINATION_CHAIN_ID = 42; // LUKSO
+    function setUp() public virtual override {
+        ORIGIN_CHAIN_ID = 42; // LUKSO
+        DESTINATION_CHAIN_ID = 1; // Ethereum
 
         REQUIRED_INTERCHAIN_GAS_PAYMENT = 10_000 gwei;
 
@@ -73,12 +73,12 @@ contract BridgeNativeETH is HypTokenTest {
         destinationDefaultHook = new TestPostDispatchHook();
         destinationDefaultIsm = new TestIsm();
 
-        HypLSP7 implementation = new HypLSP7(DECIMALS, SCALE_PARAM, address(destinationMailbox));
+        HypERC20 implementation = new HypERC20(DECIMALS, SCALE_PARAM, address(destinationMailbox));
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(implementation),
             PROXY_ADMIN,
             abi.encodeCall(
-                HypLSP7.initialize,
+                HypERC20.initialize,
                 (
                     0, // initial supply (do not mint any synthetic tokens on initialization)
                     NAME,
@@ -90,7 +90,7 @@ contract BridgeNativeETH is HypTokenTest {
             )
         );
 
-        syntheticToken = HypLSP7(payable(proxy));
+        syntheticToken = HypERC20(address(proxy));
 
         // 4. Connect the collateral with the synthetic contract, and vice versa
         vm.prank(WARP_ROUTE_OWNER);
@@ -151,7 +151,7 @@ contract BridgeNativeETH is HypTokenTest {
             gasOverhead: gasOverhead
         });
 
-        uint256 expectedNewBalance = balanceBefore - TRANSFER_AMOUNT - REQUIRED_INTERCHAIN_GAS_PAYMENT - gasOverhead;
+        // uint256 expectedNewBalance = balanceBefore - TRANSFER_AMOUNT - REQUIRED_INTERCHAIN_GAS_PAYMENT - gasOverhead;
     }
 
     function test_BridgeTxRevertsIfAmountGreaterThanUserNativeTokenBalance() public {

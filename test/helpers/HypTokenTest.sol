@@ -233,35 +233,4 @@ abstract contract HypTokenTest is Test {
     //         abi.encodePacked(recipient.addressToBytes32(), amount)
     //     );
     // }
-
-    /// @dev Prepare the call that the Hyperlane relayer should send on the destination chain
-    /// to `Mailbox.process()`
-    // TODO: move this function inside the test suites for the Pausable version of the tokens or inside `Utils.sol`
-    // TODO: create the version with `toeknId` as parameter
-    // function _prepareProcessCall(uint256 _amount) internal view returns (bytes memory) {
-    //     // ============== WTF IS THIS ? ===========================
-    //     // To test whether the ISM is Paused we must call
-    //     // Mailbox.process(_metadata, _message) on the destination side
-    //     // calling remoteToken.handle() finalizes the cross chain transfer
-    //     // and is only called if the ISM.verify() function returns true
-    //     // so that method cannot be used here
-    //     bytes memory _tokenMessage = TokenMessage.format(BOB.addressToBytes32(), _amount, "");
-
-    //     bytes32 remoteTokenAddress = address(remoteToken).addressToBytes32();
-    //     bytes32 localRouter = remoteToken.routers(ORIGIN_CHAIN_ID);
-    //     bytes32 localTokenAddress = address(localToken).addressToBytes32();
-    //     assertEq(localRouter, localTokenAddress);
-
-    //     bytes memory message = formatHyperlaneMessage(
-    //         3, // _version
-    //         1, // _nonce
-    //         ORIGIN_CHAIN_ID, // _originDomain
-    //         localTokenAddress, // _sender is the Router of ORIGIN
-    //         DESTINATION_CHAIN_ID, // _destinationDomain
-    //         remoteTokenAddress, // _recipient is the remote HypLSP7
-    //         _tokenMessage //_messageBody IS instructions on how much to send to what address
-    //     );
-
-    //     return message;
-    // }
 }
