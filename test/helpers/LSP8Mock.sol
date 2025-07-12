@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT OR Apache-2.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
 import { LSP8IdentifiableDigitalAsset } from "@lukso/lsp8-contracts/contracts/LSP8IdentifiableDigitalAsset.sol";
@@ -24,6 +24,7 @@ contract LSP8Mock is LSP8IdentifiableDigitalAsset {
     )
         public
     {
+        // solhint-disable-next-line gas-custom-errors
         require(
             to.length == tokenIds.length && tokenIds.length == force.length && force.length == data.length,
             "LSP8Mock: array length mismatch"
@@ -46,6 +47,7 @@ contract LSP8Mock is LSP8IdentifiableDigitalAsset {
     }
 
     function burnBatch(bytes32[] memory tokenIds, bytes[] memory data) public {
+        // solhint-disable-next-line gas-custom-errors
         require(tokenIds.length == data.length, "LSP8Mock: array length mismatch");
 
         for (uint256 i = 0; i < tokenIds.length; i++) {

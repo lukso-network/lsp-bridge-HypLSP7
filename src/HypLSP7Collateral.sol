@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity >=0.8.19;
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.8.22;
 
 // Interfaces
 import { ILSP7DigitalAsset as ILSP7 } from "@lukso/lsp7-contracts/contracts/ILSP7DigitalAsset.sol";
@@ -42,22 +42,30 @@ contract HypLSP7Collateral is MovableCollateralRouter {
     /**
      * @notice Initializes the Hyperlane router
      *
-     * @param _hook The post-dispatch hook contract.
-     * @param _interchainSecurityModule The interchain security module contract.
-     * @param _owner The this contract.
+     * @param defaultHook The post-dispatch hook contract.
+     * @param defaultInterchainSecurityModule The interchain security module contract.
+     * @param contractOwner The this contract.
      */
-    function initialize(address _hook, address _interchainSecurityModule, address _owner) public virtual initializer {
-        _MailboxClient_initialize(_hook, _interchainSecurityModule, _owner);
+    function initialize(
+        address defaultHook,
+        address defaultInterchainSecurityModule,
+        address contractOwner
+    )
+        public
+        virtual
+        initializer
+    {
+        _MailboxClient_initialize(defaultHook, defaultInterchainSecurityModule, contractOwner);
     }
 
-    function balanceOf(address _account) external view override returns (uint256) {
-        return wrappedToken.balanceOf(_account);
+    function balanceOf(address account) external view override returns (uint256) {
+        return wrappedToken.balanceOf(account);
     }
 
     function quoteTransferRemote(
-        uint32 _destinationDomain,
-        bytes32 _recipient,
-        uint256 _amount
+        uint32 destinationDomain,
+        bytes32 recipient,
+        uint256 amount
     )
         external
         view
@@ -66,39 +74,39 @@ contract HypLSP7Collateral is MovableCollateralRouter {
         returns (Quote[] memory quotes)
     {
         quotes = new Quote[](2);
-        quotes[0] = Quote({ token: address(0), amount: _quoteGasPayment(_destinationDomain, _recipient, _amount) });
-        quotes[1] = Quote({ token: address(wrappedToken), amount: _amount });
+        quotes[0] = Quote({ token: address(0), amount: _quoteGasPayment(destinationDomain, recipient, amount) });
+        quotes[1] = Quote({ token: address(wrappedToken), amount: amount });
     }
 
     /**
-     * @dev Transfers `_amount` of `wrappedToken` from `msg.sender` to this contract.
+     * @dev Transfers `amount` of `wrappedToken` from `msg.sender` to this contract.
      * Note that this function will also trigger a callback to the `universalReceiver(...)` function
      * on the `msg.sender` if it is a contract that supports + implements the LSP1 standard.
      *
      * @inheritdoc TokenRouter
      */
-    function _transferFromSender(uint256 _amount) internal virtual override returns (bytes memory) {
-        wrappedToken.transfer(msg.sender, address(this), _amount, true, "");
+    function _transferFromSender(uint256 amount) internal virtual override returns (bytes memory) {
+        wrappedToken.transfer(msg.sender, address(this), amount, true, "");
         return bytes(""); // no metadata
     }
 
     /**
-     * @dev Transfers `_amount` of `wrappedToken` from this contract to `_recipient`.
+     * @dev Transfers `amount` of `wrappedToken` from this contract to `recipient`.
      * Note that this function will also trigger a callback to the `universalReceiver(...)` function
-     * on the `_recipient` if it is a contract that supports + implements the LSP1 standard.
+     * on the `recipient` if it is a contract that supports + implements the LSP1 standard.
      *
      * @inheritdoc TokenRouter
      */
     function _transferTo(
-        address _recipient,
-        uint256 _amount,
+        address recipient,
+        uint256 amount,
         bytes calldata // no metadata
     )
         internal
         virtual
         override
     {
-        wrappedToken.transfer(address(this), _recipient, _amount, true, "");
+        wrappedToken.transfer(address(this), recipient, amount, true, "");
     }
 
     function _rebalance(
