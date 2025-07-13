@@ -16,7 +16,7 @@ contract CustomPostDispatchHook is AbstractPostDispatchHook {
     using Message for bytes;
 
     // ============ Custom Event ============
-    event CustomPostDispatchHookCalled();
+    event CustomPostDispatchHookCalled(bytes hookMetadata);
 
     // ============ Public Storage ============
 
@@ -42,16 +42,9 @@ contract CustomPostDispatchHook is AbstractPostDispatchHook {
     }
 
     // ============ Internal functions ============
-    function _postDispatch(
-        bytes calldata,
-        /*metadata*/
-        bytes calldata message
-    )
-        internal
-        override
-    {
+    function _postDispatch(bytes calldata metadata, bytes calldata message) internal override {
         messageDispatched[message.id()] = true;
-        emit CustomPostDispatchHookCalled();
+        emit CustomPostDispatchHookCalled(metadata);
     }
 
     function _quoteDispatch(

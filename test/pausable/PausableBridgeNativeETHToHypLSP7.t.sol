@@ -5,7 +5,6 @@ import { TransparentUpgradeableProxy } from "@openzeppelin/contracts/proxy/trans
 
 // test utilities
 import { HypTokenTest } from "../helpers/HypTokenTest.sol";
-import { formatHyperlaneMessage } from "../helpers/Utils.sol";
 import { BridgeNativeETHToHypLSP7 } from "../native/BridgeNativeETHToHypLSP7.t.sol";
 import { FreezableTester } from "../helpers/FreezableTester.sol";
 
@@ -77,14 +76,19 @@ contract PausableBridgeNativeETHToHypLSP7 is BridgeNativeETHToHypLSP7, Freezable
 
         syntheticToken = HypLSP7Pausable(payable(proxy));
 
-        // 4. Connect the collateral with the synthetic contract, and vice versa
+        // 4. setup the state variable derives from `HypTokenTest` to ensure
+        // the internal helper functions can be used
+        originTokenRouter = nativeCollateral;
+        destinationTokenRouter = syntheticToken;
+
+        // 5. Connect the collateral with the synthetic contract, and vice versa
         vm.prank(WARP_ROUTE_OWNER);
-        HypTokenTest._enrollOriginTokenRouter(nativeCollateral, address(syntheticToken));
+        HypTokenTest._enrollOriginTokenRouter();
 
         vm.prank(WARP_ROUTE_OWNER);
-        HypTokenTest._enrollDestinationTokenRouter(syntheticToken, address(nativeCollateral));
+        HypTokenTest._enrollDestinationTokenRouter();
 
-        // 5. setup the Pausable versions of the token routers + register freezer address on both chains
+        // 6. setup the Pausable versions of the token routers + register freezer address on both chains
         originPausableTokenRouter = Freezable(address(nativeCollateral));
         destinationPausableTokenRouter = Freezable(address(syntheticToken));
 
@@ -102,9 +106,10 @@ contract PausableBridgeNativeETHToHypLSP7 is BridgeNativeETHToHypLSP7, Freezable
         assertEq(destinationPausableTokenRouter.paused(), false);
 
         // Bridge tokens to BOB first on destination chain
-        _performBridgeTxAndCheckSentTransferRemoteEvent(
-            nativeCollateral, syntheticToken, REQUIRED_INTERCHAIN_GAS_PAYMENT + TRANSFER_AMOUNT, TRANSFER_AMOUNT
-        );
+        _performBridgeTxAndCheckSentTransferRemoteEvent({
+            _msgValue: REQUIRED_INTERCHAIN_GAS_PAYMENT + TRANSFER_AMOUNT,
+            _amount: TRANSFER_AMOUNT
+        });
 
         uint256 bobSyntheticTokenBalance = syntheticToken.balanceOf(BOB);
         assertEq(bobSyntheticTokenBalance, TRANSFER_AMOUNT);
@@ -140,18 +145,18 @@ contract PausableBridgeNativeETHToHypLSP7 is BridgeNativeETHToHypLSP7, Freezable
 
         assertEq(syntheticToken.balanceOf(BOB), 0);
 
-        uint256 _msgValue = REQUIRED_INTERCHAIN_GAS_PAYMENT + TRANSFER_AMOUNT;
+        uint256 msgValue = REQUIRED_INTERCHAIN_GAS_PAYMENT + TRANSFER_AMOUNT;
 
         vm.prank(ALICE);
-        nativeCollateral.transferRemote{ value: _msgValue }(
+        vm.expectEmit({ emitter: address(nativeCollateral) });
+        emit TokenRouter.SentTransferRemote(DESTINATION_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT);
+        nativeCollateral.transferRemote{ value: msgValue }(
             DESTINATION_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT
         );
-        // TODO: assert for emitted event
-        emit TokenRouter.ReceivedTransferRemote(ORIGIN_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT);
 
-        bytes memory _message = _prepareProcessCall(TRANSFER_AMOUNT);
+        bytes memory message = HypTokenTest._prepareProcessCall(TRANSFER_AMOUNT);
 
-        destinationMailbox.process("", _message); // we don't need metadata
+        destinationMailbox.process("", message); // we don't need metadata
         assertEq(syntheticToken.balanceOf(BOB), TRANSFER_AMOUNT);
     }
 
@@ -170,15 +175,14 @@ contract PausableBridgeNativeETHToHypLSP7 is BridgeNativeETHToHypLSP7, Freezable
     function test_BridgeTxRevertsOnDestinationWhenPausedOnDestination() public {
         _pauseDestination();
 
-        // bytes memory _message = _prepareProcessCall(_amount);
-        bytes memory _tokenMessage = TokenMessage.format(BOB.addressToBytes32(), TRANSFER_AMOUNT, "");
+        bytes memory tokenMessage = TokenMessage.format(BOB.addressToBytes32(), TRANSFER_AMOUNT, "");
 
         vm.expectRevert("Pausable: paused");
         destinationMailbox.testHandle(
             ORIGIN_CHAIN_ID,
             address(nativeCollateral).addressToBytes32(),
             address(syntheticToken).addressToBytes32(),
-            _tokenMessage
+            tokenMessage
         ); // we don't need metadata
     }
 
@@ -235,43 +239,5 @@ contract PausableBridgeNativeETHToHypLSP7 is BridgeNativeETHToHypLSP7, Freezable
             address(nativeCollateral).addressToBytes32(),
             _message
         );
-    }
-
-    // Internal functions
-    // --------------------
-
-    /// @dev Prepare the call that the Hyperlane relayer should send on the destination chain.
-    /// The encoded bytes returned by this function can be used as parameter to call
-    /// `Mailbox.process(_metadata, _message)` on the destination chain.
-    ///
-    /// This is useful for testing transactions that should revert on the destination chain by:
-    ///     - if the `ISM.verify(...)` function will return `false`
-    ///     - if a warp route is paused (will revert when `Mailbox.process(...)` on the destination chain call
-    /// `remoteToken.handle(...)`)
-    function _prepareProcessCall(uint256 amount) internal view returns (bytes memory) {
-        bytes memory tokenMessage = TokenMessage.format(BOB.addressToBytes32(), amount, "");
-
-        bytes32 originRouter = syntheticToken.routers(ORIGIN_CHAIN_ID);
-        bytes32 encodedOriginTokenRouterAddress = address(nativeCollateral).addressToBytes32();
-        bytes32 encodedDestinationTokenRouterAddress = address(syntheticToken).addressToBytes32();
-
-        // Sanity CHECK to ensure the token router contract on the destination chain (= the synthetic token contract)
-        // is connected to the correct token router contract on the origin chain (= the collateral contract)
-        assertEq(originRouter, encodedOriginTokenRouterAddress);
-
-        bytes memory message = formatHyperlaneMessage({
-            _version: 3,
-            _nonce: 1,
-            // `HypNativePausable` token router on ORIGIN_CHAIN_ID
-            _originDomain: ORIGIN_CHAIN_ID,
-            _sender: encodedOriginTokenRouterAddress,
-            // remote HypLSP7Pausable token router on DESTINATION_CHAIN_ID
-            _destinationDomain: DESTINATION_CHAIN_ID,
-            _recipient: encodedDestinationTokenRouterAddress,
-            // encoded instructions on 1) how much to send, 2) to which address
-            _messageBody: tokenMessage
-        });
-
-        return message;
     }
 }

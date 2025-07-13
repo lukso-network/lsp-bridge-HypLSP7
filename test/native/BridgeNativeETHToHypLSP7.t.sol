@@ -92,23 +92,26 @@ contract BridgeNativeETHToHypLSP7 is HypTokenTest {
 
         syntheticToken = HypLSP7(payable(proxy));
 
-        // 4. Connect the collateral with the synthetic contract, and vice versa
+        // 4. setup the state variable derives from `HypTokenTest` to ensure
+        // the internal helper functions can be used
+        originTokenRouter = nativeCollateral;
+        destinationTokenRouter = syntheticToken;
+
+        // 5. Connect the collateral with the synthetic contract, and vice versa
         vm.prank(WARP_ROUTE_OWNER);
-        HypTokenTest._enrollOriginTokenRouter(nativeCollateral, address(syntheticToken));
+        HypTokenTest._enrollOriginTokenRouter();
 
         vm.prank(WARP_ROUTE_OWNER);
-        HypTokenTest._enrollDestinationTokenRouter(syntheticToken, address(nativeCollateral));
+        HypTokenTest._enrollDestinationTokenRouter();
     }
 
     function test_BridgeTx() public {
         uint256 balanceBefore = ALICE.balance;
 
-        _performBridgeTxAndCheckSentTransferRemoteEvent(
-            nativeCollateral,
-            syntheticToken,
-            TRANSFER_AMOUNT + REQUIRED_INTERCHAIN_GAS_PAYMENT, // msgValue = amount to transfer + igp payment
-            TRANSFER_AMOUNT
-        );
+        _performBridgeTxAndCheckSentTransferRemoteEvent({
+            _msgValue: TRANSFER_AMOUNT + REQUIRED_INTERCHAIN_GAS_PAYMENT,
+            _amount: TRANSFER_AMOUNT
+        });
         assertEq(ALICE.balance, balanceBefore - TRANSFER_AMOUNT - REQUIRED_INTERCHAIN_GAS_PAYMENT);
 
         // CHECK tokens have been locked in the collateral contract
@@ -119,39 +122,34 @@ contract BridgeNativeETHToHypLSP7 is HypTokenTest {
         CustomPostDispatchHook customHook = new CustomPostDispatchHook();
         customHook.setFee(fee);
 
-        vm.expectEmit();
-        emit CustomPostDispatchHook.CustomPostDispatchHookCalled();
+        vm.expectEmit({ emitter: address(customHook) });
+        emit CustomPostDispatchHook.CustomPostDispatchHookCalled(metadata);
 
-        bytes32 messageId = _performBridgeTxWithHookSpecified(
-            nativeCollateral,
-            syntheticToken,
-            TRANSFER_AMOUNT + REQUIRED_INTERCHAIN_GAS_PAYMENT,
-            TRANSFER_AMOUNT,
-            address(customHook),
-            metadata
-        );
+        bytes32 messageId = _performBridgeTxWithHookSpecified({
+            _msgValue: TRANSFER_AMOUNT + REQUIRED_INTERCHAIN_GAS_PAYMENT,
+            _amount: TRANSFER_AMOUNT,
+            _hook: address(customHook),
+            _hookMetadata: metadata
+        });
         assertTrue(customHook.messageDispatched(messageId));
         assertEq(syntheticToken.balanceOf(BOB), TRANSFER_AMOUNT);
     }
 
     function test_BridgeTxWithCustomGasConfig() public {
-        // TODO: move assertion out of `__performBridgeTxWithCustomGasConfig`
-        vm.skip(true);
-
         _setCustomGasConfig(nativeCollateral);
         uint256 gasOverhead = GAS_LIMIT * interchainGasPaymaster.gasPrice();
 
-        uint256 balanceBefore = ALICE.balance;
+        uint256 ethBalanceBefore = ALICE.balance;
 
         _performBridgeTxWithCustomGasConfig({
-            originTokenRouter: nativeCollateral,
-            destinationTokenRouter: syntheticToken,
-            msgValue: TRANSFER_AMOUNT + REQUIRED_INTERCHAIN_GAS_PAYMENT,
-            amount: TRANSFER_AMOUNT,
-            gasOverhead: gasOverhead
+            _msgValue: TRANSFER_AMOUNT + REQUIRED_INTERCHAIN_GAS_PAYMENT,
+            _amount: TRANSFER_AMOUNT,
+            _gasOverhead: gasOverhead
         });
 
-        // uint256 expectedNewBalance = balanceBefore - TRANSFER_AMOUNT - REQUIRED_INTERCHAIN_GAS_PAYMENT - gasOverhead;
+        uint256 expectedNewETHBalance =
+            ethBalanceBefore - TRANSFER_AMOUNT - REQUIRED_INTERCHAIN_GAS_PAYMENT - gasOverhead;
+        assertEq(ALICE.balance, expectedNewETHBalance);
     }
 
     function test_BridgeTxRevertsIfAmountGreaterThanUserNativeTokenBalance() public {

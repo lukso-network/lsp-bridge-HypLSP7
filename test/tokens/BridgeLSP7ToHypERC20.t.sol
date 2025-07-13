@@ -38,7 +38,7 @@ contract BridgeLSP7ToHypERC20 is HypTokenTest {
     uint8 internal constant DECIMALS = 18;
     uint256 internal constant TOTAL_SUPPLY = 1_000_000 * (10 ** DECIMALS);
 
-    LSP7Mock token;
+    LSP7Mock internal token;
 
     // Warp route
     // ---------------------------
@@ -102,12 +102,17 @@ contract BridgeLSP7ToHypERC20 is HypTokenTest {
 
         syntheticToken = HypERC20(address(proxy));
 
-        // 4. Connect the collateral with the synthetic contract, and vice versa
+        // 4. setup the state variable derives from `HypTokenTest` to ensure
+        // the internal helper functions can be used
+        originTokenRouter = lsp7Collateral;
+        destinationTokenRouter = syntheticToken;
+
+        // 5. Connect the collateral with the synthetic contract, and vice versa
         vm.prank(WARP_ROUTE_OWNER);
-        HypTokenTest._enrollOriginTokenRouter(lsp7Collateral, address(syntheticToken));
+        HypTokenTest._enrollOriginTokenRouter();
 
         vm.prank(WARP_ROUTE_OWNER);
-        HypTokenTest._enrollDestinationTokenRouter(syntheticToken, address(lsp7Collateral));
+        HypTokenTest._enrollDestinationTokenRouter();
     }
 
     function test_constructorRevertIfInvalidToken() public {
@@ -126,9 +131,7 @@ contract BridgeLSP7ToHypERC20 is HypTokenTest {
         vm.prank(ALICE);
         token.authorizeOperator(address(lsp7Collateral), TRANSFER_AMOUNT, "");
 
-        _performBridgeTxAndCheckSentTransferRemoteEvent(
-            lsp7Collateral, syntheticToken, REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT
-        );
+        _performBridgeTxAndCheckSentTransferRemoteEvent(REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT);
         assertEq(token.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
 
         // CHECK tokens have been locked in the collateral contract on origin chain
@@ -145,16 +148,11 @@ contract BridgeLSP7ToHypERC20 is HypTokenTest {
         vm.prank(ALICE);
         token.authorizeOperator(address(lsp7Collateral), TRANSFER_AMOUNT, "");
 
-        vm.expectEmit();
-        emit CustomPostDispatchHook.CustomPostDispatchHookCalled();
+        vm.expectEmit({ emitter: address(customHook) });
+        emit CustomPostDispatchHook.CustomPostDispatchHookCalled(metadata);
 
         bytes32 messageId = _performBridgeTxWithHookSpecified(
-            lsp7Collateral,
-            syntheticToken,
-            REQUIRED_INTERCHAIN_GAS_PAYMENT,
-            TRANSFER_AMOUNT,
-            address(customHook),
-            metadata
+            REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT, address(customHook), metadata
         );
         assertTrue(customHook.messageDispatched(messageId));
         assertEq(syntheticToken.balanceOf(BOB), TRANSFER_AMOUNT);
@@ -174,7 +172,7 @@ contract BridgeLSP7ToHypERC20 is HypTokenTest {
         vm.prank(ALICE);
         token.authorizeOperator(address(lsp7Collateral), transferAmount, "");
 
-        _performBridgeTx(lsp7Collateral, syntheticToken, 0, transferAmount);
+        _performBridgeTx(0, transferAmount);
 
         assertEq(syntheticToken.totalSupply(), syntheticTokenSupplyBefore + transferAmount);
     }
@@ -257,19 +255,23 @@ contract BridgeLSP7ToHypERC20 is HypTokenTest {
 
     function test_BridgeTxWithCustomGasConfig() public {
         _setCustomGasConfig(lsp7Collateral);
+        uint256 gasOverhead = GAS_LIMIT * interchainGasPaymaster.gasPrice();
 
         vm.prank(ALICE);
         token.authorizeOperator(address(lsp7Collateral), TRANSFER_AMOUNT, "");
 
-        uint256 balanceBefore = token.balanceOf(ALICE);
+        uint256 tokenBalanceBefore = token.balanceOf(ALICE);
+        uint256 lyxBalanceBefore = ALICE.balance;
+
         _performBridgeTxWithCustomGasConfig({
-            originTokenRouter: lsp7Collateral,
-            destinationTokenRouter: syntheticToken,
-            msgValue: REQUIRED_INTERCHAIN_GAS_PAYMENT,
-            amount: TRANSFER_AMOUNT,
-            gasOverhead: GAS_LIMIT * interchainGasPaymaster.gasPrice()
+            _msgValue: REQUIRED_INTERCHAIN_GAS_PAYMENT,
+            _amount: TRANSFER_AMOUNT,
+            _gasOverhead: GAS_LIMIT * interchainGasPaymaster.gasPrice()
         });
-        assertEq(token.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
+        assertEq(token.balanceOf(ALICE), tokenBalanceBefore - TRANSFER_AMOUNT);
+
+        uint256 expectedNewLYXBalance = lyxBalanceBefore - REQUIRED_INTERCHAIN_GAS_PAYMENT - gasOverhead;
+        assertEq(ALICE.balance, expectedNewLYXBalance);
     }
 
     /// @dev Ensure correct behaviour of `syntheticToken.transfer(from, to, amount, force, data)`
@@ -283,9 +285,7 @@ contract BridgeLSP7ToHypERC20 is HypTokenTest {
         token.authorizeOperator(address(lsp7Collateral), TRANSFER_AMOUNT, "");
 
         // Bridge tokens to BOB on destination chain
-        _performBridgeTxAndCheckSentTransferRemoteEvent(
-            lsp7Collateral, syntheticToken, REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT
-        );
+        _performBridgeTxAndCheckSentTransferRemoteEvent(REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT);
         assertEq(token.balanceOf(ALICE), aliceTokenBalanceBefore - TRANSFER_AMOUNT);
 
         // CHECK that BOB can transfer synthetic tokens on destination chain
@@ -318,7 +318,7 @@ contract BridgeLSP7ToHypERC20 is HypTokenTest {
         vm.assume(syntheticTokenBalance < transferAmount);
 
         // we assume some tokens have already been bridged on the destination chain
-        _processBridgeTxOnDestinationChain(syntheticToken, lsp7Collateral, BOB, syntheticTokenBalance);
+        _processBridgeTxOnDestinationChain(BOB, syntheticTokenBalance);
 
         assertEq(syntheticToken.balanceOf(BOB), syntheticTokenBalance);
 

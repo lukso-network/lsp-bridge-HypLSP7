@@ -29,8 +29,8 @@ import { ERC725Y_DataKeysValuesLengthMismatch } from "@erc725/smart-contracts/co
 
 contract HypLSP7Test is Test {
     // Hyperlane Mailbox
-    uint32 constant CHAIN_ID = 42;
-    TestMailbox mailbox;
+    uint32 internal constant CHAIN_ID = 42;
+    TestMailbox internal mailbox;
 
     // Warp route
     TestPostDispatchHook internal defaultHook;
@@ -46,7 +46,7 @@ contract HypLSP7Test is Test {
     address internal immutable PROXY_ADMIN = makeAddr("Proxy Admin");
     address internal immutable WARP_ROUTE_OWNER = makeAddr("warp route owner");
 
-    HypLSP7 syntheticToken;
+    HypLSP7 internal syntheticToken;
 
     function setUp() public {
         mailbox = new TestMailbox(CHAIN_ID);
@@ -136,6 +136,7 @@ contract HypLSP7Test is Test {
         public
     {
         vm.assume(notOwnerAddress != WARP_ROUTE_OWNER);
+        vm.assume(notOwnerAddress != PROXY_ADMIN);
         bound(dataKeys.length, 1, 100);
         bound(dataValues.length, 1, 100);
 
@@ -163,19 +164,19 @@ contract HypLSP7Test is Test {
         // CHECK events are emitted for the data keys:
 
         // - LSP4Creators[] (length)
-        vm.expectEmit({ checkTopic1: true, checkTopic2: false, checkTopic3: false, checkData: true });
+        vm.expectEmit({ emitter: address(syntheticToken) });
         emit IERC725Y.DataChanged(dataKeys[0], dataValues[0]);
 
         // - LSP4Creators[0] (index)
-        vm.expectEmit({ checkTopic1: true, checkTopic2: false, checkTopic3: false, checkData: true });
+        vm.expectEmit({ emitter: address(syntheticToken) });
         emit IERC725Y.DataChanged(dataKeys[1], dataValues[1]);
 
         // - LSP4CreatorMap
-        vm.expectEmit({ checkTopic1: true, checkTopic2: false, checkTopic3: false, checkData: true });
+        vm.expectEmit({ emitter: address(syntheticToken) });
         emit IERC725Y.DataChanged(dataKeys[2], dataValues[2]);
 
         // - LSP4Metadata
-        vm.expectEmit({ checkTopic1: true, checkTopic2: false, checkTopic3: false, checkData: true });
+        vm.expectEmit({ emitter: address(syntheticToken) });
         emit IERC725Y.DataChanged(dataKeys[3], dataValues[3]);
 
         vm.prank(WARP_ROUTE_OWNER);

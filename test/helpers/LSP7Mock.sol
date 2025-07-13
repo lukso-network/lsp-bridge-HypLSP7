@@ -14,8 +14,7 @@ contract LSP7Mock is LSP7DigitalAsset {
     )
         LSP7DigitalAsset(name_, symbol_, tokenContractOwner_, _LSP4_TOKEN_TYPE_TOKEN, false)
     {
-        // TODO: mint to deployer to unify code like ERC20Mock for simplicity
-        _mint(tokenContractOwner_, totalSupply_, true, "");
+        _mint(msg.sender, totalSupply_, true, "");
     }
 
     function mint(uint256 amount) public {

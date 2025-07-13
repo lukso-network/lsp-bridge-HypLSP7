@@ -93,7 +93,6 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
                     NAME,
                     SYMBOL,
                     address(destinationDefaultHook),
-                    // TODO: configure like Hyperlane tests to use the Interchain Gas Paymaster as ISM
                     address(destinationDefaultIsm),
                     WARP_ROUTE_OWNER
                 )
@@ -102,12 +101,17 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
 
         syntheticToken = HypLSP7(payable(proxy));
 
-        // 4. Connect the collateral with the synthetic contract, and vice versa
+        // 4. setup the state variable derives from `HypTokenTest` to ensure
+        // the internal helper functions can be used
+        originTokenRouter = erc20Collateral;
+        destinationTokenRouter = syntheticToken;
+
+        // 5. Connect the collateral with the synthetic contract, and vice versa
         vm.prank(WARP_ROUTE_OWNER);
-        HypTokenTest._enrollOriginTokenRouter(erc20Collateral, address(syntheticToken));
+        HypTokenTest._enrollOriginTokenRouter();
 
         vm.prank(WARP_ROUTE_OWNER);
-        HypTokenTest._enrollDestinationTokenRouter(syntheticToken, address(erc20Collateral));
+        HypTokenTest._enrollDestinationTokenRouter();
     }
 
     function test_constructorRevertIfInvalidToken() public {
@@ -126,9 +130,7 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
         vm.prank(ALICE);
         token.approve(address(erc20Collateral), TRANSFER_AMOUNT);
 
-        _performBridgeTxAndCheckSentTransferRemoteEvent(
-            erc20Collateral, syntheticToken, REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT
-        );
+        _performBridgeTxAndCheckSentTransferRemoteEvent(REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT);
         assertEq(token.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
 
         // CHECK tokens have been locked in the collateral contract on origin chain
@@ -145,16 +147,11 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
         vm.prank(ALICE);
         token.approve(address(erc20Collateral), TRANSFER_AMOUNT);
 
-        vm.expectEmit();
-        emit CustomPostDispatchHook.CustomPostDispatchHookCalled();
+        vm.expectEmit({ emitter: address(customHook) });
+        emit CustomPostDispatchHook.CustomPostDispatchHookCalled(metadata);
 
         bytes32 messageId = _performBridgeTxWithHookSpecified(
-            erc20Collateral,
-            syntheticToken,
-            REQUIRED_INTERCHAIN_GAS_PAYMENT,
-            TRANSFER_AMOUNT,
-            address(customHook),
-            metadata
+            REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT, address(customHook), metadata
         );
 
         assertTrue(customHook.messageDispatched(messageId));
@@ -175,7 +172,7 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
         vm.prank(ALICE);
         token.approve(address(erc20Collateral), transferAmount);
 
-        _performBridgeTx(erc20Collateral, syntheticToken, 0, transferAmount);
+        _performBridgeTx(0, transferAmount);
 
         assertEq(syntheticToken.totalSupply(), syntheticTokenSupplyBefore + transferAmount);
     }
@@ -242,19 +239,23 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
 
     function test_BridgeTxWithCustomGasConfig() public {
         _setCustomGasConfig(erc20Collateral);
+        uint256 gasOverhead = GAS_LIMIT * interchainGasPaymaster.gasPrice();
 
         vm.prank(ALICE);
         token.approve(address(erc20Collateral), TRANSFER_AMOUNT);
 
-        uint256 balanceBefore = token.balanceOf(ALICE);
+        uint256 tokenBalanceBefore = token.balanceOf(ALICE);
+        uint256 ethBalanceBefore = ALICE.balance;
+
         _performBridgeTxWithCustomGasConfig({
-            originTokenRouter: erc20Collateral,
-            destinationTokenRouter: syntheticToken,
-            msgValue: REQUIRED_INTERCHAIN_GAS_PAYMENT,
-            amount: TRANSFER_AMOUNT,
-            gasOverhead: GAS_LIMIT * interchainGasPaymaster.gasPrice()
+            _msgValue: REQUIRED_INTERCHAIN_GAS_PAYMENT,
+            _amount: TRANSFER_AMOUNT,
+            _gasOverhead: GAS_LIMIT * interchainGasPaymaster.gasPrice()
         });
-        assertEq(token.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
+        assertEq(token.balanceOf(ALICE), tokenBalanceBefore - TRANSFER_AMOUNT);
+
+        uint256 expectedNewETHBalance = ethBalanceBefore - REQUIRED_INTERCHAIN_GAS_PAYMENT - gasOverhead;
+        assertEq(ALICE.balance, expectedNewETHBalance);
     }
 
     /// @dev Ensure correct behaviour of `syntheticToken.transfer(from, to, amount, force, data)`
@@ -268,9 +269,7 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
         token.approve(address(erc20Collateral), TRANSFER_AMOUNT);
 
         // Bridge tokens to BOB on destination chain
-        _performBridgeTxAndCheckSentTransferRemoteEvent(
-            erc20Collateral, syntheticToken, REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT
-        );
+        _performBridgeTxAndCheckSentTransferRemoteEvent(REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT);
         assertEq(token.balanceOf(ALICE), aliceTokenBalanceBefore - TRANSFER_AMOUNT);
 
         // CHECK that BOB can transfer synthetic tokens on destination chain
@@ -303,7 +302,7 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
         vm.assume(syntheticTokenBalance < transferAmount);
 
         // we assume some tokens have already been bridged on the destination chain
-        _processBridgeTxOnDestinationChain(syntheticToken, erc20Collateral, BOB, syntheticTokenBalance);
+        _processBridgeTxOnDestinationChain(BOB, syntheticTokenBalance);
 
         assertEq(syntheticToken.balanceOf(BOB), syntheticTokenBalance);
 

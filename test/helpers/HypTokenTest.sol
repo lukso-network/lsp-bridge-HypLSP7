@@ -21,11 +21,6 @@ import { GasRouter } from "@hyperlane-xyz/core/contracts/client/GasRouter.sol";
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
 import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMessage.sol";
 
-// Mock contracts to test
-// TODO: these should be changed depending on the direction (ERC20 on Ethereum, lSP7 on LUKSO)
-import { LSP7Mock } from "./LSP7Mock.sol";
-import { HypLSP7 } from "../../src/HypLSP7.sol";
-
 /**
  * @title Hyperlane test suite setup
  *
@@ -44,12 +39,18 @@ abstract contract HypTokenTest is Test {
     TestPostDispatchHook internal originMailboxDefaultHook;
     TestPostDispatchHook internal originMailboxRequiredtHook;
 
+    // collateral contract locking tokens (MUST be set in contract inheritting from `HypTokenTest`)
+    TokenRouter internal originTokenRouter;
+
     // destination chain
     // ---------------------------
     uint32 internal DESTINATION_CHAIN_ID;
     TestMailbox internal destinationMailbox;
     TestPostDispatchHook internal destinationMailboxDefaultHook;
     TestPostDispatchHook internal destinationMailboxRequiredtHook;
+
+    // synthetic token (MUST be set in contract inheritting from `HypTokenTest`)
+    TokenRouter internal destinationTokenRouter;
 
     // warp route parameters
     // ---------------------------
@@ -91,21 +92,21 @@ abstract contract HypTokenTest is Test {
         destinationMailbox.setDefaultHook(address(destinationMailboxDefaultHook));
         destinationMailbox.setRequiredHook(address(destinationMailboxRequiredtHook));
 
-        // Give some native tokens to Alice so she can pay for the interchain gas payment
+        // Give native tokens to Alice for paying the interchain gas payment when bridging
         vm.deal(ALICE, 125_000);
     }
 
-    function _enrollOriginTokenRouter(TokenRouter originTokenRouter, address routerOnDestination) internal {
+    function _enrollOriginTokenRouter() internal {
         originTokenRouter.enrollRemoteRouter({
             _domain: DESTINATION_CHAIN_ID,
-            _router: address(routerOnDestination).addressToBytes32()
+            _router: address(destinationTokenRouter).addressToBytes32()
         });
     }
 
-    function _enrollDestinationTokenRouter(TokenRouter destinationTokenRouter, address routerOnOrigin) internal {
+    function _enrollDestinationTokenRouter() internal {
         destinationTokenRouter.enrollRemoteRouter({
             _domain: ORIGIN_CHAIN_ID,
-            _router: address(routerOnOrigin).addressToBytes32()
+            _router: address(originTokenRouter).addressToBytes32()
         });
     }
 
@@ -114,76 +115,39 @@ abstract contract HypTokenTest is Test {
     ///
     /// This will also configure the destination gas parameter when bridging to `DESTINATION_CHAIN_ID`
     /// to be a maximum `GAS_LIMIT` that can run on the destination chain.
-    function _setCustomGasConfig(TokenRouter tokenRouter) internal {
+    function _setCustomGasConfig(TokenRouter _tokenRouter) internal {
         vm.prank(WARP_ROUTE_OWNER);
-        tokenRouter.setHook(address(interchainGasPaymaster));
+        _tokenRouter.setHook(address(interchainGasPaymaster));
 
         TokenRouter.GasRouterConfig[] memory config = new TokenRouter.GasRouterConfig[](1);
         config[0] = GasRouter.GasRouterConfig({ domain: DESTINATION_CHAIN_ID, gas: GAS_LIMIT });
 
         vm.prank(WARP_ROUTE_OWNER);
-        tokenRouter.setDestinationGas(config);
+        _tokenRouter.setDestinationGas(config);
     }
 
     // Helper functions to perform bridge transactions (= remote transfers)
 
-    function _performBridgeTx(
-        TokenRouter originTokenRouter,
-        TokenRouter destinationTokenRouter,
-        uint256 _msgValue,
-        uint256 _amount
-    )
-        internal
-    {
+    function _performBridgeTx(uint256 _msgValue, uint256 _amount) internal {
         vm.prank(ALICE);
         originTokenRouter.transferRemote{ value: _msgValue }(DESTINATION_CHAIN_ID, BOB.addressToBytes32(), _amount);
 
-        vm.expectEmit(true, true, false, true);
+        vm.expectEmit({ emitter: address(destinationTokenRouter) });
         emit TokenRouter.ReceivedTransferRemote(ORIGIN_CHAIN_ID, BOB.addressToBytes32(), _amount);
-
-        _processBridgeTxOnDestinationChain(destinationTokenRouter, originTokenRouter, BOB, _amount);
+        _processBridgeTxOnDestinationChain(BOB, _amount);
     }
 
-    function _performBridgeTxWithCustomGasConfig(
-        TokenRouter originTokenRouter,
-        TokenRouter destinationTokenRouter,
-        uint256 msgValue,
-        uint256 amount,
-        uint256 gasOverhead
-    )
-        internal
-    {
-        uint256 ethBalance = ALICE.balance;
-
-        _performBridgeTx(originTokenRouter, destinationTokenRouter, msgValue + gasOverhead, amount);
-
-        assertEq(ALICE.balance, ethBalance - REQUIRED_INTERCHAIN_GAS_PAYMENT - gasOverhead);
+    function _performBridgeTxWithCustomGasConfig(uint256 _msgValue, uint256 _amount, uint256 _gasOverhead) internal {
+        _performBridgeTx(_msgValue + _gasOverhead, _amount);
     }
 
-    function _performBridgeTxAndCheckSentTransferRemoteEvent(
-        TokenRouter originTokenRouter,
-        TokenRouter destinationTokenRouter,
-        uint256 _msgValue,
-        uint256 _amount
-    )
-        // uint256 _gasOverhead
-        internal
-    {
-        vm.expectEmit(true, true, false, true);
+    function _performBridgeTxAndCheckSentTransferRemoteEvent(uint256 _msgValue, uint256 _amount) internal {
+        vm.expectEmit({ emitter: address(originTokenRouter) });
         emit TokenRouter.SentTransferRemote(DESTINATION_CHAIN_ID, BOB.addressToBytes32(), _amount);
-        _performBridgeTx(originTokenRouter, destinationTokenRouter, _msgValue, _amount);
-
-        // TODO: Initially, this function was called `_performRemoteTransferWithEmit` and had the `_gasOverhead`
-        // parameter.
-        // We could reuse this parameter to call the other function and use the `messageId` returned here for further
-        // assertion.
-        // _performBridgeTxWithCustomGasConfig(originTokenRouter, destinationTokenRouter, _msgValue, _amount,
-        // _gasOverhead);
+        _performBridgeTx(_msgValue, _amount);
     }
 
     function _performBridgeTxWithHookSpecified(
-        TokenRouter originTokenRouter,
-        TokenRouter destinationTokenRouter,
         uint256 _msgValue,
         uint256 _amount,
         address _hook,
@@ -199,38 +163,53 @@ abstract contract HypTokenTest is Test {
             DESTINATION_CHAIN_ID, BOB.addressToBytes32(), _amount, _hookMetadata, address(_hook)
         );
 
-        _processBridgeTxOnDestinationChain(destinationTokenRouter, originTokenRouter, BOB, _amount);
+        _processBridgeTxOnDestinationChain(BOB, _amount);
     }
 
-    function _processBridgeTxOnDestinationChain(
-        TokenRouter destinationTokenRouter,
-        TokenRouter originTokenRouter,
-        address recipient,
-        uint256 amount
-    )
-        internal
-    {
+    function _processBridgeTxOnDestinationChain(address _recipient, uint256 _amount) internal {
         vm.prank(address(destinationMailbox));
         destinationTokenRouter.handle(
             ORIGIN_CHAIN_ID,
             address(originTokenRouter).addressToBytes32(),
-            abi.encodePacked(recipient.addressToBytes32(), amount)
+            abi.encodePacked(_recipient.addressToBytes32(), _amount)
         );
     }
 
-    // function _processBridgeBackTxOnSourceChain(
-    //     TokenRouter originTokenRouter,
-    //     TokenRouter destinationTokenRouter,
-    //     address recipient,
-    //     uint256 amount
-    // )
-    //     internal
-    // {
-    //     vm.prank(address(originMailbox));
-    //     originTokenRouter.handle(
-    //         DESTINATION_CHAIN_ID,
-    //         address(destinationTokenRouter).addressToBytes32(),
-    //         abi.encodePacked(recipient.addressToBytes32(), amount)
-    //     );
-    // }
+    // Other helper functions
+    // --------------------
+
+    /// @dev Prepare the call that the Hyperlane relayer should send on the destination chain.
+    /// The encoded bytes returned by this function can be used as parameter to call
+    /// `Mailbox.process(_metadata, _message)` on the destination chain.
+    ///
+    /// This is useful for testing transactions that should revert on the destination chain by:
+    ///     - if the `ISM.verify(...)` function will return `false`
+    ///     - if a warp route is paused (will revert when `Mailbox.process(...)` on the destination chain call
+    /// `remoteToken.handle(...)`)
+    function _prepareProcessCall(uint256 _amount) internal view returns (bytes memory) {
+        bytes memory tokenMessage = TokenMessage.format(BOB.addressToBytes32(), _amount, "");
+
+        bytes32 routerForOrigin = destinationTokenRouter.routers(ORIGIN_CHAIN_ID);
+        bytes32 encodedOriginTokenRouterAddress = address(originTokenRouter).addressToBytes32();
+        bytes32 encodedDestinationTokenRouterAddress = address(destinationTokenRouter).addressToBytes32();
+
+        // Sanity CHECK to ensure the token router contract on the destination chain (= the synthetic token contract)
+        // is connected to the correct token router contract on the origin chain (= the collateral contract)
+        assertEq(routerForOrigin, encodedOriginTokenRouterAddress);
+
+        bytes memory message = formatHyperlaneMessage({
+            _version: 3,
+            _nonce: 1,
+            // `HypLSP7CollateralPausable` token router on ORIGIN_CHAIN_ID
+            _originDomain: ORIGIN_CHAIN_ID,
+            _sender: encodedOriginTokenRouterAddress,
+            // remote HypERC20Pausable token router on DESTINATION_CHAIN_ID
+            _destinationDomain: DESTINATION_CHAIN_ID,
+            _recipient: encodedDestinationTokenRouterAddress,
+            // encoded instructions on 1) how much to send, 2) to which address
+            _messageBody: tokenMessage
+        });
+
+        return message;
+    }
 }

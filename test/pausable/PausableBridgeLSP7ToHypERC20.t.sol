@@ -8,7 +8,6 @@ import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 import { HypTokenTest } from "../helpers/HypTokenTest.sol";
 import { BridgeLSP7ToHypERC20 } from "../tokens/BridgeLSP7ToHypERC20.t.sol";
 import { FreezableTester } from "../helpers/FreezableTester.sol";
-import { formatHyperlaneMessage } from "../helpers/Utils.sol";
 
 // libraries
 import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMessage.sol";
@@ -66,14 +65,19 @@ contract PausableBridgeLSP7ToHypERC20 is BridgeLSP7ToHypERC20, FreezableTester {
 
         syntheticToken = HypERC20Pausable(payable(proxy));
 
-        // 4. Connect the collateral with the synthetic contract, and vice versa
+        // 4. setup the state variable derives from `HypTokenTest` to ensure
+        // the internal helper functions can be used
+        originTokenRouter = lsp7Collateral;
+        destinationTokenRouter = syntheticToken;
+
+        // 5. Connect the collateral with the synthetic contract, and vice versa
         vm.prank(WARP_ROUTE_OWNER);
-        HypTokenTest._enrollOriginTokenRouter(lsp7Collateral, address(syntheticToken));
+        HypTokenTest._enrollOriginTokenRouter();
 
         vm.prank(WARP_ROUTE_OWNER);
-        HypTokenTest._enrollDestinationTokenRouter(syntheticToken, address(lsp7Collateral));
+        HypTokenTest._enrollDestinationTokenRouter();
 
-        // 5. setup the Pausable versions of the token routers + register freezer address on both chains
+        // 6. setup the Pausable versions of the token routers + register freezer address on both chains
         originPausableTokenRouter = Freezable(address(lsp7Collateral));
         destinationPausableTokenRouter = Freezable(address(syntheticToken));
 
@@ -93,9 +97,7 @@ contract PausableBridgeLSP7ToHypERC20 is BridgeLSP7ToHypERC20, FreezableTester {
         // Bridge tokens to BOB first on destination chain
         vm.prank(ALICE);
         token.authorizeOperator(address(lsp7Collateral), TRANSFER_AMOUNT, "");
-        _performBridgeTxAndCheckSentTransferRemoteEvent(
-            lsp7Collateral, syntheticToken, REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT
-        );
+        _performBridgeTxAndCheckSentTransferRemoteEvent(REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT);
 
         uint256 bobSyntheticTokenBalance = syntheticToken.balanceOf(BOB);
         assertEq(bobSyntheticTokenBalance, TRANSFER_AMOUNT);
@@ -144,7 +146,7 @@ contract PausableBridgeLSP7ToHypERC20 is BridgeLSP7ToHypERC20, FreezableTester {
         assertEq(token.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
         assertEq(token.balanceOf(address(lsp7Collateral)), TRANSFER_AMOUNT);
 
-        bytes memory message = _prepareProcessCall(TRANSFER_AMOUNT);
+        bytes memory message = HypTokenTest._prepareProcessCall(TRANSFER_AMOUNT);
 
         vm.expectRevert("Pausable: paused");
         destinationMailbox.process("", message); // we don't need metadata
@@ -184,43 +186,5 @@ contract PausableBridgeLSP7ToHypERC20 is BridgeLSP7ToHypERC20, FreezableTester {
             address(lsp7Collateral).addressToBytes32(),
             message
         );
-    }
-
-    // Internal functions
-    // --------------------
-
-    /// @dev Prepare the call that the Hyperlane relayer should send on the destination chain.
-    /// The encoded bytes returned by this function can be used as parameter to call
-    /// `Mailbox.process(_metadata, _message)` on the destination chain.
-    ///
-    /// This is useful for testing transactions that should revert on the destination chain by:
-    ///     - if the `ISM.verify(...)` function will return `false`
-    ///     - if a warp route is paused (will revert when `Mailbox.process(...)` on the destination chain call
-    /// `remoteToken.handle(...)`)
-    function _prepareProcessCall(uint256 amount) internal view returns (bytes memory) {
-        bytes memory tokenMessage = TokenMessage.format(BOB.addressToBytes32(), amount, "");
-
-        bytes32 originRouter = syntheticToken.routers(ORIGIN_CHAIN_ID);
-        bytes32 encodedOriginTokenRouterAddress = address(lsp7Collateral).addressToBytes32();
-        bytes32 encodedDestinationTokenRouterAddress = address(syntheticToken).addressToBytes32();
-
-        // Sanity CHECK to ensure the token router contract on the destination chain (= the synthetic token contract)
-        // is connected to the correct token router contract on the origin chain (= the collateral contract)
-        assertEq(originRouter, encodedOriginTokenRouterAddress);
-
-        bytes memory message = formatHyperlaneMessage({
-            _version: 3,
-            _nonce: 1,
-            // `HypLSP7CollateralPausable` token router on ORIGIN_CHAIN_ID
-            _originDomain: ORIGIN_CHAIN_ID,
-            _sender: encodedOriginTokenRouterAddress,
-            // remote HypERC20Pausable token router on DESTINATION_CHAIN_ID
-            _destinationDomain: DESTINATION_CHAIN_ID,
-            _recipient: encodedDestinationTokenRouterAddress,
-            // encoded instructions on 1) how much to send, 2) to which address
-            _messageBody: tokenMessage
-        });
-
-        return message;
     }
 }
