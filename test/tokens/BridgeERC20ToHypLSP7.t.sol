@@ -5,6 +5,7 @@ import { console } from "forge-std/src/console.sol";
 
 import { TransparentUpgradeableProxy } from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
+// mocks
 import { TestPostDispatchHook } from "@hyperlane-xyz/core/contracts/test/TestPostDispatchHook.sol";
 import { TestIsm } from "@hyperlane-xyz/core/contracts/test/TestIsm.sol";
 import { CustomPostDispatchHook } from "../helpers/CustomPostDispatchHook.sol";
@@ -59,7 +60,7 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
     // ---------------------------
     uint256 internal constant TRANSFER_AMOUNT = 100 * (10 ** DECIMALS);
 
-    function setUp() public override {
+    function setUp() public virtual override {
         ORIGIN_CHAIN_ID = 1; // Ethereum
         DESTINATION_CHAIN_ID = 42; // LUKSO
 
@@ -130,8 +131,11 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
         );
         assertEq(token.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
 
-        // CHECK tokens have been locked in the collateral contract
+        // CHECK tokens have been locked in the collateral contract on origin chain
         assertEq(token.balanceOf(address(erc20Collateral)), TRANSFER_AMOUNT);
+
+        // CHECK synthetic tokens have been minted for Bob on destination chain
+        assertEq(syntheticToken.balanceOf(BOB), TRANSFER_AMOUNT);
     }
 
     function test_BridgeTxWithHookSpecified(uint256 fee, bytes calldata metadata) public virtual {
@@ -157,18 +161,23 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
         assertEq(syntheticToken.balanceOf(BOB), TRANSFER_AMOUNT);
     }
 
-    // TODO: could add the fuzzing amount as parameter for fuzzing but need to move all the tokens to Alice
-    function test_TotalSupplyOfSyntheticTokenIncreasesAfterBridgeTx() public {
-        uint256 totalSupplyBefore = syntheticToken.totalSupply();
+    function test_TotalSupplyOfSyntheticTokenIncreasesAfterBridgeTx(uint256 transferAmount) public {
+        uint256 syntheticTokenSupplyBefore = syntheticToken.totalSupply();
+
+        uint256 maxERC20TokenAmount = token.totalSupply();
+
+        // move all the tokens to Alice to ensure fuzzer can test up to the total supply being transferred
+        token.transfer(ALICE, token.balanceOf(address(this)));
+        assertEq(token.balanceOf(ALICE), maxERC20TokenAmount);
+
+        transferAmount = bound(transferAmount, 1, maxERC20TokenAmount);
 
         vm.prank(ALICE);
-        token.approve(address(erc20Collateral), TRANSFER_AMOUNT);
+        token.approve(address(erc20Collateral), transferAmount);
 
-        _performBridgeTx(erc20Collateral, syntheticToken, 0, TRANSFER_AMOUNT);
+        _performBridgeTx(erc20Collateral, syntheticToken, 0, transferAmount);
 
-        assertEq(syntheticToken.totalSupply(), totalSupplyBefore + TRANSFER_AMOUNT);
-        // TODO: move this assertion to a separate test to separate concerns
-        assertEq(syntheticToken.balanceOf(BOB), TRANSFER_AMOUNT);
+        assertEq(syntheticToken.totalSupply(), syntheticTokenSupplyBefore + transferAmount);
     }
 
     function test_BridgeTxRevertsIfAmountGreaterThanUserERC20TokenBalance(uint256 transferAmount) public {
@@ -255,8 +264,6 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
 
         assertEq(bobSyntheticTokenBalanceBefore, 0);
 
-        console.log(aliceTokenBalanceBefore);
-
         vm.prank(ALICE);
         token.approve(address(erc20Collateral), TRANSFER_AMOUNT);
 
@@ -281,33 +288,10 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
         assertEq(syntheticToken.balanceOf(recipient), amount);
     }
 
-    // TODO: write this test
-    // function test_BridgeTxRevertIfISMOnDestinationChainReturnsFalse() public {
-    //     destinationDefaultIsm.setVerify(false);
-
-    //     uint256 balanceBefore = token.balanceOf(ALICE);
-
-    //     vm.prank(ALICE);
-    //     token.approve(address(erc20Collateral), TRANSFER_AMOUNT);
-
-    //     vm.expectRevert();
-    //     _performBridgeTxAndCheckSentTransferRemoteEvent(
-    //         erc20Collateral, syntheticToken, REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT
-    //     );
-    //     // assertEq(token.balanceOf(ALICE), balanceBefore);
-
-    //     // CHECK that no tokens have been locked in the collateral contract
-    //     // assertEq(token.balanceOf(address(erc20Collateral)), 0);
-
-    //     // Reset the ISM for future tests
-    //     destinationDefaultIsm.setVerify(true);
-    // }
-
     // ==============================
     // |     Test Bridging Back     |
     // |    Origin <- Destination   |
     // ==============================
-    // TODO: write this test but needs to change the parameters of `_performBridgeTx(...)` to be able to bridge back
 
     function test_BridgeBackTxRevertsIfAmountGreaterThanUserSyntheticTokenBalance(
         uint256 syntheticTokenBalance,
@@ -348,24 +332,4 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
 
         console.log("BridgeERC20ToHypLSP7 - Overhead gas usage when bridging back: %d", gasBefore - gasAfter);
     }
-
-    //     function test_BridgingBackInvalidAmount() public {
-    //     vm.expectRevert();
-    //     _performRemoteTransfer(REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT * 11);
-    //     assertEq(hypLSP7Token.balanceOf(ALICE), 1000e18);
-    // }
-
-    // function test_BridgingBackTxWithCustomGasConfig() public {
-    //     _setCustomGasConfig(syntheticToken);
-
-    //     uint256 balanceBefore = syntheticToken.balanceOf(ALICE);
-    //     _performBridgeTxWithCustomGasConfig({
-    //         originTokenRouter: erc20Collateral,
-    //         destinationTokenRouter: syntheticToken,
-    //         msgValue: REQUIRED_INTERCHAIN_GAS_PAYMENT,
-    //         amount: TRANSFER_AMOUNT,
-    //         gasOverhead: GAS_LIMIT * interchainGasPaymaster.gasPrice()
-    //     });
-    //     assertEq(token.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
-    // }
 }

@@ -61,7 +61,7 @@ contract BridgeLSP7ToHypERC20 is HypTokenTest {
     // ---------------------------
     uint256 internal constant TRANSFER_AMOUNT = 100 * (10 ** DECIMALS);
 
-    function setUp() public override {
+    function setUp() public virtual override {
         ORIGIN_CHAIN_ID = 42; // LUKSO
         DESTINATION_CHAIN_ID = 1; // Ethereum
 
@@ -131,8 +131,11 @@ contract BridgeLSP7ToHypERC20 is HypTokenTest {
         );
         assertEq(token.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
 
-        // CHECK tokens have been locked in the collateral contract
+        // CHECK tokens have been locked in the collateral contract on origin chain
         assertEq(token.balanceOf(address(lsp7Collateral)), TRANSFER_AMOUNT);
+
+        // CHECK synthetic tokens have been minted for Bob on destination chain
+        assertEq(syntheticToken.balanceOf(BOB), TRANSFER_AMOUNT);
     }
 
     function test_BridgeTxWithHookSpecified(uint256 fee, bytes calldata metadata) public virtual {
@@ -157,17 +160,23 @@ contract BridgeLSP7ToHypERC20 is HypTokenTest {
         assertEq(syntheticToken.balanceOf(BOB), TRANSFER_AMOUNT);
     }
 
-    function test_TotalSupplyOfSyntheticTokenIncreasesAfterBridgeTx() public {
-        uint256 totalSupplyBefore = syntheticToken.totalSupply();
+    function test_TotalSupplyOfSyntheticTokenIncreasesAfterBridgeTx(uint256 transferAmount) public {
+        uint256 syntheticTokenSupplyBefore = syntheticToken.totalSupply();
+
+        uint256 maxLSP7TokenAmount = token.totalSupply();
+
+        // move all the tokens to Alice to ensure fuzzer can test up to the total supply being transferred
+        token.transfer(address(this), ALICE, token.balanceOf(address(this)), true, "");
+        assertEq(token.balanceOf(ALICE), maxLSP7TokenAmount);
+
+        transferAmount = bound(transferAmount, 1, maxLSP7TokenAmount);
 
         vm.prank(ALICE);
-        token.authorizeOperator(address(lsp7Collateral), TRANSFER_AMOUNT, "");
+        token.authorizeOperator(address(lsp7Collateral), transferAmount, "");
 
-        _performBridgeTx(lsp7Collateral, syntheticToken, 0, TRANSFER_AMOUNT);
+        _performBridgeTx(lsp7Collateral, syntheticToken, 0, transferAmount);
 
-        assertEq(syntheticToken.totalSupply(), totalSupplyBefore + TRANSFER_AMOUNT);
-        // TODO: move this assertion to a separate test to separate concerns
-        assertEq(syntheticToken.balanceOf(BOB), TRANSFER_AMOUNT);
+        assertEq(syntheticToken.totalSupply(), syntheticTokenSupplyBefore + transferAmount);
     }
 
     function test_BridgeTxRevertsIfAmountGreaterThanUserLSP7TokenBalance(uint256 transferAmount) public {
@@ -269,8 +278,6 @@ contract BridgeLSP7ToHypERC20 is HypTokenTest {
         uint256 bobSyntheticTokenBalanceBefore = syntheticToken.balanceOf(BOB);
 
         assertEq(bobSyntheticTokenBalanceBefore, 0);
-
-        console.log(aliceTokenBalanceBefore);
 
         vm.prank(ALICE);
         token.authorizeOperator(address(lsp7Collateral), TRANSFER_AMOUNT, "");

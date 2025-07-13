@@ -94,6 +94,41 @@ contract PausableBridgeNativeETHToHypLSP7 is BridgeNativeETHToHypLSP7, Freezable
         Freezable(address(destinationPausableTokenRouter)).changeFreezer(FREEZER);
     }
 
+    function test_CanTransferSyntheticTokensBetweenAddressesOnDestinationChainEvenIfSyntheticTokenIsPaused(
+        uint256 localTransferAmount
+    )
+        public
+    {
+        assertEq(destinationPausableTokenRouter.paused(), false);
+
+        // Bridge tokens to BOB first on destination chain
+        _performBridgeTxAndCheckSentTransferRemoteEvent(
+            nativeCollateral, syntheticToken, REQUIRED_INTERCHAIN_GAS_PAYMENT + TRANSFER_AMOUNT, TRANSFER_AMOUNT
+        );
+
+        uint256 bobSyntheticTokenBalance = syntheticToken.balanceOf(BOB);
+        assertEq(bobSyntheticTokenBalance, TRANSFER_AMOUNT);
+
+        address recipient = makeAddr("recipient");
+        assertEq(syntheticToken.balanceOf(recipient), 0);
+
+        // Setup range of fuzzing parameter
+        localTransferAmount = bound(localTransferAmount, 0, syntheticToken.balanceOf(BOB));
+
+        _pauseDestination();
+        assertEq(destinationPausableTokenRouter.paused(), true);
+
+        // Perform local LSP7 token transfer on destination chain
+        vm.prank(BOB);
+        syntheticToken.transfer(BOB, recipient, localTransferAmount, true, "");
+
+        assertEq(syntheticToken.balanceOf(BOB), bobSyntheticTokenBalance - localTransferAmount);
+        assertEq(syntheticToken.balanceOf(recipient), localTransferAmount);
+
+        // Sanity CHECK to ensure warp route is still paused (= bridging disabled)
+        assertEq(destinationPausableTokenRouter.paused(), true);
+    }
+
     // ==========================
     // |     Test Bridge Tx     |
     // |  Origin -> Destination |
@@ -152,7 +187,7 @@ contract PausableBridgeNativeETHToHypLSP7 is BridgeNativeETHToHypLSP7, Freezable
     // |    Origin <- Destination   |
     // ==============================
 
-    function test_BridgeBackTxRevertsWhenPausedOnDestination() public {
+    function test_BridgeBackTxRevertsOnDestinationWhenPausedOnDestination() public {
         // first make sure there is synthetic tokens available to ALICE
         bytes memory _message = TokenMessage.format(ALICE.addressToBytes32(), TRANSFER_AMOUNT, "");
         destinationMailbox.testHandle(
@@ -168,7 +203,7 @@ contract PausableBridgeNativeETHToHypLSP7 is BridgeNativeETHToHypLSP7, Freezable
         syntheticToken.transferRemote(ORIGIN_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT);
     }
 
-    function test_BridgeBackTxRevertsWhenPausedOnOrigin() public {
+    function test_BridgeBackTxRevertsOnOriginWhenPausedOnOrigin() public {
         _pauseOrigin();
         vm.prank(ALICE);
 
@@ -205,17 +240,16 @@ contract PausableBridgeNativeETHToHypLSP7 is BridgeNativeETHToHypLSP7, Freezable
     // Internal functions
     // --------------------
 
-    /// @dev Prepare the call that the Hyperlane relayer should send on the destination chain
-    /// to `Mailbox.process()`
-    // TODO: create the version with `tokenId` as parameter
-    function _prepareProcessCall(uint256 _amount) internal view returns (bytes memory) {
-        // ============== WTF IS THIS ? ===========================
-        // To test whether the warp route is paused we must call
-        // Mailbox.process(_metadata, _message) on the destination side
-        // calling remoteToken.handle() finalizes the cross chain transfer
-        // and is only called if the ISM.verify() function returns true
-        // so that method cannot be used here
-        bytes memory tokenMessage = TokenMessage.format(BOB.addressToBytes32(), _amount, "");
+    /// @dev Prepare the call that the Hyperlane relayer should send on the destination chain.
+    /// The encoded bytes returned by this function can be used as parameter to call
+    /// `Mailbox.process(_metadata, _message)` on the destination chain.
+    ///
+    /// This is useful for testing transactions that should revert on the destination chain by:
+    ///     - if the `ISM.verify(...)` function will return `false`
+    ///     - if a warp route is paused (will revert when `Mailbox.process(...)` on the destination chain call
+    /// `remoteToken.handle(...)`)
+    function _prepareProcessCall(uint256 amount) internal view returns (bytes memory) {
+        bytes memory tokenMessage = TokenMessage.format(BOB.addressToBytes32(), amount, "");
 
         bytes32 originRouter = syntheticToken.routers(ORIGIN_CHAIN_ID);
         bytes32 encodedOriginTokenRouterAddress = address(nativeCollateral).addressToBytes32();
@@ -231,7 +265,7 @@ contract PausableBridgeNativeETHToHypLSP7 is BridgeNativeETHToHypLSP7, Freezable
             // `HypNativePausable` token router on ORIGIN_CHAIN_ID
             _originDomain: ORIGIN_CHAIN_ID,
             _sender: encodedOriginTokenRouterAddress,
-            // remote HypERC20Pausable token router on DESTINATION_CHAIN_ID
+            // remote HypLSP7Pausable token router on DESTINATION_CHAIN_ID
             _destinationDomain: DESTINATION_CHAIN_ID,
             _recipient: encodedDestinationTokenRouterAddress,
             // encoded instructions on 1) how much to send, 2) to which address
