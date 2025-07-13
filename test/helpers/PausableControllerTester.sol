@@ -108,7 +108,10 @@ abstract contract PausableControllerTester is Test {
     }
 
     function test_OnlyOwnerCanChangePausableControllerOnOrigin(address caller, address input) public {
+        // The derive tests use proxys and use this specific address as proxy admin. Omit it from fuzzing inputs
+        address proxyAdmin = makeAddr("Proxy Admin");
         vm.assume(caller != originPausableTokenRouter.owner());
+        vm.assume(caller != proxyAdmin);
 
         vm.prank(caller);
         vm.expectRevert("Ownable: caller is not the owner");
@@ -116,7 +119,10 @@ abstract contract PausableControllerTester is Test {
     }
 
     function test_OnlyOwnerCanChangePausableControllerOnDestination(address caller, address input) public {
+        // The derive tests use proxys and use this specific address as proxy admin. Omit it from fuzzing inputs
+        address proxyAdmin = makeAddr("Proxy Admin");
         vm.assume(caller != destinationPausableTokenRouter.owner());
+        vm.assume(caller != proxyAdmin);
 
         vm.prank(caller);
         vm.expectRevert("Ownable: caller is not the owner");
