@@ -95,8 +95,34 @@ contract HypLSP7Test is Test {
         assertEq(hypLSP7Token.decimals(), decimals);
     }
 
-    function testTotalSupply() public view {
-        assertEq(syntheticToken.totalSupply(), TOTAL_SUPPLY);
+    function test_TotalSupplyIsZeroDespiteParameterOnInitialize() public {
+        assertEq(syntheticToken.totalSupply(), 0);
+    }
+
+    /// @dev Test that the minting feature on initialization is disabled in this warp route.
+    /// This ensures that regardless of the first parameter passed, synthetic tokens are never minted on
+    /// `initialization`.
+    function test_TotalSupplyRemainAlwaysZeroAndInitializeNeverMintSyntheticTokensOnInitialization(uint256 mintAmount)
+        public
+    {
+        vm.assume(mintAmount != 0);
+
+        // 1. deploy implementation contract
+        HypLSP7 implementation = new HypLSP7(DECIMALS, SCALE_PARAM, address(mailbox));
+
+        // 2. deploy + initialize the proxy
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+            address(implementation),
+            PROXY_ADMIN,
+            abi.encodeCall(
+                HypLSP7.initialize,
+                (mintAmount, NAME, SYMBOL, address(defaultHook), address(defaultIsm), WARP_ROUTE_OWNER)
+            )
+        );
+
+        HypLSP7 syntheticLSP7Token = HypLSP7(payable(proxy));
+
+        assertEq(syntheticLSP7Token.totalSupply(), 0);
     }
 
     function test_ChangeTokenName_Reverts(bytes memory name) public {
