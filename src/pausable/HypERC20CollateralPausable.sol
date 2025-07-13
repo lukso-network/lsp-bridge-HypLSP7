@@ -3,13 +3,13 @@ pragma solidity >=0.8.19;
 
 // modules
 import { HypERC20Collateral } from "@hyperlane-xyz/core/contracts/token/HypERC20Collateral.sol";
-import { Freezable } from "./Freezable.sol";
+import { PausableController } from "./PausableController.sol";
 
 /**
  * @title Hyperlane ERC20Collateral Token Router with Pausable functionalities
- * @dev See the `Freezable` contract for more details
+ * @dev See the `PausableController` contract for more details
  */
-contract HypERC20CollateralPausable is HypERC20Collateral, Freezable {
+contract HypERC20CollateralPausable is HypERC20Collateral, PausableController {
     constructor(address erc20_, uint256 scale_, address mailbox_) HypERC20Collateral(erc20_, scale_, mailbox_) { }
 
     function _transferRemote(

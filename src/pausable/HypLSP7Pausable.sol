@@ -2,14 +2,14 @@
 pragma solidity >=0.8.22;
 
 // modules
-import { Freezable } from "./Freezable.sol";
+import { PausableController } from "./PausableController.sol";
 import { HypLSP7 } from "../HypLSP7.sol";
 
 /**
  * @title HypLSP7 with Pausable functionalities
- * @dev See the `Freezable` contract for more details
+ * @dev See the `PausableController` contract for more details
  */
-contract HypLSP7Pausable is HypLSP7, Freezable {
+contract HypLSP7Pausable is HypLSP7, PausableController {
     constructor(uint8 __decimals, uint256 _scale, address _mailbox) HypLSP7(__decimals, _scale, _mailbox) { }
 
     // overriden functions

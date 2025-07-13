@@ -2,14 +2,14 @@
 pragma solidity >=0.8.22;
 
 // modules
-import { Freezable } from "./Freezable.sol";
+import { PausableController } from "./PausableController.sol";
 import { HypLSP7Collateral } from "../HypLSP7Collateral.sol";
 
 /**
  * @title HypLSP7Collateral with Pausable functionalities
- * @dev See the `Freezable` contract for more details
+ * @dev See the `PausableController` contract for more details
  */
-contract HypLSP7CollateralPausable is HypLSP7Collateral, Freezable {
+contract HypLSP7CollateralPausable is HypLSP7Collateral, PausableController {
     constructor(address lsp7_, uint256 _scale, address mailbox_) HypLSP7Collateral(lsp7_, _scale, mailbox_) { }
 
     function _transferRemote(
