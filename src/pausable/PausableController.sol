@@ -11,7 +11,8 @@ event PausableControllerChanged(address previousPausableController, address newP
 // errors
 error NotPausableControllerOrOwner(address caller);
 error CannotSetPausableControllerToZeroAddress();
-error PausableControllerRevokedForever();
+error CannotDisablePausingForeverWhenBridgePaused();
+error PausingDisabled();
 
 /**
  * @title PausableController
@@ -24,7 +25,7 @@ error PausableControllerRevokedForever();
  */
 abstract contract PausableController is OwnableUpgradeable, PausableUpgradeable {
     address public pausableController;
-    bool public revokedForever;
+    bool public disabledForever;
 
     modifier onlyOwnerOrPausableController() {
         require(msg.sender == pausableController || msg.sender == owner(), NotPausableControllerOrOwner(msg.sender));
@@ -35,6 +36,7 @@ abstract contract PausableController is OwnableUpgradeable, PausableUpgradeable 
     // --------------------
 
     function pause() external onlyOwnerOrPausableController {
+        require(!disabledForever, PausingDisabled());
         _pause();
     }
 
@@ -50,16 +52,19 @@ abstract contract PausableController is OwnableUpgradeable, PausableUpgradeable 
         _changePausableController(newPausableController);
     }
 
-    function revokePausableControllerForever() public onlyOwnerOrPausableController {
+    function disablePausingForever() public onlyOwnerOrPausableController {
+        require(!paused(), CannotDisablePausingForeverWhenBridgePaused());
+        // check if not already disabled
+        require(!disabledForever, PausingDisabled());
         _changePausableController(address(0));
-        revokedForever = true;
+        disabledForever = true;
     }
 
     // Internal functions
     // --------------------
 
     function _changePausableController(address newPausableController) internal {
-        require(!revokedForever, PausableControllerRevokedForever());
+        require(!disabledForever, PausingDisabled());
 
         address previousPausableController = pausableController;
         pausableController = newPausableController;

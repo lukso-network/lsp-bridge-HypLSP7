@@ -145,62 +145,62 @@ abstract contract PausableControllerTester is Test {
         destinationPausableTokenRouter.changePausableController(address(0));
     }
 
-    function test_OwnerCanRevokePausableControllerForeverOnOrigin() public {
+    function test_OwnerCandisablePausingForeverOnOrigin() public {
         address owner = originPausableTokenRouter.owner();
         address pausableController = originPausableTokenRouter.pausableController();
 
-        assertFalse(originPausableTokenRouter.revokedForever());
+        assertFalse(originPausableTokenRouter.disabledForever());
 
         vm.prank(owner);
         vm.expectEmit({ emitter: address(originPausableTokenRouter) });
         emit PausableControllerChanged(pausableController, address(0));
-        originPausableTokenRouter.revokePausableControllerForever();
+        originPausableTokenRouter.disablePausingForever();
 
         assertEq(originPausableTokenRouter.pausableController(), address(0));
-        assertTrue(originPausableTokenRouter.revokedForever());
+        assertTrue(originPausableTokenRouter.disabledForever());
     }
 
-    function test_OwnerCanRevokePausableControllerForeverOnDestination() public {
+    function test_OwnerCandisablePausingForeverOnDestination() public {
         address owner = destinationPausableTokenRouter.owner();
         address pausableController = destinationPausableTokenRouter.pausableController();
 
-        assertFalse(originPausableTokenRouter.revokedForever());
+        assertFalse(originPausableTokenRouter.disabledForever());
 
         vm.prank(owner);
         vm.expectEmit({ emitter: address(destinationPausableTokenRouter) });
         emit PausableControllerChanged(pausableController, address(0));
-        destinationPausableTokenRouter.revokePausableControllerForever();
+        destinationPausableTokenRouter.disablePausingForever();
 
         assertEq(destinationPausableTokenRouter.pausableController(), address(0));
-        assertTrue(destinationPausableTokenRouter.revokedForever());
+        assertTrue(destinationPausableTokenRouter.disabledForever());
     }
 
     function test_PausableControllerCanRevokeItselfForeverOnOrigin() public {
         address pausableController = originPausableTokenRouter.pausableController();
 
-        assertFalse(originPausableTokenRouter.revokedForever());
+        assertFalse(originPausableTokenRouter.disabledForever());
 
         vm.prank(pausableController);
         vm.expectEmit({ emitter: address(originPausableTokenRouter) });
         emit PausableControllerChanged(pausableController, address(0));
-        originPausableTokenRouter.revokePausableControllerForever();
+        originPausableTokenRouter.disablePausingForever();
 
         assertEq(originPausableTokenRouter.pausableController(), address(0));
-        assertTrue(originPausableTokenRouter.revokedForever());
+        assertTrue(originPausableTokenRouter.disabledForever());
     }
 
     function test_PausableControllerCanRevokeItselfForeverOnDestination() public {
         address pausableController = destinationPausableTokenRouter.pausableController();
 
-        assertFalse(destinationPausableTokenRouter.revokedForever());
+        assertFalse(destinationPausableTokenRouter.disabledForever());
 
         vm.prank(pausableController);
         vm.expectEmit({ emitter: address(destinationPausableTokenRouter) });
         emit PausableControllerChanged(pausableController, address(0));
-        destinationPausableTokenRouter.revokePausableControllerForever();
+        destinationPausableTokenRouter.disablePausingForever();
 
         assertEq(destinationPausableTokenRouter.pausableController(), address(0));
-        assertTrue(destinationPausableTokenRouter.revokedForever());
+        assertTrue(destinationPausableTokenRouter.disabledForever());
     }
 
     // Internal helper functions
