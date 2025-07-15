@@ -188,4 +188,27 @@ contract PausableBridgeLSP7ToHypERC20 is BridgeLSP7ToHypERC20, PausableControlle
             message
         );
     }
+
+    function test_CanBridgeBackWhenNoPausableControllerRegistered() public {
+        vm.prank(WARP_ROUTE_OWNER);
+        PausableController(address(lsp7Collateral)).changePausableController(
+            0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF
+        );
+
+        // assume some erc20 tokens are locked in the collateral contract
+        // and need to be unlocked to be able to bridge back
+        token.transfer(address(this), address(lsp7Collateral), TRANSFER_AMOUNT, true, "");
+        // (address(this), ALICE, 100_000 * (10 ** DECIMALS), true, "");
+        // vm.deal(address(erc20Collateral), TRANSFER_AMOUNT);
+        assertEq(token.balanceOf(address(lsp7Collateral)), TRANSFER_AMOUNT);
+
+        bytes memory _message = TokenMessage.format(BOB.addressToBytes32(), TRANSFER_AMOUNT, "");
+
+        originMailbox.testHandle(
+            DESTINATION_CHAIN_ID,
+            address(syntheticToken).addressToBytes32(),
+            address(lsp7Collateral).addressToBytes32(),
+            _message
+        );
+    }
 }
