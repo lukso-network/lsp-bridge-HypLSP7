@@ -1,18 +1,20 @@
-// SPDX-License-Identifier: MIT OR Apache-2.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
 import { LSP7DigitalAsset } from "@lukso/lsp7-contracts/contracts/LSP7DigitalAsset.sol";
+
+import { _LSP4_TOKEN_TYPE_TOKEN } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
 
 contract LSP7Mock is LSP7DigitalAsset {
     constructor(
         string memory name_,
         string memory symbol_,
-        address initialAccount_,
-        uint256 initialBalance_
+        uint256 totalSupply_,
+        address tokenContractOwner_
     )
-        LSP7DigitalAsset(name_, symbol_, initialAccount_, 0, false)
+        LSP7DigitalAsset(name_, symbol_, tokenContractOwner_, _LSP4_TOKEN_TYPE_TOKEN, false)
     {
-        _mint(initialAccount_, initialBalance_, true, "");
+        _mint(msg.sender, totalSupply_, true, "");
     }
 
     function mint(uint256 amount) public {

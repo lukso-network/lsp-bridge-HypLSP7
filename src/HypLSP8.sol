@@ -1,12 +1,12 @@
-// SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.8.19;
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.8.22;
 
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
 
 import { LSP8IdentifiableDigitalAssetInitAbstract } from
     "@lukso/lsp8-contracts/contracts/LSP8IdentifiableDigitalAssetInitAbstract.sol";
 
-import { _LSP4_TOKEN_TYPE_NFT, _LSP4_METADATA_KEY } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
+import { _LSP4_TOKEN_TYPE_COLLECTION, _LSP4_METADATA_KEY } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
 
 import { _LSP8_TOKENID_FORMAT_NUMBER } from "@lukso/lsp8-contracts/contracts/LSP8Constants.sol";
 
@@ -18,12 +18,12 @@ import { _LSP8_TOKENID_FORMAT_NUMBER } from "@lukso/lsp8-contracts/contracts/LSP
  * - LSP8 standard: https://github.com/lukso-network/LIPs/blob/main/LSPs/LSP-8-IdentifiableDigitalAsset.md
  */
 contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter {
-    constructor(address _mailbox) TokenRouter(_mailbox) { }
+    constructor(address mailbox_) TokenRouter(mailbox_) { }
 
     /**
      * @notice Initializes the Hyperlane router, LSP8 metadata, and mints initial supply to deployer.
      *
-     * @dev The `_mintAmount` parameter is mostly used for a brand new NFT that want to exists only as a warp route.
+     * @dev The `mintAmount` parameter is mostly used for a brand new NFT that want to exists only as a warp route.
      * In other words, the entire warp route is deployed with HypLSP8, and no HypLSP8Collateral.
      * This enables to create an instantly bridgable NFT, by deploying the contract, minting and distributing the token
      * supply.
@@ -31,83 +31,81 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter {
      *
      * LSP8 specific notice: note that a callback to the `universalReceiver(...)` function
      * on the `msg.sender` contract address will be triggered for every single tokenId
-     * being minted if the `_mintAmount` is set to more than 0.
+     * being minted if the `mintAmount` is set to more than 0.
      *
-     * @param _mintAmount The amount of NFTs to mint to `msg.sender`.
-     * @param _name The name of the token.
-     * @param _symbol The symbol of the token.
+     * @param mintAmount The amount of NFTs to mint to `msg.sender`.
+     * @param tokenName The name of the token.
+     * @param tokenSymbol The symbol of the token.
      */
     function initialize(
-        uint256 _mintAmount,
-        string memory _name,
-        string memory _symbol,
-        address _hook,
-        address _interchainSecurityModule,
-        address _owner,
-        bytes32[] memory dataKeys,
-        bytes[] memory dataValues
+        uint256 mintAmount,
+        string memory tokenName,
+        string memory tokenSymbol,
+        address defaultHook,
+        address defaultInterchainSecurityModule,
+        address contractOwner
     )
         external
         initializer
     {
         // Initializes the Hyperlane router
-        _MailboxClient_initialize(_hook, _interchainSecurityModule, _owner);
+        _MailboxClient_initialize(defaultHook, defaultInterchainSecurityModule, contractOwner);
 
         // Initialize LSP8 collection metadata
-        LSP8IdentifiableDigitalAssetInitAbstract._initialize(
-            _name, _symbol, _owner, _LSP4_TOKEN_TYPE_NFT, _LSP8_TOKENID_FORMAT_NUMBER
-        );
+        LSP8IdentifiableDigitalAssetInitAbstract._initialize({
+            name_: tokenName,
+            symbol_: tokenSymbol,
+            newOwner_: contractOwner,
+            // LSP4 Token Type is set to collection as each NFT is unique in design with uniquely identifiable IDs
+            lsp4TokenType_: _LSP4_TOKEN_TYPE_COLLECTION,
+            lsp8TokenIdFormat_: _LSP8_TOKENID_FORMAT_NUMBER
+        });
 
-        // set init data keys & values
-        if (dataKeys.length > 0 || dataValues.length > 0) {
-            _setDataBatch(dataKeys, dataValues);
-        }
-
-        for (uint256 i = 0; i < _mintAmount; i++) {
+        for (uint256 i = 0; i < mintAmount; i++) {
             _mint(msg.sender, bytes32(i), true, "");
         }
     }
 
-    function balanceOf(address _account)
+    function balanceOf(address account)
         public
         view
         virtual
         override(TokenRouter, LSP8IdentifiableDigitalAssetInitAbstract)
         returns (uint256)
     {
-        return LSP8IdentifiableDigitalAssetInitAbstract.balanceOf(_account);
+        return LSP8IdentifiableDigitalAssetInitAbstract.balanceOf(account);
     }
 
     /**
-     * @dev Asserts `msg.sender` is owner and burns `_tokenId`.
+     * @dev Asserts `msg.sender` is owner and burns `tokenId`.
      * Note that this function will also trigger a callback to the `universalReceiver(...)` function
      * on the sender contract address.
      *
      * @inheritdoc TokenRouter
      */
-    function _transferFromSender(uint256 _tokenId) internal virtual override returns (bytes memory) {
-        bytes32 tokenIdAsBytes32 = bytes32(_tokenId);
+    function _transferFromSender(uint256 tokenId) internal virtual override returns (bytes memory) {
+        bytes32 tokenIdAsBytes32 = bytes32(tokenId);
         require(tokenOwnerOf(tokenIdAsBytes32) == msg.sender, "!owner");
         _burn(tokenIdAsBytes32, "");
         return bytes(""); // no metadata
     }
 
     /**
-     * @dev Mints `_tokenId` to `_recipient`.
+     * @dev Mints `tokenId` to `recipient`.
      * Note that this function will also trigger a callback to the `universalReceiver(...)` function
      * on the recipient contract address.
      *
      * @inheritdoc TokenRouter
      */
     function _transferTo(
-        address _recipient,
-        uint256 _tokenId,
+        address recipient,
+        uint256 tokenId,
         bytes calldata // no metadata
     )
         internal
         virtual
         override
     {
-        _mint(_recipient, bytes32(_tokenId), true, "");
+        _mint(recipient, bytes32(tokenId), true, "");
     }
 }

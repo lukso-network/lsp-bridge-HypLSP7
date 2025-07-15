@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: MIT OR Apache-2.0Add commentMore actions
-pragma solidity >=0.8.0;
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.8.22;
 
 // modules
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
