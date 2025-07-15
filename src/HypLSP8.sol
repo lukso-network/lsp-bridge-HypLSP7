@@ -23,22 +23,15 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter {
     /**
      * @notice Initializes the Hyperlane router, LSP8 metadata, and mints initial supply to deployer.
      *
-     * @dev The `mintAmount` parameter is mostly used for a brand new NFT that want to exists only as a warp route.
-     * In other words, the entire warp route is deployed with HypLSP8, and no HypLSP8Collateral.
-     * This enables to create an instantly bridgable NFT, by deploying the contract, minting and distributing the token
-     * supply.
-     * For existing NFT collections that already exist on the source chain, set this parameter to 0.
+     * @dev The `mintAmount` parameter is not used as minting synthetic NFTs when the warp route is created can lead
+     * to accounting issues between chains. It would result in synthetic NFTs minted on the destination chain
+     * while there is no NFTs locked in the collateral contract on the source chain.
      *
-     * LSP8 specific notice: note that a callback to the `universalReceiver(...)` function
-     * on the `msg.sender` contract address will be triggered for every single tokenId
-     * being minted if the `mintAmount` is set to more than 0.
-     *
-     * @param mintAmount The amount of NFTs to mint to `msg.sender`.
      * @param tokenName The name of the token.
      * @param tokenSymbol The symbol of the token.
      */
     function initialize(
-        uint256 mintAmount,
+        uint256, /* mintAmount */ // Unused but kept to not break compatibility with Hyperlane tools like CLI and SDK,
         string memory tokenName,
         string memory tokenSymbol,
         address defaultHook,
@@ -60,10 +53,6 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter {
             lsp4TokenType_: _LSP4_TOKEN_TYPE_COLLECTION,
             lsp8TokenIdFormat_: _LSP8_TOKENID_FORMAT_NUMBER
         });
-
-        for (uint256 i = 0; i < mintAmount; i++) {
-            _mint(msg.sender, bytes32(i), true, "");
-        }
     }
 
     function balanceOf(address account)

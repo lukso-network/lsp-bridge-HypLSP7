@@ -3,13 +3,13 @@ pragma solidity >=0.8.19;
 
 // modules
 import { HypERC20 } from "@hyperlane-xyz/core/contracts/token/HypERC20.sol";
-import { Freezable } from "./Freezable.sol";
+import { PausableController } from "./PausableController.sol";
 
 /**
  * @title Hyperlane ERC20 Token Router with Pausable functionalities
- * @dev See the `Freezable` contract for more details
+ * @dev See the `PausableController` contract for more details
  */
-contract HypERC20Pausable is HypERC20, Freezable {
+contract HypERC20Pausable is HypERC20, PausableController {
     constructor(uint8 __decimals, uint256 _scale, address _mailbox) HypERC20(__decimals, _scale, _mailbox) { }
 
     // overriden functions

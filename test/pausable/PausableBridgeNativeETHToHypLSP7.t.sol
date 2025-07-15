@@ -6,7 +6,7 @@ import { TransparentUpgradeableProxy } from "@openzeppelin/contracts/proxy/trans
 // test utilities
 import { HypTokenTest } from "../helpers/HypTokenTest.sol";
 import { BridgeNativeETHToHypLSP7 } from "../native/BridgeNativeETHToHypLSP7.t.sol";
-import { FreezableTester } from "../helpers/FreezableTester.sol";
+import { PausableControllerTester } from "../helpers/PausableControllerTester.sol";
 
 /// Hyperlane testing environnement
 /// @dev See https://docs.hyperlane.xyz/docs/guides/developer-tips/unit-testing
@@ -22,7 +22,7 @@ import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMess
 import { HypLSP7 } from "../../src/HypLSP7.sol";
 import { HypLSP7Pausable } from "../../src/pausable/HypLSP7Pausable.sol";
 import { HypNativePausable } from "../../src/pausable/HypNativePausable.sol";
-import { Freezable } from "../../src/pausable/Freezable.sol";
+import { PausableController } from "../../src/pausable/PausableController.sol";
 
 /**
  * @title Bridge token routes tests from native tokens to `HypERC20`
@@ -32,7 +32,7 @@ import { Freezable } from "../../src/pausable/Freezable.sol";
  *  - origin chain: native tokens (LYX) locked in `HypNativePausable`
  *  - destination chain: synthetic tokens minted as `HypERC20Pausable`
  */
-contract PausableBridgeNativeETHToHypLSP7 is BridgeNativeETHToHypLSP7, FreezableTester {
+contract PausableBridgeNativeETHToHypLSP7 is BridgeNativeETHToHypLSP7, PausableControllerTester {
     using TypeCasts for address;
 
     function setUp() public override {
@@ -88,14 +88,15 @@ contract PausableBridgeNativeETHToHypLSP7 is BridgeNativeETHToHypLSP7, Freezable
         vm.prank(WARP_ROUTE_OWNER);
         HypTokenTest._enrollDestinationTokenRouter();
 
-        // 6. setup the Pausable versions of the token routers + register freezer address on both chains
-        originPausableTokenRouter = Freezable(address(nativeCollateral));
-        destinationPausableTokenRouter = Freezable(address(syntheticToken));
+        // 6. setup the Pausable versions of the token routers
+        // + register the address of the controller that can pause on both chains
+        originPausableTokenRouter = PausableController(address(nativeCollateral));
+        destinationPausableTokenRouter = PausableController(address(syntheticToken));
 
         vm.prank(WARP_ROUTE_OWNER);
-        Freezable(address(originPausableTokenRouter)).changeFreezer(FREEZER);
+        PausableController(address(originPausableTokenRouter)).changePausableController(PAUSABLE_CONTROLLER);
         vm.prank(WARP_ROUTE_OWNER);
-        Freezable(address(destinationPausableTokenRouter)).changeFreezer(FREEZER);
+        PausableController(address(destinationPausableTokenRouter)).changePausableController(PAUSABLE_CONTROLLER);
     }
 
     function test_CanTransferSyntheticTokensBetweenAddressesOnDestinationChainEvenIfSyntheticTokenIsPaused(
@@ -103,7 +104,7 @@ contract PausableBridgeNativeETHToHypLSP7 is BridgeNativeETHToHypLSP7, Freezable
     )
         public
     {
-        assertEq(destinationPausableTokenRouter.paused(), false);
+        assertFalse(destinationPausableTokenRouter.paused());
 
         // Bridge tokens to BOB first on destination chain
         _performBridgeTxAndCheckSentTransferRemoteEvent({
@@ -121,7 +122,7 @@ contract PausableBridgeNativeETHToHypLSP7 is BridgeNativeETHToHypLSP7, Freezable
         localTransferAmount = bound(localTransferAmount, 0, syntheticToken.balanceOf(BOB));
 
         _pauseDestination();
-        assertEq(destinationPausableTokenRouter.paused(), true);
+        assertTrue(destinationPausableTokenRouter.paused());
 
         // Perform local LSP7 token transfer on destination chain
         vm.prank(BOB);
@@ -131,7 +132,7 @@ contract PausableBridgeNativeETHToHypLSP7 is BridgeNativeETHToHypLSP7, Freezable
         assertEq(syntheticToken.balanceOf(recipient), localTransferAmount);
 
         // Sanity CHECK to ensure warp route is still paused (= bridging disabled)
-        assertEq(destinationPausableTokenRouter.paused(), true);
+        assertTrue(destinationPausableTokenRouter.paused());
     }
 
     // ==========================
@@ -222,9 +223,11 @@ contract PausableBridgeNativeETHToHypLSP7 is BridgeNativeETHToHypLSP7, Freezable
         ); // we don't need metadata
     }
 
-    function test_CanBridgeBackWhenNoFreezerRegistered() public {
+    function test_CanBridgeBackWhenNoPausableControllerRegistered() public {
         vm.prank(WARP_ROUTE_OWNER);
-        Freezable(address(nativeCollateral)).changeFreezer(address(0));
+        PausableController(address(nativeCollateral)).changePausableController(
+            0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF
+        );
 
         // assume some native tokens are locked in the native collateral contract
         // and need to be unlocked to be able to bridge back

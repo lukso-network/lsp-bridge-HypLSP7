@@ -7,7 +7,7 @@ import { TransparentUpgradeableProxy } from "@openzeppelin/contracts/proxy/trans
 import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 import { HypTokenTest } from "../helpers/HypTokenTest.sol";
 import { BridgeLSP7ToHypERC20 } from "../tokens/BridgeLSP7ToHypERC20.t.sol";
-import { FreezableTester } from "../helpers/FreezableTester.sol";
+import { PausableControllerTester } from "../helpers/PausableControllerTester.sol";
 
 // libraries
 import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMessage.sol";
@@ -21,9 +21,9 @@ import { TestIsm } from "@hyperlane-xyz/core/contracts/test/TestIsm.sol";
 import { HypLSP7CollateralPausable } from "../../src/pausable/HypLSP7CollateralPausable.sol";
 import { HypERC20Pausable } from "../../src/pausable/HypERC20Pausable.sol";
 import { HypERC20 } from "@hyperlane-xyz/core/contracts/token/HypERC20.sol";
-import { Freezable } from "../../src/pausable/Freezable.sol";
+import { PausableController } from "../../src/pausable/PausableController.sol";
 
-contract PausableBridgeLSP7ToHypERC20 is BridgeLSP7ToHypERC20, FreezableTester {
+contract PausableBridgeLSP7ToHypERC20 is BridgeLSP7ToHypERC20, PausableControllerTester {
     using TypeCasts for address;
 
     function setUp() public override {
@@ -77,14 +77,15 @@ contract PausableBridgeLSP7ToHypERC20 is BridgeLSP7ToHypERC20, FreezableTester {
         vm.prank(WARP_ROUTE_OWNER);
         HypTokenTest._enrollDestinationTokenRouter();
 
-        // 6. setup the Pausable versions of the token routers + register freezer address on both chains
-        originPausableTokenRouter = Freezable(address(lsp7Collateral));
-        destinationPausableTokenRouter = Freezable(address(syntheticToken));
+        // 6. setup the Pausable versions of the token routers
+        // + register the address of the controller that can pause on both chains
+        originPausableTokenRouter = PausableController(address(lsp7Collateral));
+        destinationPausableTokenRouter = PausableController(address(syntheticToken));
 
         vm.prank(WARP_ROUTE_OWNER);
-        Freezable(address(originPausableTokenRouter)).changeFreezer(FREEZER);
+        PausableController(address(originPausableTokenRouter)).changePausableController(PAUSABLE_CONTROLLER);
         vm.prank(WARP_ROUTE_OWNER);
-        Freezable(address(destinationPausableTokenRouter)).changeFreezer(FREEZER);
+        PausableController(address(destinationPausableTokenRouter)).changePausableController(PAUSABLE_CONTROLLER);
     }
 
     function test_CanTransferSyntheticTokensBetweenAddressesOnDestinationChainEvenIfSyntheticTokenIsPaused(
@@ -92,7 +93,7 @@ contract PausableBridgeLSP7ToHypERC20 is BridgeLSP7ToHypERC20, FreezableTester {
     )
         public
     {
-        assertEq(destinationPausableTokenRouter.paused(), false);
+        assertFalse(destinationPausableTokenRouter.paused());
 
         // Bridge tokens to BOB first on destination chain
         vm.prank(ALICE);
@@ -109,7 +110,7 @@ contract PausableBridgeLSP7ToHypERC20 is BridgeLSP7ToHypERC20, FreezableTester {
         localTransferAmount = bound(localTransferAmount, 0, syntheticToken.balanceOf(BOB));
 
         _pauseDestination();
-        assertEq(destinationPausableTokenRouter.paused(), true);
+        assertTrue(destinationPausableTokenRouter.paused());
 
         // Perform local LSP7 token transfer on destination chain
         vm.prank(BOB);
@@ -119,7 +120,7 @@ contract PausableBridgeLSP7ToHypERC20 is BridgeLSP7ToHypERC20, FreezableTester {
         assertEq(syntheticToken.balanceOf(recipient), localTransferAmount);
 
         // Sanity CHECK to ensure warp route is still paused (= bridging disabled)
-        assertEq(destinationPausableTokenRouter.paused(), true);
+        assertTrue(destinationPausableTokenRouter.paused());
     }
 
     // ==========================
@@ -133,11 +134,11 @@ contract PausableBridgeLSP7ToHypERC20 is BridgeLSP7ToHypERC20, FreezableTester {
         vm.prank(ALICE);
         token.authorizeOperator(address(lsp7Collateral), TRANSFER_AMOUNT, "");
 
-        assertEq(originPausableTokenRouter.paused(), false);
-        assertEq(destinationPausableTokenRouter.paused(), false);
+        assertFalse(originPausableTokenRouter.paused());
+        assertFalse(destinationPausableTokenRouter.paused());
 
         _pauseDestination();
-        assertEq(destinationPausableTokenRouter.paused(), true);
+        assertTrue(destinationPausableTokenRouter.paused());
 
         vm.prank(ALICE);
         lsp7Collateral.transferRemote{ value: REQUIRED_INTERCHAIN_GAS_PAYMENT }(
@@ -158,11 +159,11 @@ contract PausableBridgeLSP7ToHypERC20 is BridgeLSP7ToHypERC20, FreezableTester {
     // ==============================
 
     function test_BridgeBackTxRevertsOnDestinationWhenPausedOnDestination() public {
-        assertEq(originPausableTokenRouter.paused(), false);
-        assertEq(destinationPausableTokenRouter.paused(), false);
+        assertFalse(originPausableTokenRouter.paused());
+        assertFalse(destinationPausableTokenRouter.paused());
 
         _pauseDestination();
-        assertEq(destinationPausableTokenRouter.paused(), true);
+        assertTrue(destinationPausableTokenRouter.paused());
 
         vm.expectRevert("Pausable: paused");
         vm.prank(ALICE);
@@ -172,11 +173,11 @@ contract PausableBridgeLSP7ToHypERC20 is BridgeLSP7ToHypERC20, FreezableTester {
     }
 
     function test_BridgeBackTxRevertsOnOriginWhenPausedOnOrigin() public {
-        assertEq(originPausableTokenRouter.paused(), false);
-        assertEq(destinationPausableTokenRouter.paused(), false);
+        assertFalse(originPausableTokenRouter.paused());
+        assertFalse(destinationPausableTokenRouter.paused());
 
         _pauseOrigin();
-        assertEq(originPausableTokenRouter.paused(), true);
+        assertTrue(originPausableTokenRouter.paused());
 
         bytes memory message = TokenMessage.format(BOB.addressToBytes32(), TRANSFER_AMOUNT, "");
         vm.expectRevert("Pausable: paused");
@@ -185,6 +186,25 @@ contract PausableBridgeLSP7ToHypERC20 is BridgeLSP7ToHypERC20, FreezableTester {
             address(syntheticToken).addressToBytes32(),
             address(lsp7Collateral).addressToBytes32(),
             message
+        );
+    }
+
+    function test_CanBridgeBackWhenNoPausableControllerRegistered() public {
+        vm.prank(WARP_ROUTE_OWNER);
+        PausableController(address(lsp7Collateral)).changePausableController(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF);
+
+        // assume some erc20 tokens are locked in the collateral contract
+        // and need to be unlocked to be able to bridge back
+        token.transfer(address(this), address(lsp7Collateral), TRANSFER_AMOUNT, true, "");
+        assertEq(token.balanceOf(address(lsp7Collateral)), TRANSFER_AMOUNT);
+
+        bytes memory _message = TokenMessage.format(BOB.addressToBytes32(), TRANSFER_AMOUNT, "");
+
+        originMailbox.testHandle(
+            DESTINATION_CHAIN_ID,
+            address(syntheticToken).addressToBytes32(),
+            address(lsp7Collateral).addressToBytes32(),
+            _message
         );
     }
 }
