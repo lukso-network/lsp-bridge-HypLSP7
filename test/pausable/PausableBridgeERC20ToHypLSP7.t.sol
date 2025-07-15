@@ -198,7 +198,6 @@ contract PausableBridgeERC20ToHypLSP7 is BridgeERC20ToHypLSP7, PausableControlle
         // assume some erc20 tokens are locked in the collateral contract
         // and need to be unlocked to be able to bridge back
         token.transfer(address(erc20Collateral), TRANSFER_AMOUNT);
-        // vm.deal(address(erc20Collateral), TRANSFER_AMOUNT);
         assertEq(token.balanceOf(address(erc20Collateral)), TRANSFER_AMOUNT);
 
         bytes memory _message = TokenMessage.format(BOB.addressToBytes32(), TRANSFER_AMOUNT, "");
