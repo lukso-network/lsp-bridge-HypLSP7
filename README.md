@@ -1,4 +1,4 @@
-# Hyperlane LSP7 version - `HypLSP7` [![Open in Gitpod][gitpod-badge]][gitpod] [![Github Actions][gha-badge]][gha] [![Foundry][foundry-badge]][foundry] [![License: MIT][license-badge]][license]
+# LSP7 and LSP8 version of the Hyperlane Token Routers [![Open in Gitpod][gitpod-badge]][gitpod] [![Github Actions][gha-badge]][gha] [![Foundry][foundry-badge]][foundry] [![License: MIT][license-badge]][license]
 
 [gitpod]: https://gitpod.io/#https://github.com/lukso-network/lsp-bridge-HypLSP7
 [gitpod-badge]: https://img.shields.io/badge/Gitpod-Open%20in%20Gitpod-FFB45B?logo=gitpod
@@ -9,9 +9,9 @@
 [license]: https://opensource.org/licenses/MIT
 [license-badge]: https://img.shields.io/badge/License-MIT-blue.svg
 
-This repo is the LSP7 version of the [`HypERC20`] and [`HypERC20Collateral`] of `@hyperlane-xyz/core` package. They are
-used to bridge tokens between the Ethereum and LUKSO chains using the
-[Hashi Bridge](https://crosschain-alliance.gitbook.io/hashi).
+This repo is the LSP7 version of the [`HypERC20`] and [`HypERC20Collateral`] and LSP8 version of the [`HypERC721`] and
+[`HypERC721Collateral`] from `@hyperlane-xyz/core` package. They are used to bridge tokens using the
+[Hyperlane protocol](https://docs.hyperlane.xyz).
 
 For more details on the **architecture and bridging flow**, see the [**`docs/`**](./docs/README.md) folder.
 
@@ -114,8 +114,12 @@ For example, if you're interested in exploring Foundry in more detail, you shoul
 [Writing Tests](https://book.getfoundry.sh/forge/writing-tests.html) tutorial.
 
 [`HypERC20Collateral`]:
-  https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%405.2.0/solidity/contracts/token/HypERC20Collateral.sol
+  https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%408.1.1/solidity/contracts/token/HypERC20Collateral.sol
 [`HypERC20`]:
-  https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%405.2.0/solidity/contracts/token/HypERC20.sol
+  https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%408.1.1/solidity/contracts/token/HypERC20.sol
+[`HypERC721Collateral`]:
+  https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%408.1.1/solidity/contracts/token/HypERC721Collateral.sol
+[`HypERC721`]:
+  https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%408.1.1/solidity/contracts/token/HypERC721.sol
 [`Mailbox`]:
-  https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%405.2.0/solidity/contracts/Mailbox.sol
+  https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%408.1.1/solidity/contracts/Mailbox.sol
