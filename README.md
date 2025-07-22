@@ -9,7 +9,9 @@
 [license]: https://opensource.org/licenses/MIT
 [license-badge]: https://img.shields.io/badge/License-MIT-blue.svg
 
-This repo is the LSP7 version of the [`HypERC20`] and [`HypERC20Collateral`] and LSP8 version of the [`HypERC721`] and [`HypERC721Collateral`] from `@hyperlane-xyz/core` package. They are used to bridge tokens using the [Hyperlane protocol](https://docs.hyperlane.xyz).
+This repo is the LSP7 version of the [`HypERC20`] and [`HypERC20Collateral`] and LSP8 version of the [`HypERC721`] and
+[`HypERC721Collateral`] from `@hyperlane-xyz/core` package. They are used to bridge tokens using the
+[Hyperlane protocol](https://docs.hyperlane.xyz).
 
 For more details on the **architecture and bridging flow**, see the [**`docs/`**](./docs/README.md) folder.
 
