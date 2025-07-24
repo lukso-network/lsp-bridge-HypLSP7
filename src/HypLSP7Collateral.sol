@@ -3,6 +3,7 @@ pragma solidity >=0.8.22;
 
 // Interfaces
 import { ILSP7DigitalAsset as ILSP7 } from "@lukso/lsp7-contracts/contracts/ILSP7DigitalAsset.sol";
+import { ValueTransferBridge } from "@hyperlane-xyz/core/contracts/token/interfaces/ValueTransferBridge.sol";
 
 // Modules
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
@@ -76,6 +77,23 @@ contract HypLSP7Collateral is MovableCollateralRouter {
         quotes = new Quote[](2);
         quotes[0] = Quote({ token: address(0), amount: _quoteGasPayment(destinationDomain, recipient, amount) });
         quotes[1] = Quote({ token: address(wrappedToken), amount: amount });
+    }
+
+    /**
+     * @dev LSP7 compatible version of the `MovableCollateralRouter.approveTokenForBridge(...)` function.
+     *
+     * @dev Note that the `approveTokenForBridge(...)` still exists in the ABI of this contract and can still be called
+     * by the contract owner. Calling `approveTokenForBridge(...)` will attempt to call `approve(address,uint256)`
+     * on the `token` contract passed as parameter.
+     *
+     * Since the `approve(address,uint256)` function that does not exist in the LSP7 ABI, it can lead to two scenarios:.
+     *  - in the LSP7 contract, if no LSP17 extension is registered for the `approve(address,uint256)` selector
+     * (`0x095ea7b3`), the call will revert, making the `approveTokenForBridge(...)` function unusable.
+     *  - in the LSP7 contract, if an LSP17 extension is registered for the `approve(address,uint256)` selector
+     * (`0x095ea7b3`), it will forward the call to the LSP17 extension contract.
+     */
+    function authorizeTokenForBridge(ILSP7 token, ValueTransferBridge bridge) external onlyOwner {
+        token.authorizeOperator(address(bridge), type(uint256).max, "");
     }
 
     /**

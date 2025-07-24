@@ -32,19 +32,20 @@ contract HypLSP7Test is Test {
     uint32 internal constant CHAIN_ID = 42;
     TestMailbox internal mailbox;
 
-    // Warp route
+    // Warp route configs
     TestPostDispatchHook internal defaultHook;
     TestIsm internal defaultIsm;
 
+    address internal immutable PROXY_ADMIN = makeAddr("Proxy Admin");
+    address internal immutable WARP_ROUTE_OWNER = makeAddr("warp route owner");
+
+    // Synthetic token
     string internal constant NAME = "Test USDC";
     string internal constant SYMBOL = "tUSDC";
     uint8 internal constant DECIMALS = 6; // USDC has 6 decimals points
     uint256 internal constant TOTAL_SUPPLY = 1_000_000 * (10 ** DECIMALS);
 
     uint256 internal constant SCALE_PARAM = 1;
-
-    address internal immutable PROXY_ADMIN = makeAddr("Proxy Admin");
-    address internal immutable WARP_ROUTE_OWNER = makeAddr("warp route owner");
 
     HypLSP7 internal syntheticToken;
 
@@ -95,7 +96,7 @@ contract HypLSP7Test is Test {
         assertEq(hypLSP7Token.decimals(), decimals);
     }
 
-    function test_TotalSupplyIsZeroDespiteParameterOnInitialize() public {
+    function test_TotalSupplyIsZeroDespiteParameterOnInitialize() public view {
         assertEq(syntheticToken.totalSupply(), 0);
     }
 
