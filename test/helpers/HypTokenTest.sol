@@ -34,6 +34,7 @@ abstract contract HypTokenTest is Test {
 
     // origin chain
     // ---------------------------
+    // solhint-disable-next-line var-name-mixedcase
     uint32 internal ORIGIN_CHAIN_ID;
     TestMailbox internal originMailbox;
     TestPostDispatchHook internal originMailboxDefaultHook;
@@ -44,6 +45,7 @@ abstract contract HypTokenTest is Test {
 
     // destination chain
     // ---------------------------
+    // solhint-disable-next-line var-name-mixedcase
     uint32 internal DESTINATION_CHAIN_ID;
     TestMailbox internal destinationMailbox;
     TestPostDispatchHook internal destinationMailboxDefaultHook;

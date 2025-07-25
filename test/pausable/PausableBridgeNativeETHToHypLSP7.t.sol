@@ -19,10 +19,10 @@ import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRoute
 import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMessage.sol";
 
 // Modules to test
-import { HypLSP7 } from "../../src/HypLSP7.sol";
-import { HypLSP7Pausable } from "../../src/pausable/HypLSP7Pausable.sol";
-import { HypNativePausable } from "../../src/pausable/HypNativePausable.sol";
-import { PausableController } from "../../src/pausable/PausableController.sol";
+import { HypLSP7 } from "../../contracts/HypLSP7.sol";
+import { HypLSP7Pausable } from "../../contracts/pausable/HypLSP7Pausable.sol";
+import { HypNativePausable } from "../../contracts/pausable/HypNativePausable.sol";
+import { PausableController } from "../../contracts/pausable/PausableController.sol";
 
 /**
  * @title Bridge token routes tests from native tokens to `HypERC20`

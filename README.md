@@ -1,59 +1,70 @@
-# LSP7 and LSP8 version of the Hyperlane Token Routers [![Open in Gitpod][gitpod-badge]][gitpod] [![Github Actions][gha-badge]][gha] [![Foundry][foundry-badge]][foundry] [![License: MIT][license-badge]][license]
+# LSP7 and LSP8 Token Routers for Hyperlane
 
-[gitpod]: https://gitpod.io/#https://github.com/lukso-network/lsp-bridge-HypLSP7
-[gitpod-badge]: https://img.shields.io/badge/Gitpod-Open%20in%20Gitpod-FFB45B?logo=gitpod
-[gha]: https://github.com/lukso-network/lsp-bridge-HypLSP7/actions
-[gha-badge]: https://github.com/lukso-network/lsp-bridge-HypLSP7/actions/workflows/ci.yml/badge.svg
-[foundry]: https://getfoundry.sh/
-[foundry-badge]: https://img.shields.io/badge/Built%20with-Foundry-FFDB1C.svg
-[license]: https://opensource.org/licenses/MIT
-[license-badge]: https://img.shields.io/badge/License-MIT-blue.svg
+[![Open in Gitpod](https://img.shields.io/badge/Gitpod-Open%20in%20Gitpod-FFB45B?logo=gitpod)](https://gitpod.io/#https://github.com/lukso-network/lsp-bridge-HypLSP7)
+[![Github Actions](https://github.com/lukso-network/lsp-bridge-HypLSP7/actions/workflows/ci.yml/badge.svg)](https://github.com/lukso-network/lsp-bridge-HypLSP7/actions)
+[![Foundry](https://img.shields.io/badge/Built%20with-Foundry-FFDB1C.svg)](https://getfoundry.sh/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-This repo is the LSP7 version of the [`HypERC20`] and [`HypERC20Collateral`] and LSP8 version of the [`HypERC721`] and
-[`HypERC721Collateral`] from `@hyperlane-xyz/core` package. They are used to bridge tokens using the
-[Hyperlane protocol](https://docs.hyperlane.xyz).
+## Overview
 
-For more details on the **architecture and bridging flow**, see the [**`docs/`**](./docs/README.md) folder.
+This repository provides LSP7 and LSP8 compatible versions of Hyperlane's token routers, specifically adaptations of [`HypERC20`] and [`HypERC20Collateral`] for LSP7, and [`HypERC721`] and [`HypERC721Collateral`] for LSP8 from the `@hyperlane-xyz/core` package. These contracts enable seamless token bridging across chains using the [Hyperlane protocol](https://docs.hyperlane.xyz).
 
-### Examples of bridged tokens
+For detailed architecture and bridging flow, refer to the [**documentation**](./docs/README.md).
+
+## Features
+
+- **LSP7 and LSP8 Compatibility**: Create Hyperlane synthetic tokens based on LUKSO's LSP token standards.
+- **Hyperlane Integration**: Secure and efficient with support for Hyperlane Warp Routes (HWR) 2.0, enabling scaling, multi collateral routes and rebalancing.
+- **Pausable Contracts**: Additional pausable versions for enhanced control.
+- **WAGMI Typed ABIs**: Auto-generated typed ABIs generated with WAGMI.
+- **Unit Tests**: Comprehensive test suite and CI integration.
+
+## Examples of Bridged Tokens
 
 - ETH -> LUKSO:
-  https://explorer.hyperlane.xyz/message/0x53a383e32fdb68748c8af5c86be3669e58eadc377db2a9f420826cb9474dd55c
-
+  [Hyperlane Explorer](https://explorer.hyperlane.xyz/message/0x53a383e32fdb68748c8af5c86be3669e58eadc377db2a9f420826cb9474dd55c)
 - LUKSO -> ETH:
-  https://explorer.hyperlane.xyz/message/0xf9c86a22e7b5584fc87a9d4ffc39f967a8745cd28b98ed2eaeb220c43996c4ca
+  [Hyperlane Explorer](https://explorer.hyperlane.xyz/message/0xf9c86a22e7b5584fc87a9d4ffc39f967a8745cd28b98ed2eaeb220c43996c4ca)
 
 ## Getting Started
 
 This project is based on the Foundry template by PaulRBerg.
 
-```sh
-bun install # install Solhint, Prettier, and other Node.js deps
-```
+### Prerequisites
 
-If this is your first time with Foundry, check out the
-[installation](https://github.com/foundry-rs/foundry#installation) instructions.
+- [Foundry](https://getfoundry.sh/) installed.
+- Node.js and Bun (or npm/yarn) for dependencies.
+
+If this is your first time with Foundry, check out the [installation instructions](https://github.com/foundry-rs/foundry#installation).
 
 ### Installing Dependencies
 
-Foundry typically uses git submodules to manage dependencies, but this template uses Node.js packages because
-[submodules don't scale](https://twitter.com/PaulRBerg/status/1736695487057531328).
+Foundry typically uses git submodules, but this template uses Node.js packages for better scalability.
 
-This is how to install dependencies:
+1. Install dependencies:
+   ```sh
+   bun install # install Solhint, Prettier, and other Node.js deps
+   ```
 
-1. Install the dependency using your preferred package manager, e.g. `bun install dependency-name`
-   - Use this syntax to install from GitHub: `bun install github:username/repo-name`
-2. Add a remapping for the dependency in [remappings.txt](./remappings.txt), e.g.
-   `dependency-name=node_modules/dependency-name`
+To add a new dependency:
 
-Note that OpenZeppelin Contracts is pre-installed, so you can follow that as an example.
+1. Install using your package manager, e.g., `bun install dependency-name` (or from GitHub: `bun install github:username/repo-name`).
+2. Add a remapping in [remappings.txt](./remappings.txt), e.g., `dependency-name=node_modules/dependency-name`.
+
+Note: Only add the newly installed package to the remapping if:
+
+- The new package exports Solidity files that we use.
+- The dependency does not start with `@` (we already have `'@=node_modules/@'` in 'remappings.txt').
+
+Note: OpenZeppelin Contracts is pre-installed as an example.
+
+**Important:** This project uses OpenZeppelin v4.9.6 and is not yet compatible with OpenZeppelin v5.
 
 ### Sensible Defaults
 
-This template comes with a set of sensible default configurations for you to use. These defaults can be found in the
-following files:
+This template includes sensible defaults in:
 
-```text
+```
 ├── .editorconfig
 ├── .gitignore
 ├── .prettierignore
@@ -65,61 +76,87 @@ following files:
 
 ## Usage
 
-This is a list of the most frequently needed commands.
+Common commands:
 
 ### Build & Compile
 
 ```sh
-# Build the contracts:
-forge build
+# Compile the contracts
+bun run build
 
-# Delete the build artifacts and cache directories:
-forge clean
+# Filter the generated artifacts
+bun run build:artifacts
 
-# Get a test coverage report:
-forge coverage
+# Generate WAGMI typed ABIs
+bun run build:wagmi
 
-# Format the contracts:
-forge fmt
+# Build the WAGMI typed ABIs
+bun run build:js
 
-# Get a gas report:
-forge test --gas-report
+# Build the NPM package for release
+bun run build:package
+```
 
-# Lint the contracts:
-bun run lint
+### Clean the repository
 
-# Run the tests:
-forge test
+```sh
+# Delete build artifacts and cache
+bun run clean
+```
 
-# Generate test coverage and output result to the terminal:
+### Test the smart contracts
+
+```sh
+# Run the tests
+bun run test
+
+# Get gas report
+bun run test:gas
+
+# Generate test coverage output
 bun run test:coverage
 
-# Generate test coverage with lcov report (you'll have to open the `./coverage/index.html` file in your browser,
-# to do so simply copy paste the path):
+# Generate test coverage with lcov report (open ./coverage/index.html in browser)
 bun run test:coverage:report
 ```
 
-### GitHub Actions
+### Format the code
 
-This repository uses pre-configured GitHub Actions. The contracts are linted and tested on every push and pull requests.
-You can edit the CI script in [.github/workflows/ci.yml](./.github/workflows/ci.yml).
+```sh
+# Check if contracts are formatted
+bun run prettier:check
+
+# Format the contracts
+bun run prettier:write
+
+# Lint the contracts
+bun run lint
+```
+
+## GitHub Actions
+
+Pre-configured workflows lint and test on every push and pull request. Edit [.github/workflows/ci.yml](./.github/workflows/ci.yml) as needed.
+
+## Documentation
+
+For architecture, bridging flow, and ABI details, see the [docs/](./docs/README.md) folder.
 
 ## Foundry Resources
 
-This template builds upon the frameworks and libraries mentioned above, so please consult their respective documentation
-for details about their specific features.
+Consult the [Foundry Book](https://book.getfoundry.sh/) for details, especially the [Writing Tests tutorial](https://book.getfoundry.sh/forge/writing-tests.html).
 
-For example, if you're interested in exploring Foundry in more detail, you should look at the
-[Foundry Book](https://book.getfoundry.sh/). In particular, you may be interested in reading the
-[Writing Tests](https://book.getfoundry.sh/forge/writing-tests.html) tutorial.
+## Contributing
 
-[`HypERC20Collateral`]:
-  https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%408.1.1/solidity/contracts/token/HypERC20Collateral.sol
-[`HypERC20`]:
-  https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%408.1.1/solidity/contracts/token/HypERC20.sol
-[`HypERC721Collateral`]:
-  https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%408.1.1/solidity/contracts/token/HypERC721Collateral.sol
-[`HypERC721`]:
-  https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%408.1.1/solidity/contracts/token/HypERC721.sol
-[`Mailbox`]:
-  https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%408.1.1/solidity/contracts/Mailbox.sol
+Contributions are welcome! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines on pull requests, code style, and testing.
+
+## License
+
+MIT License. See the [LICENSE.md](./LICENSE.md) file for details.
+
+## References
+
+[`HypERC20Collateral`]: https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%408.1.1/solidity/contracts/token/HypERC20Collateral.sol
+[`HypERC20`]: https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%408.1.1/solidity/contracts/token/HypERC20.sol
+[`HypERC721Collateral`]: https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%408.1.1/solidity/contracts/token/HypERC721Collateral.sol
+[`HypERC721`]: https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%408.1.1/solidity/contracts/token/HypERC721.sol
+[`Mailbox`]: https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/%40hyperlane-xyz/core%408.1.1/solidity/contracts/Mailbox.sol

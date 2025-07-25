@@ -18,3 +18,9 @@ yarn.lock
 !broadcast
 broadcast/*
 broadcast/*/31337/
+
+# build
+/artifacts
+/typechain
+/abi.ts
+/dist

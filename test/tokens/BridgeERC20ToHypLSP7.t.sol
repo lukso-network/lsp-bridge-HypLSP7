@@ -13,7 +13,7 @@ import { ERC20Mock } from "../helpers/ERC20Mock.sol";
 
 import { HypTokenTest } from "../helpers/HypTokenTest.sol";
 import { HypERC20Collateral } from "@hyperlane-xyz/core/contracts/token/HypERC20Collateral.sol";
-import { HypLSP7 } from "../../src/HypLSP7.sol";
+import { HypLSP7 } from "../../contracts/HypLSP7.sol";
 
 import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 
@@ -72,14 +72,19 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
         token.transfer(ALICE, 100_000 * (10 ** DECIMALS));
 
         // 2. Deploy collateral token router
+        // solhint-disable-next-line reentrancy
         originDefaultHook = new TestPostDispatchHook();
+        // solhint-disable-next-line reentrancy
         originDefaultIsm = new TestIsm();
 
+        // solhint-disable-next-line reentrancy
         erc20Collateral = new HypERC20Collateral(address(token), SCALE_PARAM, address(originMailbox));
         erc20Collateral.initialize(address(originDefaultHook), address(originDefaultIsm), WARP_ROUTE_OWNER);
 
         // 3. Deploy the synthetic token on the destination chain + initialize it
+        // solhint-disable-next-line reentrancy
         destinationDefaultHook = new TestPostDispatchHook();
+        // solhint-disable-next-line reentrancy
         destinationDefaultIsm = new TestIsm();
 
         HypLSP7 implementation = new HypLSP7(DECIMALS, SCALE_PARAM, address(destinationMailbox));
@@ -99,6 +104,7 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
             )
         );
 
+        // solhint-disable-next-line reentrancy
         syntheticToken = HypLSP7(payable(proxy));
 
         // 4. setup the state variable derives from `HypTokenTest` to ensure
