@@ -52,8 +52,11 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, FungibleTokenRouter {
             symbol_: tokenSymbol,
             newOwner_: contractOwner,
             lsp4TokenType_: _LSP4_TOKEN_TYPE_TOKEN,
-            isNonDivisible_: false // isNonDivisible set to `false` as not used anyway since decimals() is overriden
-         });
+            // Even if the `_isNonDivisible` state variable is not used because it is overriden by the `decimals()`
+            // function below, ensure its value is set correctly in the proxy contract's storage,
+            // according to the `_decimals` immutable variable derived from the implementation.
+            isNonDivisible_: _decimals == 0
+        });
 
         // Initializes the warp route
         _MailboxClient_initialize(defaultHook, defaultInterchainSecurityModule, contractOwner);

@@ -96,6 +96,37 @@ contract HypLSP7Test is Test {
         assertEq(hypLSP7Token.decimals(), decimals);
     }
 
+    function test_IsNonDivisibleInStorageSetToFalse() public view {
+        // `isNonDivisible_` is located at storage slot 152. Load its value to check it
+        bytes32 rawStorageValue = vm.load(address(syntheticToken), bytes32(uint256(152)));
+        bool result = abi.decode(abi.encodePacked(rawStorageValue), (bool));
+        assertFalse(result, "isNonDivisible_ in storage should be false as DECIMALS was 18");
+    }
+
+    /// @dev Test isNonDivisible set in storage correctly according to how `_decimals` is set in the implementation
+    function test_FuzzIsNonDivisibleSetInStorageCorrectly(uint8 decimals) public {
+        HypLSP7 implementation = new HypLSP7(decimals, SCALE_PARAM, address(mailbox));
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+            address(implementation),
+            PROXY_ADMIN,
+            abi.encodeCall(
+                HypLSP7.initialize,
+                (TOTAL_SUPPLY, NAME, SYMBOL, address(defaultHook), address(defaultIsm), WARP_ROUTE_OWNER)
+            )
+        );
+
+        HypLSP7 someSyntheticToken = HypLSP7(payable(proxy));
+
+        bytes32 rawStorageValue = vm.load(address(someSyntheticToken), bytes32(uint256(152)));
+        bool result = abi.decode(abi.encodePacked(rawStorageValue), (bool));
+
+        if (decimals == 0) {
+            assertTrue(result, "isNonDivisible_ in storage should be true as DECIMALS was 0");
+        } else {
+            assertFalse(result, "isNonDivisible_ in storage should be false as DECIMALS was 18");
+        }
+    }
+
     function test_TotalSupplyIsZeroDespiteParameterOnInitialize() public view {
         assertEq(syntheticToken.totalSupply(), 0);
     }
