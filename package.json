@@ -20,6 +20,7 @@
     "@lukso/lsp0-contracts": "^0.15.5",
     "@lukso/lsp17contractextension-contracts": "^0.16.7",
     "@typechain/ethers-v5": "^11.1.2",
+    "@types/minimatch": "^6.0.0",
     "@wagmi/cli": "^2.3.2",
     "forge-std": "github:foundry-rs/forge-std#v1.9.7",
     "prettier": "^3.6.2",
