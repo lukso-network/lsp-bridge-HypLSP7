@@ -82,7 +82,8 @@ contract HypLSP7Collateral is MovableCollateralRouter {
     /**
      * @dev LSP7 compatible version of the `MovableCollateralRouter.approveTokenForBridge(...)` function.
      *
-     * @dev Note that the `approveTokenForBridge(...)` still exists in the ABI of this contract and can still be called
+     * @custom:warning Note that the `approveTokenForBridge(...)` still exists in the ABI of this contract and can still
+     * be called
      * by the contract owner. Calling `approveTokenForBridge(...)` will attempt to call `approve(address,uint256)`
      * on the `token` contract passed as parameter.
      *
