@@ -12,7 +12,7 @@ optimizer_runs = 10_000
 out = "out"
 script = "script"
 solc = "0.8.27"
-src = "src"
+src = "contracts"
 test = "test"
 
 [profile.ci]

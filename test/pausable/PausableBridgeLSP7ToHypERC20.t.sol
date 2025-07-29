@@ -18,10 +18,10 @@ import { TestPostDispatchHook } from "@hyperlane-xyz/core/contracts/test/TestPos
 import { TestIsm } from "@hyperlane-xyz/core/contracts/test/TestIsm.sol";
 
 // Contracts to test
-import { HypLSP7CollateralPausable } from "../../src/pausable/HypLSP7CollateralPausable.sol";
-import { HypERC20Pausable } from "../../src/pausable/HypERC20Pausable.sol";
+import { HypLSP7CollateralPausable } from "../../contracts/pausable/HypLSP7CollateralPausable.sol";
+import { HypERC20Pausable } from "../../contracts/pausable/HypERC20Pausable.sol";
 import { HypERC20 } from "@hyperlane-xyz/core/contracts/token/HypERC20.sol";
-import { PausableController } from "../../src/pausable/PausableController.sol";
+import { PausableController } from "../../contracts/pausable/PausableController.sol";
 
 contract PausableBridgeLSP7ToHypERC20 is BridgeLSP7ToHypERC20, PausableControllerTester {
     using TypeCasts for address;

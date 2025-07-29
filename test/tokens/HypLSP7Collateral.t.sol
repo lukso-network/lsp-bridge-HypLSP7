@@ -10,7 +10,7 @@ import { LSP7Mock } from "../helpers/LSP7Mock.sol";
 import { LSP17ExtensionApproveTokenForBridgeMock } from "..//helpers/LSP17ExtensionApproveTokenForBridgeMock.sol";
 
 // contracts to test
-import { HypLSP7Collateral } from "../../src/HypLSP7Collateral.sol";
+import { HypLSP7Collateral } from "../../contracts/HypLSP7Collateral.sol";
 import { ValueTransferBridge } from "@hyperlane-xyz/core/contracts/token/interfaces/ValueTransferBridge.sol";
 import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 

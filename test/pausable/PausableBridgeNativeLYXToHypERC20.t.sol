@@ -20,9 +20,9 @@ import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMess
 
 // Contracts to test
 import { HypERC20 } from "@hyperlane-xyz/core/contracts/token/HypERC20.sol";
-import { HypERC20Pausable } from "../../src/pausable/HypERC20Pausable.sol";
-import { HypNativePausable } from "../../src/pausable/HypNativePausable.sol";
-import { PausableController } from "../../src/pausable/PausableController.sol";
+import { HypERC20Pausable } from "../../contracts/pausable/HypERC20Pausable.sol";
+import { HypNativePausable } from "../../contracts/pausable/HypNativePausable.sol";
+import { PausableController } from "../../contracts/pausable/PausableController.sol";
 
 /**
  * @title Bridge token routes tests from native tokens to `HypERC20`

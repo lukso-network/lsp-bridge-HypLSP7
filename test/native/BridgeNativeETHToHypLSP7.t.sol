@@ -9,7 +9,7 @@ import { CustomPostDispatchHook } from "../helpers/CustomPostDispatchHook.sol";
 
 import { HypTokenTest } from "../helpers/HypTokenTest.sol";
 import { HypNative } from "@hyperlane-xyz/core/contracts/token/HypNative.sol";
-import { HypLSP7 } from "../../src/HypLSP7.sol";
+import { HypLSP7 } from "../../contracts/HypLSP7.sol";
 
 import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 
