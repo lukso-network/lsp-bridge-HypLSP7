@@ -39,7 +39,7 @@
   ],
   "files": [
     "contracts/*.sol",
-    "!contracts/pausable/*.sol",
+    "contracts/pausable/*.sol",
     "artifacts/*.json",
     "dist/*",
     "package.json",
