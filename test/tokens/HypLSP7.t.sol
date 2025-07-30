@@ -8,7 +8,7 @@ import { TransparentUpgradeableProxy } from "@openzeppelin/contracts/proxy/trans
 import { TestMailbox } from "@hyperlane-xyz/core/contracts/test/TestMailbox.sol";
 import { TestPostDispatchHook } from "@hyperlane-xyz/core/contracts/test/TestPostDispatchHook.sol";
 import { TestIsm } from "@hyperlane-xyz/core/contracts/test/TestIsm.sol";
-import { HypLSP7 } from "../../src/HypLSP7.sol";
+import { HypLSP7 } from "../../contracts/HypLSP7.sol";
 
 import { IERC725Y } from "@erc725/smart-contracts/contracts/interfaces/IERC725Y.sol";
 import { generateLSP4DataKeysAndValues } from "../helpers/Utils.sol";

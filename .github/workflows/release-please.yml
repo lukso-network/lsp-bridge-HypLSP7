@@ -1,0 +1,52 @@
+name: Create GitHub release and publish to NPM
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    name: 📦 Create GitHub release and publish to NPM
+    runs-on: ubuntu-latest
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+    steps:
+      - uses: google-github-actions/release-please-action@v3
+        id: release
+        with:
+          release-type: node
+          package-name: "@lukso/lsp-hyperlane-token-routers"
+          bump-minor-pre-major: true
+          default-branch: main
+          changelog-types: '[{"type": "feat!","section":"BREAKING CHANGES","hidden": false},{"type": "refactor!","section":"BREAKING CHANGES","hidden": false},{"type": "build!","section":"BREAKING CHANGES","hidden": false},{"type":"feat","section":"Features","hidden":false},{"type":"fix","section":"Bug Fixes","hidden":false},{"type":"chore","section":"Miscellaneous","hidden":false}]'
+
+      - uses: actions/checkout@v4
+        if: steps.release.outputs.releases_created
+        with:
+          fetch-depth: 0
+
+      - name: "Install Foundry"
+        if: steps.release.outputs.releases_created
+        uses: "foundry-rs/foundry-toolchain@v1"
+
+      - name: "Install Bun"
+        if: steps.release.outputs.releases_created
+        uses: "oven-sh/setup-bun@v1"
+
+      - name: 🧰 Install Dependencies
+        if: steps.release.outputs.releases_created
+        run: bun install
+
+      - name: 🛠 Build
+        if: steps.release.outputs.releases_created
+        run: bun run build:package
+
+      - name: 📦 Publish to NPM
+        if: steps.release.outputs.releases_created
+        run: bun publish --access public

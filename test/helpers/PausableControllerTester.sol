@@ -8,7 +8,7 @@ import {
     PausableController,
     CannotSetPausableControllerToZeroAddress,
     PausableControllerChanged
-} from "../../src/pausable/PausableController.sol";
+} from "../../contracts/pausable/PausableController.sol";
 
 abstract contract PausableControllerTester is Test {
     address internal immutable PAUSABLE_CONTROLLER = makeAddr("Pausable controller");

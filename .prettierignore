@@ -4,6 +4,7 @@ cache
 coverage
 node_modules
 out
+lib
 
 # files
 *.env
@@ -15,3 +16,9 @@ lcov.info
 package-lock.json
 pnpm-lock.yaml
 yarn.lock
+
+# build
+/artifacts
+/typechain
+/abi.ts
+/dist
