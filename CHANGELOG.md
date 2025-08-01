@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/lukso-network/lsp-bridge-HypLSP7/compare/v0.1.0...v0.1.1) (2025-08-01)
+
+
+### Miscellaneous
+
+* fix env variable in release workflow ([829d593](https://github.com/lukso-network/lsp-bridge-HypLSP7/commit/829d5935c68bcaf2e526ff0a5c175527b8bcc3f3))
+
 ## 0.1.0 (2025-08-01)
 
 
