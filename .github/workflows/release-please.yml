@@ -15,7 +15,7 @@ jobs:
     name: 📦 Create GitHub release and publish to NPM
     runs-on: ubuntu-latest
     env:
-      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
 
     steps:
       - uses: google-github-actions/release-please-action@v3
