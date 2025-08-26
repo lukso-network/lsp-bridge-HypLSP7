@@ -115,10 +115,10 @@ contract BridgeLSP7ToHypERC20 is HypTokenTest {
 
         // 5. Connect the collateral with the synthetic contract, and vice versa
         vm.prank(WARP_ROUTE_OWNER);
-        HypTokenTest._enrollOriginTokenRouter();
+        HypTokenTest._connectOriginTokenRouter();
 
         vm.prank(WARP_ROUTE_OWNER);
-        HypTokenTest._enrollDestinationTokenRouter();
+        HypTokenTest._connectDestinationTokenRouter();
     }
 
     function test_constructorRevertIfInvalidToken() public {
