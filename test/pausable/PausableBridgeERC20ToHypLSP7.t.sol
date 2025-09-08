@@ -11,6 +11,7 @@ import { PausableControllerTester } from "../helpers/PausableControllerTester.so
 
 // libraries
 import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMessage.sol";
+import { generateLSP4DataKeysAndValues } from "../helpers/Utils.sol";
 
 // mocks
 import { ERC20Mock } from "../helpers/ERC20Mock.sol";
@@ -88,6 +89,50 @@ contract PausableBridgeERC20ToHypLSP7 is BridgeERC20ToHypLSP7, PausableControlle
         PausableController(address(destinationPausableTokenRouter)).changePausableController(PAUSABLE_CONTROLLER);
     }
 
+    function test_deploymentConfigurationFlowSetMetadataPauserAndTransferOwnership() public {
+        // Native collateral
+        // -------------------------
+        // Deployed + Initialized already done in setUp()
+
+        // 3. setup the LSP4Metadata with `setDataBatch(...)` on destination chain
+        (bytes32[] memory dataKeys, bytes[] memory dataValues) = generateLSP4DataKeysAndValues();
+        assertEq(syntheticToken.getDataBatch(dataKeys), new bytes[](dataKeys.length)); // CHECK empty
+
+        vm.prank(WARP_ROUTE_OWNER);
+        syntheticToken.setDataBatch(dataKeys, dataValues);
+        assertEq(syntheticToken.getDataBatch(dataKeys), dataValues); // CHECK values set
+
+        // 4. setup the pauser address
+        address newPauser = makeAddr("new pauser");
+        assertEq(originPausableTokenRouter.pausableController(), PAUSABLE_CONTROLLER); // CHECK pauser not set
+        assertEq(destinationPausableTokenRouter.pausableController(), PAUSABLE_CONTROLLER); // CHECK pauser not set
+
+        vm.prank(WARP_ROUTE_OWNER);
+        originPausableTokenRouter.changePausableController(newPauser);
+
+        vm.prank(WARP_ROUTE_OWNER);
+        destinationPausableTokenRouter.changePausableController(newPauser);
+
+        assertEq(originPausableTokenRouter.pausableController(), newPauser); // CHECK pauser set
+        assertEq(destinationPausableTokenRouter.pausableController(), newPauser);
+        assertFalse(originPausableTokenRouter.disabledForever());
+        assertFalse(destinationPausableTokenRouter.disabledForever());
+
+        // 5. transfer ownership of the warp route to new owner
+        assertEq(originPausableTokenRouter.owner(), WARP_ROUTE_OWNER); // CHECK owner is still the deployer
+        assertEq(destinationPausableTokenRouter.owner(), WARP_ROUTE_OWNER); // CHECK owner
+
+        address newOwner = makeAddr("newOwner");
+
+        vm.prank(WARP_ROUTE_OWNER);
+        originPausableTokenRouter.transferOwnership(newOwner);
+        vm.prank(WARP_ROUTE_OWNER);
+        destinationPausableTokenRouter.transferOwnership(newOwner);
+
+        assertEq(originPausableTokenRouter.owner(), newOwner); // CHECK new owner set
+        assertEq(destinationPausableTokenRouter.owner(), newOwner); // CHECK new owner set
+    }
+
     function test_CanTransferSyntheticTokensBetweenAddressesOnDestinationChainEvenIfSyntheticTokenIsPaused(
         uint256 localTransferAmount
     )
@@ -127,6 +172,27 @@ contract PausableBridgeERC20ToHypLSP7 is BridgeERC20ToHypLSP7, PausableControlle
     // |     Test Bridge Tx     |
     // |  Origin -> Destination |
     // ==========================
+
+    function test_BridgeTxRevertsOnOriginWhenPausedOnOrigin() public {
+        uint256 balanceBefore = token.balanceOf(ALICE);
+
+        vm.prank(ALICE);
+        token.approve(address(erc20Collateral), TRANSFER_AMOUNT);
+
+        assertFalse(originPausableTokenRouter.paused());
+        assertFalse(destinationPausableTokenRouter.paused());
+
+        _pauseOrigin();
+        assertTrue(originPausableTokenRouter.paused());
+
+        vm.prank(ALICE);
+        vm.expectRevert("Pausable: paused");
+        erc20Collateral.transferRemote{ value: REQUIRED_INTERCHAIN_GAS_PAYMENT }(
+            DESTINATION_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT
+        );
+        assertEq(token.balanceOf(ALICE), balanceBefore);
+        assertEq(token.balanceOf(address(erc20Collateral)), 0);
+    }
 
     function test_BridgeTxRevertsOnDestinationWhenPausedOnDestination() public {
         uint256 balanceBefore = token.balanceOf(ALICE);

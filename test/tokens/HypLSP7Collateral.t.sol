@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import { Test, console } from "forge-std/src/Test.sol";
+import { Test } from "forge-std/src/Test.sol";
 
 // mock contracts
 import { TestMailbox } from "@hyperlane-xyz/core/contracts/test/TestMailbox.sol";
@@ -77,7 +77,7 @@ contract HypLSP7CollateralTest is Test {
 
     function test_DeployRevertWhenTokenAddressIsEOA(address eoa) public {
         vm.assume(eoa != address(0));
-        vm.assume(eoa != address(token));
+        vm.assume(eoa.code.length == 0);
         assumeNotPrecompile(eoa);
 
         vm.expectRevert("HypLSP7Collateral: invalid token");

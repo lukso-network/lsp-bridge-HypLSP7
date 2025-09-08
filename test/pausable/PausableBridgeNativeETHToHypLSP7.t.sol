@@ -17,6 +17,7 @@ import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRoute
 
 // libraries
 import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMessage.sol";
+import { generateLSP4DataKeysAndValues } from "../helpers/Utils.sol";
 
 // Modules to test
 import { HypLSP7 } from "../../contracts/HypLSP7.sol";
@@ -97,6 +98,50 @@ contract PausableBridgeNativeETHToHypLSP7 is BridgeNativeETHToHypLSP7, PausableC
         PausableController(address(originPausableTokenRouter)).changePausableController(PAUSABLE_CONTROLLER);
         vm.prank(WARP_ROUTE_OWNER);
         PausableController(address(destinationPausableTokenRouter)).changePausableController(PAUSABLE_CONTROLLER);
+    }
+
+    function test_deploymentConfigurationFlowSetMetadataPauserAndTransferOwnership() public {
+        // Native collateral
+        // -------------------------
+        // Deployed + Initialized already done in setUp()
+
+        // 3. setup the LSP4Metadata with `setDataBatch(...)` on destination chain
+        (bytes32[] memory dataKeys, bytes[] memory dataValues) = generateLSP4DataKeysAndValues();
+        assertEq(syntheticToken.getDataBatch(dataKeys), new bytes[](dataKeys.length)); // CHECK empty
+
+        vm.prank(WARP_ROUTE_OWNER);
+        syntheticToken.setDataBatch(dataKeys, dataValues);
+        assertEq(syntheticToken.getDataBatch(dataKeys), dataValues); // CHECK values set
+
+        // 4. setup the pauser address
+        address newPauser = makeAddr("new pauser");
+        assertEq(originPausableTokenRouter.pausableController(), PAUSABLE_CONTROLLER); // CHECK pauser not set
+        assertEq(destinationPausableTokenRouter.pausableController(), PAUSABLE_CONTROLLER); // CHECK pauser not set
+
+        vm.prank(WARP_ROUTE_OWNER);
+        originPausableTokenRouter.changePausableController(newPauser);
+
+        vm.prank(WARP_ROUTE_OWNER);
+        destinationPausableTokenRouter.changePausableController(newPauser);
+
+        assertEq(originPausableTokenRouter.pausableController(), newPauser); // CHECK pauser set
+        assertEq(destinationPausableTokenRouter.pausableController(), newPauser);
+        assertFalse(originPausableTokenRouter.disabledForever());
+        assertFalse(destinationPausableTokenRouter.disabledForever());
+
+        // 5. transfer ownership of the warp route to new owner
+        assertEq(originPausableTokenRouter.owner(), WARP_ROUTE_OWNER); // CHECK owner is still the deployer
+        assertEq(destinationPausableTokenRouter.owner(), WARP_ROUTE_OWNER); // CHECK owner
+
+        address newOwner = makeAddr("newOwner");
+
+        vm.prank(WARP_ROUTE_OWNER);
+        originPausableTokenRouter.transferOwnership(newOwner);
+        vm.prank(WARP_ROUTE_OWNER);
+        destinationPausableTokenRouter.transferOwnership(newOwner);
+
+        assertEq(originPausableTokenRouter.owner(), newOwner); // CHECK new owner set
+        assertEq(destinationPausableTokenRouter.owner(), newOwner); // CHECK new owner set
     }
 
     function test_CanTransferSyntheticTokensBetweenAddressesOnDestinationChainEvenIfSyntheticTokenIsPaused(

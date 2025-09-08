@@ -15,11 +15,10 @@ import { IERC725Y } from "@erc725/smart-contracts/contracts/interfaces/IERC725Y.
 import { HypLSP7 } from "../../contracts/HypLSP7.sol";
 
 // utilities
-import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 import { generateLSP4DataKeysAndValues } from "../helpers/Utils.sol";
 
 // constants
-import { _INTERFACEID_ERC725Y } from "@erc725/smart-contracts/contracts/Constants.sol";
+import { _INTERFACEID_ERC725Y } from "@erc725/smart-contracts/contracts/constants.sol";
 import {
     _LSP4_TOKEN_NAME_KEY,
     _LSP4_TOKEN_SYMBOL_KEY,

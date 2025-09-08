@@ -1,16 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
+import { HypTokenTest } from "../helpers/HypTokenTest.sol";
 import { TransparentUpgradeableProxy } from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
+// mock contracts
 import { TestPostDispatchHook } from "@hyperlane-xyz/core/contracts/test/TestPostDispatchHook.sol";
 import { TestIsm } from "@hyperlane-xyz/core/contracts/test/TestIsm.sol";
 import { CustomPostDispatchHook } from "../helpers/CustomPostDispatchHook.sol";
 
-import { HypTokenTest } from "../helpers/HypTokenTest.sol";
+// contracts to test
 import { HypNative } from "@hyperlane-xyz/core/contracts/token/HypNative.sol";
 import { HypLSP7 } from "../../contracts/HypLSP7.sol";
 
+// libraries
 import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 
 /**
