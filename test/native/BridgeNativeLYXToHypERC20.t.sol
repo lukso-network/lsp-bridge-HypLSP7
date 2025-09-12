@@ -1,16 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
+// test utilities
+import { HypTokenTest } from "../helpers/HypTokenTest.sol";
 import { TransparentUpgradeableProxy } from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
+// Mock contracts
+import { TestMailbox } from "@hyperlane-xyz/core/contracts/test/TestMailbox.sol";
 import { TestPostDispatchHook } from "@hyperlane-xyz/core/contracts/test/TestPostDispatchHook.sol";
 import { TestIsm } from "@hyperlane-xyz/core/contracts/test/TestIsm.sol";
 import { CustomPostDispatchHook } from "../helpers/CustomPostDispatchHook.sol";
 
-import { HypTokenTest } from "../helpers/HypTokenTest.sol";
+// contracts to test
 import { HypNative } from "@hyperlane-xyz/core/contracts/token/HypNative.sol";
 import { HypERC20 } from "@hyperlane-xyz/core/contracts/token/HypERC20.sol";
+import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
 
+// libraries
 import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 
 /**
@@ -99,10 +105,10 @@ contract BridgeNativeLYXToHypERC20 is HypTokenTest {
 
         // 5. Connect the collateral with the synthetic contract, and vice versa
         vm.prank(WARP_ROUTE_OWNER);
-        HypTokenTest._enrollOriginTokenRouter();
+        HypTokenTest._connectOriginTokenRouter();
 
         vm.prank(WARP_ROUTE_OWNER);
-        HypTokenTest._enrollDestinationTokenRouter();
+        HypTokenTest._connectDestinationTokenRouter();
     }
 
     function test_BridgeTx() public {
@@ -174,5 +180,106 @@ contract BridgeNativeLYXToHypERC20 is HypTokenTest {
         nativeCollateral.transferRemote{ value: nativeValue }(
             DESTINATION_CHAIN_ID, encodedRecipient, nativeValue + 1, bytes(""), address(0)
         );
+    }
+
+    function test_ConnectToNewChainAndBridge() public {
+        uint32 newChainId = 8453; // Base
+        TestMailbox newChainMailbox = new TestMailbox({ _localDomain: newChainId });
+
+        // Deploy a new HypERC20 synthetic token contract on the new chain
+        TestPostDispatchHook newChainDefaultHook = new TestPostDispatchHook();
+        TestIsm newChainDefaultIsm = new TestIsm();
+
+        HypERC20 implementation = new HypERC20(DECIMALS, SCALE_PARAM, address(newChainMailbox));
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+            address(implementation),
+            PROXY_ADMIN,
+            abi.encodeCall(
+                HypERC20.initialize,
+                (
+                    0, // initial supply (do not mint any synthetic tokens on initialization)
+                    NAME,
+                    SYMBOL,
+                    address(newChainDefaultHook),
+                    address(newChainDefaultIsm),
+                    WARP_ROUTE_OWNER
+                )
+            )
+        );
+
+        HypERC20 newChainSyntheticToken = HypERC20(address(proxy));
+
+        // CHECK no address is connected for this new chainId
+        assertEq(nativeCollateral.routers(newChainId), bytes32(0));
+        assertEq(newChainSyntheticToken.routers(ORIGIN_CHAIN_ID), bytes32(0));
+
+        // CHECK we cannot bridge
+        vm.prank(ALICE);
+        vm.expectRevert("No router enrolled for domain: 8453");
+        originTokenRouter.transferRemote{ value: TRANSFER_AMOUNT + REQUIRED_INTERCHAIN_GAS_PAYMENT }({
+            _destination: newChainId,
+            _recipient: TypeCasts.addressToBytes32(BOB),
+            _amountOrId: TRANSFER_AMOUNT
+        });
+
+        // 1. Connect the origin router to the new chain
+        vm.prank(WARP_ROUTE_OWNER);
+        nativeCollateral.enrollRemoteRouter(newChainId, TypeCasts.addressToBytes32(address(newChainSyntheticToken)));
+
+        vm.prank(WARP_ROUTE_OWNER);
+        newChainSyntheticToken.enrollRemoteRouter(
+            ORIGIN_CHAIN_ID, TypeCasts.addressToBytes32(address(nativeCollateral))
+        );
+
+        // CHECK collateral and synthetic contracts are now connected
+        assertEq(nativeCollateral.routers(newChainId), TypeCasts.addressToBytes32(address(newChainSyntheticToken)));
+        assertEq(newChainSyntheticToken.routers(ORIGIN_CHAIN_ID), TypeCasts.addressToBytes32(address(nativeCollateral)));
+
+        // 2. Perform a bridge transaction to the new chain
+        uint256 aliceNativeTokenBalanceBefore = ALICE.balance;
+        assertEq(newChainSyntheticToken.totalSupply(), 0);
+        assertEq(newChainSyntheticToken.balanceOf(BOB), 0);
+
+        // Test bridging to new chain
+
+        // 2.1 Send the transfer remote transaction on the origin chain
+        vm.prank(ALICE);
+        vm.expectEmit({ emitter: address(nativeCollateral) }); // Check emitted event on source chain
+        emit TokenRouter.SentTransferRemote(newChainId, TypeCasts.addressToBytes32(BOB), TRANSFER_AMOUNT);
+        originTokenRouter.transferRemote{ value: TRANSFER_AMOUNT + REQUIRED_INTERCHAIN_GAS_PAYMENT }({
+            _destination: newChainId,
+            _recipient: TypeCasts.addressToBytes32(BOB),
+            _amountOrId: TRANSFER_AMOUNT
+        });
+
+        // process the bridge transaction on the destination chain
+        vm.prank(address(newChainMailbox));
+        vm.expectEmit({ emitter: address(newChainSyntheticToken) });
+        emit TokenRouter.ReceivedTransferRemote(ORIGIN_CHAIN_ID, TypeCasts.addressToBytes32(BOB), TRANSFER_AMOUNT);
+        newChainSyntheticToken.handle(
+            ORIGIN_CHAIN_ID,
+            TypeCasts.addressToBytes32(address(nativeCollateral)),
+            abi.encodePacked(TypeCasts.addressToBytes32(BOB), TRANSFER_AMOUNT)
+        );
+
+        // CHECK Alice's and Bob's balances have been updated
+        assertEq(ALICE.balance, aliceNativeTokenBalanceBefore - TRANSFER_AMOUNT - REQUIRED_INTERCHAIN_GAS_PAYMENT);
+        assertEq(newChainSyntheticToken.totalSupply(), TRANSFER_AMOUNT);
+        assertEq(newChainSyntheticToken.balanceOf(BOB), TRANSFER_AMOUNT);
+    }
+
+    function test_TransferOwnership() public {
+        address newOwner = makeAddr("new owner");
+
+        assertEq(nativeCollateral.owner(), WARP_ROUTE_OWNER);
+        assertEq(syntheticToken.owner(), WARP_ROUTE_OWNER);
+
+        vm.prank(WARP_ROUTE_OWNER);
+        nativeCollateral.transferOwnership(newOwner);
+        assertEq(nativeCollateral.owner(), newOwner);
+
+        vm.prank(WARP_ROUTE_OWNER);
+        syntheticToken.transferOwnership(newOwner);
+        assertEq(syntheticToken.owner(), newOwner);
     }
 }

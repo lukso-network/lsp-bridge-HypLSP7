@@ -2,22 +2,33 @@
 pragma solidity ^0.8.13;
 
 import { Test } from "forge-std/src/Test.sol";
-
 import { TransparentUpgradeableProxy } from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
+// mock contracts
 import { TestMailbox } from "@hyperlane-xyz/core/contracts/test/TestMailbox.sol";
 import { TestPostDispatchHook } from "@hyperlane-xyz/core/contracts/test/TestPostDispatchHook.sol";
 import { TestIsm } from "@hyperlane-xyz/core/contracts/test/TestIsm.sol";
+
+// contracts to test
+import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import { IERC725Y } from "@erc725/smart-contracts/contracts/interfaces/IERC725Y.sol";
 import { HypLSP7 } from "../../contracts/HypLSP7.sol";
 
-import { IERC725Y } from "@erc725/smart-contracts/contracts/interfaces/IERC725Y.sol";
+// utilities
 import { generateLSP4DataKeysAndValues } from "../helpers/Utils.sol";
 
+// constants
+import { _INTERFACEID_ERC725Y } from "@erc725/smart-contracts/contracts/constants.sol";
 import {
     _LSP4_TOKEN_NAME_KEY,
     _LSP4_TOKEN_SYMBOL_KEY,
-    _LSP4_TOKEN_TYPE_KEY
+    _LSP4_TOKEN_TYPE_KEY,
+    _LSP4_TOKEN_TYPE_TOKEN,
+    _LSP4_SUPPORTED_STANDARDS_KEY,
+    _LSP4_SUPPORTED_STANDARDS_VALUE
 } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
+import { _INTERFACEID_LSP7 } from "@lukso/lsp7-contracts/contracts/LSP7Constants.sol";
+import { _INTERFACEID_LSP17_EXTENDABLE } from "@lukso/lsp17contractextension-contracts/contracts/LSP17Constants.sol";
 
 // errors
 import {
@@ -75,6 +86,20 @@ contract HypLSP7Test is Test {
 
     function test_DecimalsIsSet() public view {
         assertEq(syntheticToken.decimals(), DECIMALS);
+    }
+
+    function test_LSP4DataKeysAreSetWhenInitialized() public view {
+        assertEq(syntheticToken.getData(_LSP4_SUPPORTED_STANDARDS_KEY), _LSP4_SUPPORTED_STANDARDS_VALUE);
+        assertEq(syntheticToken.getData(_LSP4_TOKEN_NAME_KEY), bytes(NAME));
+        assertEq(syntheticToken.getData(_LSP4_TOKEN_SYMBOL_KEY), bytes(SYMBOL));
+        assertEq(syntheticToken.getData(_LSP4_TOKEN_TYPE_KEY), abi.encodePacked(_LSP4_TOKEN_TYPE_TOKEN));
+    }
+
+    function test_shouldSupportAllInterfaceIdSupportedByLSP7() public view {
+        assertTrue(syntheticToken.supportsInterface(type(IERC165).interfaceId));
+        assertTrue(syntheticToken.supportsInterface(_INTERFACEID_ERC725Y));
+        assertTrue(syntheticToken.supportsInterface(_INTERFACEID_LSP7));
+        assertTrue(syntheticToken.supportsInterface(_INTERFACEID_LSP17_EXTENDABLE));
     }
 
     /// @dev Fuzz the decimals function to ensure the proxy always get the right decimals value derived from
@@ -216,7 +241,7 @@ contract HypLSP7Test is Test {
         syntheticToken.setDataBatch(dataKeys, dataValues);
     }
 
-    function test_CanSetLSP4DataKeysToConfigureTokenInfosAndEmitRelevantDataChangedEvent() public {
+    function test_CanSetLSP4DataKeysToConfigureTokenInfosAndCreatorsEmitRelevantDataChangedEvent() public {
         (bytes32[] memory dataKeys, bytes[] memory dataValues) = generateLSP4DataKeysAndValues();
 
         // CHECK events are emitted for the data keys:

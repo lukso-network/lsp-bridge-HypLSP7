@@ -3,9 +3,11 @@ pragma solidity ^0.8.13;
 
 import { Test } from "forge-std/src/Test.sol";
 
+// mock contracts
 import { TestMailbox } from "@hyperlane-xyz/core/contracts/test/TestMailbox.sol";
 import { TestPostDispatchHook } from "@hyperlane-xyz/core/contracts/test/TestPostDispatchHook.sol";
 import { TestIsm } from "@hyperlane-xyz/core/contracts/test/TestIsm.sol";
+import { ERC20Mock } from "../helpers/ERC20Mock.sol";
 import { LSP7Mock } from "../helpers/LSP7Mock.sol";
 import { LSP17ExtensionApproveTokenForBridgeMock } from "..//helpers/LSP17ExtensionApproveTokenForBridgeMock.sol";
 
@@ -14,14 +16,19 @@ import { HypLSP7Collateral } from "../../contracts/HypLSP7Collateral.sol";
 import { ValueTransferBridge } from "@hyperlane-xyz/core/contracts/token/interfaces/ValueTransferBridge.sol";
 import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
+// utilities
+import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
+import { LSP2Utils } from "@lukso/lsp2-contracts/contracts/LSP2Utils.sol";
+
 // constants
 import { _LSP17_EXTENSION_PREFIX } from "@lukso/lsp17contractextension-contracts/contracts/LSP17Constants.sol";
 
 // errors
 import { NoExtensionFoundForFunctionSelector } from "@lukso/lsp17contractextension-contracts/contracts/LSP17Errors.sol";
-import { LSP2Utils } from "@lukso/lsp2-contracts/contracts/LSP2Utils.sol";
 
 contract HypLSP7CollateralTest is Test {
+    using TypeCasts for address;
+
     // Token being bridged
     // In production, we assume it is an LSP7 token already deployed
     // (on LUKSO or any other EVM origin chain)
@@ -66,6 +73,15 @@ contract HypLSP7CollateralTest is Test {
 
         lsp7Collateral = new HypLSP7Collateral(address(token), SCALE_PARAM, address(mailbox));
         lsp7Collateral.initialize(address(defaultHook), address(defaultIsm), WARP_ROUTE_OWNER);
+    }
+
+    function test_DeployRevertWhenTokenAddressIsEOA(address eoa) public {
+        vm.assume(eoa != address(0));
+        vm.assume(eoa.code.length == 0);
+        assumeNotPrecompile(eoa);
+
+        vm.expectRevert("HypLSP7Collateral: invalid token");
+        lsp7Collateral = new HypLSP7Collateral(address(eoa), SCALE_PARAM, address(mailbox));
     }
 
     function test_OwnerCanCallAuthorizeTokenForBridge() public {
@@ -284,5 +300,21 @@ contract HypLSP7CollateralTest is Test {
             IERC20(address(token)), // forcing type casting to check revert behaviour
             ValueTransferBridge(allowedBridge)
         );
+    }
+
+    function test_DeployAndLinkToERC20TokenTransferRemoteFails() public {
+        ERC20Mock erc20Token = new ERC20Mock("Test Token", "TT", 1_000_000 * (10 ** 18), 18);
+        lsp7Collateral = new HypLSP7Collateral(address(erc20Token), SCALE_PARAM, address(mailbox));
+
+        address ALICE = makeAddr("alice");
+        address BOB = makeAddr("bob");
+        uint256 transferAmount = 10 ether;
+
+        vm.deal(ALICE, 20 ether);
+
+        vm.prank(ALICE);
+        // since ERC20 does not have a fallback function, it will be a silent revert (no revert reason)
+        vm.expectRevert(bytes(""));
+        lsp7Collateral.transferRemote{ value: 1 ether }(1, BOB.addressToBytes32(), transferAmount);
     }
 }

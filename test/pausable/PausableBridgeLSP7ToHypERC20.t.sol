@@ -72,10 +72,10 @@ contract PausableBridgeLSP7ToHypERC20 is BridgeLSP7ToHypERC20, PausableControlle
 
         // 5. Connect the collateral with the synthetic contract, and vice versa
         vm.prank(WARP_ROUTE_OWNER);
-        HypTokenTest._enrollOriginTokenRouter();
+        HypTokenTest._connectOriginTokenRouter();
 
         vm.prank(WARP_ROUTE_OWNER);
-        HypTokenTest._enrollDestinationTokenRouter();
+        HypTokenTest._connectDestinationTokenRouter();
 
         // 6. setup the Pausable versions of the token routers
         // + register the address of the controller that can pause on both chains

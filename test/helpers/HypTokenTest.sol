@@ -98,14 +98,14 @@ abstract contract HypTokenTest is Test {
         vm.deal(ALICE, 125_000);
     }
 
-    function _enrollOriginTokenRouter() internal {
+    function _connectOriginTokenRouter() internal {
         originTokenRouter.enrollRemoteRouter({
             _domain: DESTINATION_CHAIN_ID,
             _router: address(destinationTokenRouter).addressToBytes32()
         });
     }
 
-    function _enrollDestinationTokenRouter() internal {
+    function _connectDestinationTokenRouter() internal {
         destinationTokenRouter.enrollRemoteRouter({
             _domain: ORIGIN_CHAIN_ID,
             _router: address(originTokenRouter).addressToBytes32()
