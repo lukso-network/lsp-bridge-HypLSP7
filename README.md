@@ -148,6 +148,10 @@ To obtain the package as a `.tgz` archive, follow these steps:
    bun pm pack
    ```
 
+## Audits
+
+The security audits done in these smart contracts can be found under the [`audits/`](./audits/) folder.
+
 ## GitHub Actions
 
 Pre-configured workflows lint and test on every push and pull request. Edit [.github/workflows/ci.yml](./.github/workflows/ci.yml) as needed.
