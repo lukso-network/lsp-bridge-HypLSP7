@@ -23,7 +23,14 @@ contract LSP17ExtensionApproveTokenForBridgeMock is LSP17Extension {
         return token.authorizedAmountFor({ operator: spender, tokenOwner: owner });
     }
 
-    function approve(address, /* spender */ uint256 /* value */ ) external returns (bool) {
+    function approve(
+        address,
+        /* spender */
+        uint256 /* value */
+    )
+        external
+        returns (bool)
+    {
         emit ApprovedOnExtensionCalled();
         return true;
     }

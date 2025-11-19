@@ -36,7 +36,7 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, FungibleTokenRouter {
      * while there is no tokens locked in the collateral contract on the source chain.
      */
     function initialize(
-        uint256, /* initialSupply */ // Unused but kept to not break compatibility with Hyperlane tools like CLI and SDK
+        uint256, // initialSupply Unused but kept to not break compatibility with Hyperlane tools like CLI and SDK
         string memory tokenName,
         string memory tokenSymbol,
         address defaultHook,
