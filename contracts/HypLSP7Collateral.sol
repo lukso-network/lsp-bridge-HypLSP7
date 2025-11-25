@@ -3,14 +3,11 @@ pragma solidity >=0.8.22;
 
 // Interfaces
 import { ILSP7DigitalAsset as ILSP7 } from "@lukso/lsp7-contracts/contracts/ILSP7DigitalAsset.sol";
-import { ValueTransferBridge } from "@hyperlane-xyz/core/contracts/token/interfaces/ValueTransferBridge.sol";
+import { ITokenBridge } from "@hyperlane-xyz/core/contracts/interfaces/ITokenBridge.sol";
 
 // Modules
-import { FungibleTokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/FungibleTokenRouter.sol";
-import { MovableCollateralRouter } from "@hyperlane-xyz/core/contracts/token/libs/MovableCollateralRouter.sol";
-import { ValueTransferBridge } from "@hyperlane-xyz/core/contracts/token/interfaces/ValueTransferBridge.sol";
-// solhint-disable-next-line no-unused-import
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
+import { LpCollateralRouter } from "@hyperlane-xyz/core/contracts/token/libs/LpCollateralRouter.sol";
 
 // Libraries
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
@@ -19,14 +16,15 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { Quote } from "@hyperlane-xyz/core/contracts/interfaces/ITokenBridge.sol";
 
 /**
- * @title LSP7 version of the Hyperlane ERC20 Token Collateral that wraps an existing LSP7 with remote transfer
- * functionality
+ * @title LSP7 version of the Hyperlane ERC20 Token Collateral that wraps an existing LSP7 token 
+ * with remote transfer and rebalancing functionalities.
+ *
  * @dev See following links for reference:
  * - HypERC20Collateral implementation:
  * https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/main/solidity/contracts/token/HypERC20Collateral.sol
  * - LSP7 standard: https://github.com/lukso-network/LIPs/blob/main/LSPs/LSP-7-DigitalAsset.md
  */
-contract HypLSP7Collateral is MovableCollateralRouter {
+contract HypLSP7Collateral is LpCollateralRouter {
     // solhint-disable-next-line immutable-vars-naming
     ILSP7 public immutable wrappedToken;
 
@@ -35,7 +33,7 @@ contract HypLSP7Collateral is MovableCollateralRouter {
      *
      * @param lsp7_ Address of the token to keep as collateral
      */
-    constructor(address lsp7_, uint256 scale_, address mailbox_) FungibleTokenRouter(scale_, mailbox_) {
+    constructor(address lsp7_, uint256 scale_, address mailbox_) TokenRouter(scale_, mailbox_) {
         // solhint-disable-next-line custom-errors
         require(Address.isContract(lsp7_), "HypLSP7Collateral: invalid token");
         wrappedToken = ILSP7(lsp7_);
@@ -58,10 +56,11 @@ contract HypLSP7Collateral is MovableCollateralRouter {
         initializer
     {
         _MailboxClient_initialize(defaultHook, defaultInterchainSecurityModule, contractOwner);
+        _LpCollateralRouter_initialize();
     }
-
-    function balanceOf(address account) external view override returns (uint256) {
-        return wrappedToken.balanceOf(account);
+    
+    function token() public view override returns (address) {
+        return address(wrappedToken);
     }
 
     function quoteTransferRemote(
@@ -84,9 +83,8 @@ contract HypLSP7Collateral is MovableCollateralRouter {
      * @dev LSP7 compatible version of the `MovableCollateralRouter.approveTokenForBridge(...)` function.
      *
      * @custom:warning Note that the `approveTokenForBridge(...)` still exists in the ABI of this contract and can still
-     * be called
-     * by the contract owner. Calling `approveTokenForBridge(...)` will attempt to call `approve(address,uint256)`
-     * on the `token` contract passed as parameter.
+     * be called by the contract owner. Calling `approveTokenForBridge(...)` will attempt to call 
+     * `approve(address,uint256)` on the `token` contract passed as parameter.
      *
      * Since the `approve(address,uint256)` function that does not exist in the LSP7 ABI, it can lead to two scenarios:.
      *  - in the LSP7 contract, if no LSP17 extension is registered for the `approve(address,uint256)` selector
@@ -94,8 +92,8 @@ contract HypLSP7Collateral is MovableCollateralRouter {
      *  - in the LSP7 contract, if an LSP17 extension is registered for the `approve(address,uint256)` selector
      * (`0x095ea7b3`), it will forward the call to the LSP17 extension contract.
      */
-    function authorizeTokenForBridge(ILSP7 token, ValueTransferBridge bridge) external onlyOwner {
-        token.authorizeOperator(address(bridge), type(uint256).max, "");
+    function authorizeTokenForBridge(ILSP7 lsp7Token, ITokenBridge bridge) external onlyOwner {
+        lsp7Token.authorizeOperator(address(bridge), type(uint256).max, "");
     }
 
     /**
@@ -129,16 +127,17 @@ contract HypLSP7Collateral is MovableCollateralRouter {
         wrappedToken.transfer(address(this), recipient, amount, true, "");
     }
 
-    function _rebalance(
-        uint32 domain,
-        bytes32 recipient,
-        uint256 amount,
-        ValueTransferBridge bridge
-    )
-        internal
-        override
-    {
-        wrappedToken.authorizeOperator({ operator: address(bridge), amount: amount, operatorNotificationData: "" });
-        MovableCollateralRouter._rebalance({ domain: domain, recipient: recipient, amount: amount, bridge: bridge });
-    }
+    // TODO: to investigate as overriding behaviour may have changed in v10
+    // function _rebalance(
+    //     uint32 domain,
+    //     bytes32 recipient,
+    //     uint256 amount,
+    //     ITokenBridge bridge
+    // )
+    //     internal
+    //     override
+    // {
+    //     wrappedToken.authorizeOperator({ operator: address(bridge), amount: amount, operatorNotificationData: "" });
+    //     LpCollateralRouter._rebalance({ domain: domain, recipient: recipient, amount: amount, bridge: bridge });
+    // }
 }

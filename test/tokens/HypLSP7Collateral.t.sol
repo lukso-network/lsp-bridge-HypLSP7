@@ -13,7 +13,7 @@ import { LSP17ExtensionApproveTokenForBridgeMock } from "..//helpers/LSP17Extens
 
 // contracts to test
 import { HypLSP7Collateral } from "../../contracts/HypLSP7Collateral.sol";
-import { ValueTransferBridge } from "@hyperlane-xyz/core/contracts/token/interfaces/ValueTransferBridge.sol";
+import { ITokenBridge } from "@hyperlane-xyz/core/contracts/interfaces/ITokenBridge.sol";
 import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 // utilities
@@ -98,7 +98,7 @@ contract HypLSP7CollateralTest is Test {
 
         // initial setup for rebalancing
         vm.prank(WARP_ROUTE_OWNER);
-        lsp7Collateral.addBridge(destinationChainId, ValueTransferBridge(allowedBridge));
+        lsp7Collateral.addBridge(destinationChainId, ITokenBridge(allowedBridge));
 
         // CHECK `bridge` is not an operator for collateral contract
         uint256 allowanceBefore =
@@ -107,7 +107,7 @@ contract HypLSP7CollateralTest is Test {
 
         // Allow bridge to move funds from collateral
         vm.prank(WARP_ROUTE_OWNER);
-        lsp7Collateral.authorizeTokenForBridge(token, ValueTransferBridge(allowedBridge));
+        lsp7Collateral.authorizeTokenForBridge(token, ITokenBridge(allowedBridge));
 
         // CHECK `bridge` is now an operator for collateral contract
         uint256 allowanceAfter =
@@ -132,7 +132,7 @@ contract HypLSP7CollateralTest is Test {
 
         // initial setup for rebalancing
         vm.prank(WARP_ROUTE_OWNER);
-        lsp7Collateral.addBridge(destinationChainId, ValueTransferBridge(allowedBridge));
+        lsp7Collateral.addBridge(destinationChainId, ITokenBridge(allowedBridge));
 
         // CHECK `bridge` is not an operator for collateral contract
         uint256 allowanceBefore =
@@ -141,7 +141,7 @@ contract HypLSP7CollateralTest is Test {
 
         // Allow bridge to move funds from collateral
         vm.prank(WARP_ROUTE_OWNER);
-        lsp7Collateral.authorizeTokenForBridge(token, ValueTransferBridge(allowedBridge));
+        lsp7Collateral.authorizeTokenForBridge(token, ITokenBridge(allowedBridge));
 
         // CHECK `bridge` is now an operator for collateral contract
         uint256 allowanceAfter =
@@ -166,7 +166,7 @@ contract HypLSP7CollateralTest is Test {
 
         // initial setup for rebalancing
         vm.prank(WARP_ROUTE_OWNER);
-        lsp7Collateral.addBridge(destinationChainId, ValueTransferBridge(allowedBridge));
+        lsp7Collateral.addBridge(destinationChainId, ITokenBridge(allowedBridge));
 
         // CHECK `bridge` is not an operator for collateral contract
         uint256 allowanceBefore =
@@ -176,7 +176,7 @@ contract HypLSP7CollateralTest is Test {
         // Allow bridge to move funds from collateral
         vm.prank(caller);
         vm.expectRevert("Ownable: caller is not the owner");
-        lsp7Collateral.authorizeTokenForBridge(token, ValueTransferBridge(allowedBridge));
+        lsp7Collateral.authorizeTokenForBridge(token, ITokenBridge(allowedBridge));
 
         assertEq(
             token.authorizedAmountFor({ operator: allowedBridge, tokenOwner: address(lsp7Collateral) }), allowanceBefore
@@ -203,7 +203,7 @@ contract HypLSP7CollateralTest is Test {
 
         // initial setup for rebalancing
         vm.prank(WARP_ROUTE_OWNER);
-        lsp7Collateral.addBridge(destinationChainId, ValueTransferBridge(allowedBridge));
+        lsp7Collateral.addBridge(destinationChainId, ITokenBridge(allowedBridge));
 
         // CHECK `bridge` is not an operator for collateral contract
         uint256 allowanceBefore =
@@ -223,7 +223,7 @@ contract HypLSP7CollateralTest is Test {
         });
         lsp7Collateral.approveTokenForBridge(
             IERC20(address(token)), // forcing type casting to check revert behaviour
-            ValueTransferBridge(allowedBridge)
+            ITokenBridge(allowedBridge)
         );
 
         // CHECK `bridge` is still not an operator for tokens locked in the collateral contract, and no allowance has
@@ -291,14 +291,14 @@ contract HypLSP7CollateralTest is Test {
 
         // initial setup for rebalancing
         vm.prank(WARP_ROUTE_OWNER);
-        lsp7Collateral.addBridge(destinationChainId, ValueTransferBridge(allowedBridge));
+        lsp7Collateral.addBridge(destinationChainId, ITokenBridge(allowedBridge));
 
         vm.prank(WARP_ROUTE_OWNER);
         vm.expectEmit({ emitter: lsp17extension });
         emit LSP17ExtensionApproveTokenForBridgeMock.ApprovedOnExtensionCalled();
         lsp7Collateral.approveTokenForBridge(
             IERC20(address(token)), // forcing type casting to check revert behaviour
-            ValueTransferBridge(allowedBridge)
+            ITokenBridge(allowedBridge)
         );
     }
 

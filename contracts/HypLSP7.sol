@@ -3,7 +3,6 @@ pragma solidity >=0.8.22;
 
 // modules
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
-import { FungibleTokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/FungibleTokenRouter.sol";
 import { LSP7DigitalAssetInitAbstract } from "@lukso/lsp7-contracts/contracts/LSP7DigitalAssetInitAbstract.sol";
 
 // constants
@@ -11,16 +10,17 @@ import { _LSP4_TOKEN_TYPE_TOKEN } from "@lukso/lsp4-contracts/contracts/LSP4Cons
 
 /**
  * @title LSP7 version of the Hyperlane ERC20 Token Router
+ *
  * @dev See following links for reference:
  * - HypERC20 implementation:
  * https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/main/solidity/contracts/token/HypERC20.sol
  * - LSP7 standard: https://github.com/lukso-network/LIPs/blob/main/LSPs/LSP-7-DigitalAsset.md
  */
-contract HypLSP7 is LSP7DigitalAssetInitAbstract, FungibleTokenRouter {
+contract HypLSP7 is LSP7DigitalAssetInitAbstract, TokenRouter {
     // solhint-disable-next-line immutable-vars-naming
     uint8 private immutable _decimals;
 
-    constructor(uint8 decimals_, uint256 scale_, address mailbox_) FungibleTokenRouter(scale_, mailbox_) {
+    constructor(uint8 decimals_, uint256 scale_, address mailbox_) TokenRouter(scale_, mailbox_) {
         _decimals = decimals_;
     }
 
@@ -68,14 +68,11 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, FungibleTokenRouter {
         return _decimals;
     }
 
-    function balanceOf(address account)
-        public
-        view
-        virtual
-        override(TokenRouter, LSP7DigitalAssetInitAbstract)
-        returns (uint256)
-    {
-        return LSP7DigitalAssetInitAbstract.balanceOf(account);
+    /**
+     * @inheritdoc TokenRouter
+     */
+    function token() public view override returns (address) {
+        return address(this);
     }
 
     /**
@@ -85,9 +82,8 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, FungibleTokenRouter {
      *
      * @inheritdoc TokenRouter
      */
-    function _transferFromSender(uint256 amount) internal override returns (bytes memory) {
+    function _transferFromSender(uint256 amount) internal override {
         LSP7DigitalAssetInitAbstract._burn(msg.sender, amount, "");
-        return bytes(""); // no metadata
     }
 
     /**
