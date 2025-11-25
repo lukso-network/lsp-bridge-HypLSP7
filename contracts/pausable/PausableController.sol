@@ -28,7 +28,7 @@ abstract contract PausableController is OwnableUpgradeable, PausableUpgradeable 
     bool public disabledForever;
 
     modifier onlyOwnerOrPausableController() {
-        require(msg.sender == pausableController || msg.sender == owner(), NotPausableControllerOrOwner(msg.sender));
+        _onlyOwnerOrPausableController();
         _;
     }
 
@@ -70,5 +70,9 @@ abstract contract PausableController is OwnableUpgradeable, PausableUpgradeable 
         pausableController = newPausableController;
 
         emit PausableControllerChanged(previousPausableController, newPausableController);
+    }
+
+    function _onlyOwnerOrPausableController() internal view {
+        require(msg.sender == pausableController || msg.sender == owner(), NotPausableControllerOrOwner(msg.sender));
     }
 }
