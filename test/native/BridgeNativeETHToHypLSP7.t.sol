@@ -159,9 +159,9 @@ contract BridgeNativeETHToHypLSP7 is HypTokenTest {
 
         vm.expectRevert("Native: amount exceeds msg.value");
         vm.prank(ALICE);
-        nativeCollateral.transferRemote{
-            value: TRANSFER_AMOUNT + REQUIRED_INTERCHAIN_GAS_PAYMENT
-        }(DESTINATION_CHAIN_ID, TypeCasts.addressToBytes32(BOB), invalidTransferAmount);
+        nativeCollateral.transferRemote{ value: TRANSFER_AMOUNT + REQUIRED_INTERCHAIN_GAS_PAYMENT }(
+            DESTINATION_CHAIN_ID, TypeCasts.addressToBytes32(BOB), invalidTransferAmount
+        );
     }
 
     function test_BridgeTxRevertsWhenAmountExceedsValue(uint256 nativeValue) public {
@@ -173,8 +173,8 @@ contract BridgeNativeETHToHypLSP7 is HypTokenTest {
         nativeCollateral.transferRemote{ value: nativeValue }(DESTINATION_CHAIN_ID, encodedRecipient, nativeValue + 1);
 
         vm.expectRevert("Native: amount exceeds msg.value");
-        nativeCollateral.transferRemote{
-            value: nativeValue
-        }(DESTINATION_CHAIN_ID, encodedRecipient, nativeValue + 1, bytes(""), address(0));
+        nativeCollateral.transferRemote{ value: nativeValue }(
+            DESTINATION_CHAIN_ID, encodedRecipient, nativeValue + 1, bytes(""), address(0)
+        );
     }
 }

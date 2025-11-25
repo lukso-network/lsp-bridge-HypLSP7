@@ -195,9 +195,9 @@ contract BridgeLSP7ToHypERC20 is HypTokenTest {
 
         vm.expectRevert(abi.encodeWithSelector(LSP7AmountExceedsBalance.selector, aliceBalance, ALICE, transferAmount));
         vm.prank(ALICE);
-        lsp7Collateral.transferRemote{
-            value: REQUIRED_INTERCHAIN_GAS_PAYMENT
-        }(DESTINATION_CHAIN_ID, TypeCasts.addressToBytes32(BOB), transferAmount);
+        lsp7Collateral.transferRemote{ value: REQUIRED_INTERCHAIN_GAS_PAYMENT }(
+            DESTINATION_CHAIN_ID, TypeCasts.addressToBytes32(BOB), transferAmount
+        );
     }
 
     function test_BridgeTxRevertsIfNoAllowanceGivenToCollateral(uint256 transferAmount) public {
@@ -214,9 +214,9 @@ contract BridgeLSP7ToHypERC20 is HypTokenTest {
             )
         );
         vm.prank(ALICE);
-        lsp7Collateral.transferRemote{
-            value: REQUIRED_INTERCHAIN_GAS_PAYMENT
-        }(DESTINATION_CHAIN_ID, TypeCasts.addressToBytes32(BOB), transferAmount);
+        lsp7Collateral.transferRemote{ value: REQUIRED_INTERCHAIN_GAS_PAYMENT }(
+            DESTINATION_CHAIN_ID, TypeCasts.addressToBytes32(BOB), transferAmount
+        );
 
         // CHECK the balances did not change
         assertEq(token.balanceOf(ALICE), aliceBalance);
@@ -251,9 +251,9 @@ contract BridgeLSP7ToHypERC20 is HypTokenTest {
             )
         );
         vm.prank(ALICE);
-        lsp7Collateral.transferRemote{
-            value: REQUIRED_INTERCHAIN_GAS_PAYMENT
-        }(DESTINATION_CHAIN_ID, TypeCasts.addressToBytes32(BOB), invalidTransferAmount);
+        lsp7Collateral.transferRemote{ value: REQUIRED_INTERCHAIN_GAS_PAYMENT }(
+            DESTINATION_CHAIN_ID, TypeCasts.addressToBytes32(BOB), invalidTransferAmount
+        );
 
         // CHECK the balances did not change
         assertEq(token.balanceOf(ALICE), aliceBalance);
@@ -331,9 +331,9 @@ contract BridgeLSP7ToHypERC20 is HypTokenTest {
 
         vm.expectRevert("ERC20: burn amount exceeds balance");
         vm.prank(BOB);
-        syntheticToken.transferRemote{
-            value: REQUIRED_INTERCHAIN_GAS_PAYMENT
-        }(ORIGIN_CHAIN_ID, TypeCasts.addressToBytes32(ALICE), transferAmount);
+        syntheticToken.transferRemote{ value: REQUIRED_INTERCHAIN_GAS_PAYMENT }(
+            ORIGIN_CHAIN_ID, TypeCasts.addressToBytes32(ALICE), transferAmount
+        );
     }
 
     function test_BenchmarkOverheadGasUsageWhenBridgingBack() public {

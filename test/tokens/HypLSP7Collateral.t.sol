@@ -115,12 +115,7 @@ contract HypLSP7CollateralTest is Test {
         assertEq(allowanceAfter, type(uint256).max);
     }
 
-    function test_FuzzOwnerCanCallAuthorizeTokenForBridge(
-        uint32 destinationChainId,
-        address allowedBridge
-    )
-        public
-    {
+    function test_FuzzOwnerCanCallAuthorizeTokenForBridge(uint32 destinationChainId, address allowedBridge) public {
         vm.assume(destinationChainId != CHAIN_ID);
         vm.assume(allowedBridge != address(0));
         assumeNotPrecompile(allowedBridge);

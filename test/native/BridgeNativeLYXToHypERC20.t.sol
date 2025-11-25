@@ -162,9 +162,9 @@ contract BridgeNativeLYXToHypERC20 is HypTokenTest {
 
         vm.expectRevert("Native: amount exceeds msg.value");
         vm.prank(ALICE);
-        nativeCollateral.transferRemote{
-            value: TRANSFER_AMOUNT + REQUIRED_INTERCHAIN_GAS_PAYMENT
-        }(DESTINATION_CHAIN_ID, TypeCasts.addressToBytes32(BOB), invalidTransferAmount);
+        nativeCollateral.transferRemote{ value: TRANSFER_AMOUNT + REQUIRED_INTERCHAIN_GAS_PAYMENT }(
+            DESTINATION_CHAIN_ID, TypeCasts.addressToBytes32(BOB), invalidTransferAmount
+        );
     }
 
     function test_BridgeTxRevertsWhenAmountExceedsValue(uint256 nativeValue) public {
@@ -176,9 +176,9 @@ contract BridgeNativeLYXToHypERC20 is HypTokenTest {
         nativeCollateral.transferRemote{ value: nativeValue }(DESTINATION_CHAIN_ID, encodedRecipient, nativeValue + 1);
 
         vm.expectRevert("Native: amount exceeds msg.value");
-        nativeCollateral.transferRemote{
-            value: nativeValue
-        }(DESTINATION_CHAIN_ID, encodedRecipient, nativeValue + 1, bytes(""), address(0));
+        nativeCollateral.transferRemote{ value: nativeValue }(
+            DESTINATION_CHAIN_ID, encodedRecipient, nativeValue + 1, bytes(""), address(0)
+        );
     }
 
     function test_ConnectToNewChainAndBridge() public {
@@ -215,9 +215,9 @@ contract BridgeNativeLYXToHypERC20 is HypTokenTest {
         // CHECK we cannot bridge
         vm.prank(ALICE);
         vm.expectRevert("No router enrolled for domain: 8453");
-        originTokenRouter.transferRemote{
-            value: TRANSFER_AMOUNT + REQUIRED_INTERCHAIN_GAS_PAYMENT
-        }({ _destination: newChainId, _recipient: TypeCasts.addressToBytes32(BOB), _amountOrId: TRANSFER_AMOUNT });
+        originTokenRouter.transferRemote{ value: TRANSFER_AMOUNT + REQUIRED_INTERCHAIN_GAS_PAYMENT }({
+            _destination: newChainId, _recipient: TypeCasts.addressToBytes32(BOB), _amountOrId: TRANSFER_AMOUNT
+        });
 
         // 1. Connect the origin router to the new chain
         vm.prank(WARP_ROUTE_OWNER);
@@ -243,9 +243,9 @@ contract BridgeNativeLYXToHypERC20 is HypTokenTest {
         vm.prank(ALICE);
         vm.expectEmit({ emitter: address(nativeCollateral) }); // Check emitted event on source chain
         emit TokenRouter.SentTransferRemote(newChainId, TypeCasts.addressToBytes32(BOB), TRANSFER_AMOUNT);
-        originTokenRouter.transferRemote{
-            value: TRANSFER_AMOUNT + REQUIRED_INTERCHAIN_GAS_PAYMENT
-        }({ _destination: newChainId, _recipient: TypeCasts.addressToBytes32(BOB), _amountOrId: TRANSFER_AMOUNT });
+        originTokenRouter.transferRemote{ value: TRANSFER_AMOUNT + REQUIRED_INTERCHAIN_GAS_PAYMENT }({
+            _destination: newChainId, _recipient: TypeCasts.addressToBytes32(BOB), _amountOrId: TRANSFER_AMOUNT
+        });
 
         // process the bridge transaction on the destination chain
         vm.prank(address(newChainMailbox));

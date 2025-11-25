@@ -137,13 +137,7 @@ abstract contract HypTokenTest is Test {
         _processBridgeTxOnDestinationChain(BOB, _amount);
     }
 
-    function _performBridgeTxWithCustomGasConfig(
-        uint256 _msgValue,
-        uint256 _amount,
-        uint256 _gasOverhead
-    )
-        internal
-    {
+    function _performBridgeTxWithCustomGasConfig(uint256 _msgValue, uint256 _amount, uint256 _gasOverhead) internal {
         _performBridgeTx(_msgValue + _gasOverhead, _amount);
     }
 
@@ -165,9 +159,9 @@ abstract contract HypTokenTest is Test {
         assertNotEq(address(originTokenRouter), address(destinationTokenRouter));
 
         vm.prank(ALICE);
-        messageId = originTokenRouter.transferRemote{
-            value: _msgValue
-        }(DESTINATION_CHAIN_ID, BOB.addressToBytes32(), _amount, _hookMetadata, address(_hook));
+        messageId = originTokenRouter.transferRemote{ value: _msgValue }(
+            DESTINATION_CHAIN_ID, BOB.addressToBytes32(), _amount, _hookMetadata, address(_hook)
+        );
 
         _processBridgeTxOnDestinationChain(BOB, _amount);
     }

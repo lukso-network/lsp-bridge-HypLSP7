@@ -148,9 +148,9 @@ contract PausableBridgeNativeLYXToHypERC20 is BridgeNativeLYXToHypERC20, Pausabl
         vm.prank(ALICE);
         vm.expectEmit({ emitter: address(nativeCollateral) });
         emit TokenRouter.SentTransferRemote(DESTINATION_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT);
-        nativeCollateral.transferRemote{
-            value: msgValue
-        }(DESTINATION_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT);
+        nativeCollateral.transferRemote{ value: msgValue }(
+            DESTINATION_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT
+        );
 
         bytes memory message = HypTokenTest._prepareProcessCall(TRANSFER_AMOUNT);
 
@@ -165,9 +165,9 @@ contract PausableBridgeNativeLYXToHypERC20 is BridgeNativeLYXToHypERC20, Pausabl
 
         vm.prank(ALICE);
         vm.expectRevert("Pausable: paused");
-        nativeCollateral.transferRemote{
-            value: _msgValue
-        }(DESTINATION_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT);
+        nativeCollateral.transferRemote{ value: _msgValue }(
+            DESTINATION_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT
+        );
     }
 
     function test_BridgeTxRevertsOnDestinationWhenPausedOnDestination() public {

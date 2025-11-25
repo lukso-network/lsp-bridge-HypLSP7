@@ -185,9 +185,9 @@ contract PausableBridgeERC20ToHypLSP7 is BridgeERC20ToHypLSP7, PausableControlle
 
         vm.prank(ALICE);
         vm.expectRevert("Pausable: paused");
-        erc20Collateral.transferRemote{
-            value: REQUIRED_INTERCHAIN_GAS_PAYMENT
-        }(DESTINATION_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT);
+        erc20Collateral.transferRemote{ value: REQUIRED_INTERCHAIN_GAS_PAYMENT }(
+            DESTINATION_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT
+        );
         assertEq(token.balanceOf(ALICE), balanceBefore);
         assertEq(token.balanceOf(address(erc20Collateral)), 0);
     }
@@ -205,9 +205,9 @@ contract PausableBridgeERC20ToHypLSP7 is BridgeERC20ToHypLSP7, PausableControlle
         assertTrue(destinationPausableTokenRouter.paused());
 
         vm.prank(ALICE);
-        erc20Collateral.transferRemote{
-            value: REQUIRED_INTERCHAIN_GAS_PAYMENT
-        }(DESTINATION_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT);
+        erc20Collateral.transferRemote{ value: REQUIRED_INTERCHAIN_GAS_PAYMENT }(
+            DESTINATION_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT
+        );
         assertEq(token.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
         assertEq(token.balanceOf(address(erc20Collateral)), TRANSFER_AMOUNT);
 
@@ -231,9 +231,9 @@ contract PausableBridgeERC20ToHypLSP7 is BridgeERC20ToHypLSP7, PausableControlle
 
         vm.expectRevert("Pausable: paused");
         vm.prank(ALICE);
-        syntheticToken.transferRemote{
-            value: REQUIRED_INTERCHAIN_GAS_PAYMENT
-        }(ORIGIN_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT);
+        syntheticToken.transferRemote{ value: REQUIRED_INTERCHAIN_GAS_PAYMENT }(
+            ORIGIN_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT
+        );
     }
 
     function test_BridgeBackTxRevertsOnOriginWhenPausedOnOrigin() public {

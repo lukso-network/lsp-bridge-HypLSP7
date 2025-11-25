@@ -139,9 +139,9 @@ contract PausableBridgeLSP7ToHypERC20 is BridgeLSP7ToHypERC20, PausableControlle
         assertTrue(destinationPausableTokenRouter.paused());
 
         vm.prank(ALICE);
-        lsp7Collateral.transferRemote{
-            value: REQUIRED_INTERCHAIN_GAS_PAYMENT
-        }(DESTINATION_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT);
+        lsp7Collateral.transferRemote{ value: REQUIRED_INTERCHAIN_GAS_PAYMENT }(
+            DESTINATION_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT
+        );
         assertEq(token.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
         assertEq(token.balanceOf(address(lsp7Collateral)), TRANSFER_AMOUNT);
 
@@ -165,9 +165,9 @@ contract PausableBridgeLSP7ToHypERC20 is BridgeLSP7ToHypERC20, PausableControlle
 
         vm.expectRevert("Pausable: paused");
         vm.prank(ALICE);
-        syntheticToken.transferRemote{
-            value: REQUIRED_INTERCHAIN_GAS_PAYMENT
-        }(ORIGIN_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT);
+        syntheticToken.transferRemote{ value: REQUIRED_INTERCHAIN_GAS_PAYMENT }(
+            ORIGIN_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT
+        );
     }
 
     function test_BridgeBackTxRevertsOnOriginWhenPausedOnOrigin() public {
