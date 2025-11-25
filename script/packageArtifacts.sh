@@ -19,6 +19,13 @@ CONTRACTS=(
   "HypLSP7"
   "HypLSP8Collateral"
   "HypLSP8"
+  "HypERC20CollateralPausable"
+  "HypERC20Pausable"
+  "HypLSP7CollateralPausable"
+  "HypLSP7Pausable"
+  "HypLSP8CollateralPausable"
+  "HypLSP8Pausable"
+  "HypNativePausable"
 )
 
 # Function to check and copy artifact
