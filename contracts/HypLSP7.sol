@@ -7,7 +7,7 @@ import { FungibleTokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/Fu
 import { LSP7DigitalAssetInitAbstract } from "@lukso/lsp7-contracts/contracts/LSP7DigitalAssetInitAbstract.sol";
 
 // constants
-import { _LSP4_TOKEN_TYPE_TOKEN, _LSP4_METADATA_KEY } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
+import { _LSP4_TOKEN_TYPE_TOKEN } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
 
 /**
  * @title LSP7 version of the Hyperlane ERC20 Token Router

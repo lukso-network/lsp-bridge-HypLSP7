@@ -6,10 +6,11 @@ import { ILSP7DigitalAsset as ILSP7 } from "@lukso/lsp7-contracts/contracts/ILSP
 import { ValueTransferBridge } from "@hyperlane-xyz/core/contracts/token/interfaces/ValueTransferBridge.sol";
 
 // Modules
-import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
 import { FungibleTokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/FungibleTokenRouter.sol";
 import { MovableCollateralRouter } from "@hyperlane-xyz/core/contracts/token/libs/MovableCollateralRouter.sol";
 import { ValueTransferBridge } from "@hyperlane-xyz/core/contracts/token/interfaces/ValueTransferBridge.sol";
+// solhint-disable-next-line no-unused-import
+import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
 
 // Libraries
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
