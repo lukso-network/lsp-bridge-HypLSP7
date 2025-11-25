@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.13;
 
 import { TransparentUpgradeableProxy } from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
@@ -88,9 +88,7 @@ contract PausableBridgeLSP7ToHypERC20 is BridgeLSP7ToHypERC20, PausableControlle
         PausableController(address(destinationPausableTokenRouter)).changePausableController(PAUSABLE_CONTROLLER);
     }
 
-    function test_CanTransferSyntheticTokensBetweenAddressesOnDestinationChainEvenIfSyntheticTokenIsPaused(
-        uint256 localTransferAmount
-    )
+    function test_CanTransferSyntheticTokensBetweenAddressesOnDestinationChainEvenIfSyntheticTokenIsPaused(uint256 localTransferAmount)
         public
     {
         assertFalse(destinationPausableTokenRouter.paused());

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.8.22;
 
 // modules
@@ -7,7 +7,7 @@ import { FungibleTokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/Fu
 import { LSP7DigitalAssetInitAbstract } from "@lukso/lsp7-contracts/contracts/LSP7DigitalAssetInitAbstract.sol";
 
 // constants
-import { _LSP4_TOKEN_TYPE_TOKEN, _LSP4_METADATA_KEY } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
+import { _LSP4_TOKEN_TYPE_TOKEN } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
 
 /**
  * @title LSP7 version of the Hyperlane ERC20 Token Router
@@ -36,7 +36,7 @@ contract HypLSP7 is LSP7DigitalAssetInitAbstract, FungibleTokenRouter {
      * while there is no tokens locked in the collateral contract on the source chain.
      */
     function initialize(
-        uint256, /* initialSupply */ // Unused but kept to not break compatibility with Hyperlane tools like CLI and SDK
+        uint256, // initialSupply Unused but kept to not break compatibility with Hyperlane tools like CLI and SDK
         string memory tokenName,
         string memory tokenSymbol,
         address defaultHook,

@@ -1,12 +1,13 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.8.22;
 
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
 
-import { LSP8IdentifiableDigitalAssetInitAbstract } from
-    "@lukso/lsp8-contracts/contracts/LSP8IdentifiableDigitalAssetInitAbstract.sol";
+import {
+    LSP8IdentifiableDigitalAssetInitAbstract
+} from "@lukso/lsp8-contracts/contracts/LSP8IdentifiableDigitalAssetInitAbstract.sol";
 
-import { _LSP4_TOKEN_TYPE_COLLECTION, _LSP4_METADATA_KEY } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
+import { _LSP4_TOKEN_TYPE_COLLECTION } from "@lukso/lsp4-contracts/contracts/LSP4Constants.sol";
 
 import { _LSP8_TOKENID_FORMAT_NUMBER } from "@lukso/lsp8-contracts/contracts/LSP8Constants.sol";
 
@@ -31,7 +32,7 @@ contract HypLSP8 is LSP8IdentifiableDigitalAssetInitAbstract, TokenRouter {
      * @param tokenSymbol The symbol of the token.
      */
     function initialize(
-        uint256, /* mintAmount */ // Unused but kept to not break compatibility with Hyperlane tools like CLI and SDK,
+        uint256, // mintAmount Unused but kept to not break compatibility with Hyperlane tools like CLI and SDK,
         string memory tokenName,
         string memory tokenSymbol,
         address defaultHook,

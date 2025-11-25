@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.13;
 
 import { LSP8IdentifiableDigitalAsset } from "@lukso/lsp8-contracts/contracts/LSP8IdentifiableDigitalAsset.sol";
@@ -55,12 +55,25 @@ contract LSP8Mock is LSP8IdentifiableDigitalAsset {
         }
     }
 
-    function setData(bytes32, /* tokenId */ bytes32 dataKey, bytes memory dataValue) public {
+    function setData(
+        bytes32,
+        /* tokenId */
+        bytes32 dataKey,
+        bytes memory dataValue
+    )
+        public
+    {
         _setData(dataKey, dataValue);
     }
 
     // Override for testing purposes - allows easy token ID verification
-    function tokenURI(bytes32 /* tokenId */ ) public pure returns (string memory) {
+    function tokenURI(
+        bytes32 /* tokenId */
+    )
+        public
+        pure
+        returns (string memory)
+    {
         return "TEST-BASE-URI";
     }
 

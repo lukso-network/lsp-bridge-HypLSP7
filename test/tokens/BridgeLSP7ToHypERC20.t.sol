@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.13;
 
 import { console } from "forge-std/src/console.sol";
@@ -18,7 +18,8 @@ import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 
 // errors
 import {
-    LSP7AmountExceedsAuthorizedAmount, LSP7AmountExceedsBalance
+    LSP7AmountExceedsAuthorizedAmount,
+    LSP7AmountExceedsBalance
 } from "@lukso/lsp7-contracts/contracts/LSP7Errors.sol";
 
 /**

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.13;
 
 import { HypTokenTest } from "../helpers/HypTokenTest.sol";
@@ -112,8 +112,7 @@ contract BridgeNativeETHToHypLSP7 is HypTokenTest {
         uint256 balanceBefore = ALICE.balance;
 
         _performBridgeTxAndCheckSentTransferRemoteEvent({
-            _msgValue: TRANSFER_AMOUNT + REQUIRED_INTERCHAIN_GAS_PAYMENT,
-            _amount: TRANSFER_AMOUNT
+            _msgValue: TRANSFER_AMOUNT + REQUIRED_INTERCHAIN_GAS_PAYMENT, _amount: TRANSFER_AMOUNT
         });
         assertEq(ALICE.balance, balanceBefore - TRANSFER_AMOUNT - REQUIRED_INTERCHAIN_GAS_PAYMENT);
 

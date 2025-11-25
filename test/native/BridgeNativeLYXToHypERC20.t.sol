@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.13;
 
 // test utilities
@@ -115,8 +115,7 @@ contract BridgeNativeLYXToHypERC20 is HypTokenTest {
         uint256 balanceBefore = ALICE.balance;
 
         _performBridgeTxAndCheckSentTransferRemoteEvent({
-            _msgValue: TRANSFER_AMOUNT + REQUIRED_INTERCHAIN_GAS_PAYMENT,
-            _amount: TRANSFER_AMOUNT
+            _msgValue: TRANSFER_AMOUNT + REQUIRED_INTERCHAIN_GAS_PAYMENT, _amount: TRANSFER_AMOUNT
         });
         assertEq(ALICE.balance, balanceBefore - TRANSFER_AMOUNT - REQUIRED_INTERCHAIN_GAS_PAYMENT);
 
@@ -217,9 +216,7 @@ contract BridgeNativeLYXToHypERC20 is HypTokenTest {
         vm.prank(ALICE);
         vm.expectRevert("No router enrolled for domain: 8453");
         originTokenRouter.transferRemote{ value: TRANSFER_AMOUNT + REQUIRED_INTERCHAIN_GAS_PAYMENT }({
-            _destination: newChainId,
-            _recipient: TypeCasts.addressToBytes32(BOB),
-            _amountOrId: TRANSFER_AMOUNT
+            _destination: newChainId, _recipient: TypeCasts.addressToBytes32(BOB), _amountOrId: TRANSFER_AMOUNT
         });
 
         // 1. Connect the origin router to the new chain
@@ -247,9 +244,7 @@ contract BridgeNativeLYXToHypERC20 is HypTokenTest {
         vm.expectEmit({ emitter: address(nativeCollateral) }); // Check emitted event on source chain
         emit TokenRouter.SentTransferRemote(newChainId, TypeCasts.addressToBytes32(BOB), TRANSFER_AMOUNT);
         originTokenRouter.transferRemote{ value: TRANSFER_AMOUNT + REQUIRED_INTERCHAIN_GAS_PAYMENT }({
-            _destination: newChainId,
-            _recipient: TypeCasts.addressToBytes32(BOB),
-            _amountOrId: TRANSFER_AMOUNT
+            _destination: newChainId, _recipient: TypeCasts.addressToBytes32(BOB), _amountOrId: TRANSFER_AMOUNT
         });
 
         // process the bridge transaction on the destination chain

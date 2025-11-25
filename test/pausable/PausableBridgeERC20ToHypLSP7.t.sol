@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.13;
 
 import { TransparentUpgradeableProxy } from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
@@ -133,9 +133,7 @@ contract PausableBridgeERC20ToHypLSP7 is BridgeERC20ToHypLSP7, PausableControlle
         assertEq(destinationPausableTokenRouter.owner(), newOwner); // CHECK new owner set
     }
 
-    function test_CanTransferSyntheticTokensBetweenAddressesOnDestinationChainEvenIfSyntheticTokenIsPaused(
-        uint256 localTransferAmount
-    )
+    function test_CanTransferSyntheticTokensBetweenAddressesOnDestinationChainEvenIfSyntheticTokenIsPaused(uint256 localTransferAmount)
         public
     {
         assertFalse(destinationPausableTokenRouter.paused());
@@ -257,9 +255,8 @@ contract PausableBridgeERC20ToHypLSP7 is BridgeERC20ToHypLSP7, PausableControlle
 
     function test_CanBridgeBackWhenNoPausableControllerRegistered() public {
         vm.prank(WARP_ROUTE_OWNER);
-        PausableController(address(erc20Collateral)).changePausableController(
-            0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF
-        );
+        PausableController(address(erc20Collateral))
+            .changePausableController(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF);
 
         // assume some erc20 tokens are locked in the collateral contract
         // and need to be unlocked to be able to bridge back

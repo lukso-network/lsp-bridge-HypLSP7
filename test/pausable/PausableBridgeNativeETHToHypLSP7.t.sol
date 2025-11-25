@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.13;
 
 import { TransparentUpgradeableProxy } from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
@@ -144,17 +144,14 @@ contract PausableBridgeNativeETHToHypLSP7 is BridgeNativeETHToHypLSP7, PausableC
         assertEq(destinationPausableTokenRouter.owner(), newOwner); // CHECK new owner set
     }
 
-    function test_CanTransferSyntheticTokensBetweenAddressesOnDestinationChainEvenIfSyntheticTokenIsPaused(
-        uint256 localTransferAmount
-    )
+    function test_CanTransferSyntheticTokensBetweenAddressesOnDestinationChainEvenIfSyntheticTokenIsPaused(uint256 localTransferAmount)
         public
     {
         assertFalse(destinationPausableTokenRouter.paused());
 
         // Bridge tokens to BOB first on destination chain
         _performBridgeTxAndCheckSentTransferRemoteEvent({
-            _msgValue: REQUIRED_INTERCHAIN_GAS_PAYMENT + TRANSFER_AMOUNT,
-            _amount: TRANSFER_AMOUNT
+            _msgValue: REQUIRED_INTERCHAIN_GAS_PAYMENT + TRANSFER_AMOUNT, _amount: TRANSFER_AMOUNT
         });
 
         uint256 bobSyntheticTokenBalance = syntheticToken.balanceOf(BOB);
@@ -270,9 +267,8 @@ contract PausableBridgeNativeETHToHypLSP7 is BridgeNativeETHToHypLSP7, PausableC
 
     function test_CanBridgeBackWhenNoPausableControllerRegistered() public {
         vm.prank(WARP_ROUTE_OWNER);
-        PausableController(address(nativeCollateral)).changePausableController(
-            0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF
-        );
+        PausableController(address(nativeCollateral))
+            .changePausableController(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF);
 
         // assume some native tokens are locked in the native collateral contract
         // and need to be unlocked to be able to bridge back

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.13;
 
 import { LSP17Extension } from "@lukso/lsp17contractextension-contracts/contracts/LSP17Extension.sol";
@@ -23,7 +23,14 @@ contract LSP17ExtensionApproveTokenForBridgeMock is LSP17Extension {
         return token.authorizedAmountFor({ operator: spender, tokenOwner: owner });
     }
 
-    function approve(address, /* spender */ uint256 /* value */ ) external returns (bool) {
+    function approve(
+        address,
+        /* spender */
+        uint256 /* value */
+    )
+        external
+        returns (bool)
+    {
         emit ApprovedOnExtensionCalled();
         return true;
     }

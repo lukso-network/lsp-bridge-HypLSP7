@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.8.22;
 
 // Interfaces
-import { ILSP8IdentifiableDigitalAsset as ILSP8 } from
-    "@lukso/lsp8-contracts/contracts/ILSP8IdentifiableDigitalAsset.sol";
+import {
+    ILSP8IdentifiableDigitalAsset as ILSP8
+} from "@lukso/lsp8-contracts/contracts/ILSP8IdentifiableDigitalAsset.sol";
 
 // Modules
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
