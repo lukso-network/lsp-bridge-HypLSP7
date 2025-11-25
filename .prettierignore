@@ -22,3 +22,6 @@ yarn.lock
 /typechain
 /abi.ts
 /dist
+
+# VS Code extension
+/.wake
