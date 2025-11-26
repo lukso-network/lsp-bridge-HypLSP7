@@ -41,9 +41,10 @@ If this is your first time with Foundry, check out the [installation instruction
 Foundry typically uses git submodules, but this template uses Node.js packages for better scalability.
 
 1. Install dependencies:
-   ```sh
-   bun install # install Solhint, Prettier, and other Node.js deps
-   ```
+
+```sh
+bun install
+```
 
 To add a new dependency:
 

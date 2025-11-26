@@ -2,28 +2,26 @@
 
 ## [0.2.0](https://github.com/lukso-network/lsp-bridge-HypLSP7/compare/v0.1.1...v0.2.0) (2025-11-26)
 
-
 ### ⚠ BREAKING CHANGES
 
-* add pausable version of token router contracts in npm package
+- add pausable version of token router contracts in npm package
 
 ### Features
 
-* add pausable version of token router contracts in npm package ([3e21f66](https://github.com/lukso-network/lsp-bridge-HypLSP7/commit/3e21f66168c6f1b0a8566944ae9fde1ed7f50e6d))
-
+- add pausable version of token router contracts in npm package ([3e21f66](https://github.com/lukso-network/lsp-bridge-HypLSP7/commit/3e21f66168c6f1b0a8566944ae9fde1ed7f50e6d))
 
 ### Miscellaneous
 
-* add `/.wake` folder to prettier ignore ([34dee9b](https://github.com/lukso-network/lsp-bridge-HypLSP7/commit/34dee9bae952a350bdcef9968fcdf060b20356de))
-* add extra entry to `.editorconfig` ([4b7e0a7](https://github.com/lukso-network/lsp-bridge-HypLSP7/commit/4b7e0a7fa7c01f3e75a384201c74a9b40422ecda))
-* apply prettier formatting ([884b7e6](https://github.com/lukso-network/lsp-bridge-HypLSP7/commit/884b7e6b71fff23188aeb98fe454061bdedc1b7c))
-* fix prettier and forge formatting ([7cc406a](https://github.com/lukso-network/lsp-bridge-HypLSP7/commit/7cc406a9a4e09695d3d8fc3d92ea1275c74d885a))
-* fix solhint and forge linter warnings ([cacd650](https://github.com/lukso-network/lsp-bridge-HypLSP7/commit/cacd65019ec2a05a5a6584d8538e4b6cbb9c7a29))
-* fix solhint linter errors ([5a6e147](https://github.com/lukso-network/lsp-bridge-HypLSP7/commit/5a6e14712660111096f5c2f8186413f7f7dda921))
-* fix Solidity formatting ([08507fe](https://github.com/lukso-network/lsp-bridge-HypLSP7/commit/08507fe4a34f86380cf0399c515afd83869bcd94))
-* remove solidity override in `.prettierrc.json` ([eb379a2](https://github.com/lukso-network/lsp-bridge-HypLSP7/commit/eb379a23a30f5f957e8a218bf584a14b8daf2e55))
-* rename `test/` folder to plural `tests/` ([77f2fce](https://github.com/lukso-network/lsp-bridge-HypLSP7/commit/77f2fcefa2f6873b29a97a25b4584b604d9c27ae))
-* update software license to Apache-2.0 ([f1c2d36](https://github.com/lukso-network/lsp-bridge-HypLSP7/commit/f1c2d362508b70934acf17391c8663e9c163d4f5))
+- add `/.wake` folder to prettier ignore ([34dee9b](https://github.com/lukso-network/lsp-bridge-HypLSP7/commit/34dee9bae952a350bdcef9968fcdf060b20356de))
+- add extra entry to `.editorconfig` ([4b7e0a7](https://github.com/lukso-network/lsp-bridge-HypLSP7/commit/4b7e0a7fa7c01f3e75a384201c74a9b40422ecda))
+- apply prettier formatting ([884b7e6](https://github.com/lukso-network/lsp-bridge-HypLSP7/commit/884b7e6b71fff23188aeb98fe454061bdedc1b7c))
+- fix prettier and forge formatting ([7cc406a](https://github.com/lukso-network/lsp-bridge-HypLSP7/commit/7cc406a9a4e09695d3d8fc3d92ea1275c74d885a))
+- fix solhint and forge linter warnings ([cacd650](https://github.com/lukso-network/lsp-bridge-HypLSP7/commit/cacd65019ec2a05a5a6584d8538e4b6cbb9c7a29))
+- fix solhint linter errors ([5a6e147](https://github.com/lukso-network/lsp-bridge-HypLSP7/commit/5a6e14712660111096f5c2f8186413f7f7dda921))
+- fix Solidity formatting ([08507fe](https://github.com/lukso-network/lsp-bridge-HypLSP7/commit/08507fe4a34f86380cf0399c515afd83869bcd94))
+- remove solidity override in `.prettierrc.json` ([eb379a2](https://github.com/lukso-network/lsp-bridge-HypLSP7/commit/eb379a23a30f5f957e8a218bf584a14b8daf2e55))
+- rename `test/` folder to plural `tests/` ([77f2fce](https://github.com/lukso-network/lsp-bridge-HypLSP7/commit/77f2fcefa2f6873b29a97a25b4584b604d9c27ae))
+- update software license to Apache-2.0 ([f1c2d36](https://github.com/lukso-network/lsp-bridge-HypLSP7/commit/f1c2d362508b70934acf17391c8663e9c163d4f5))
 
 ## [0.1.1](https://github.com/lukso-network/lsp-bridge-HypLSP7/compare/v0.1.0...v0.1.1) (2025-08-01)
 
