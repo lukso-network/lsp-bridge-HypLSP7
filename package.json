@@ -1,7 +1,7 @@
 {
   "name": "@lukso/lsp-hyperlane-token-routers",
   "description": "LSP7 and LSP8 compatible versions of Hyperlane's token routers, enabling seamless token bridging across chains using the Hyperlane protocol.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": {
     "name": "lukso-network",
     "url": "https://github.com/lukso-network"

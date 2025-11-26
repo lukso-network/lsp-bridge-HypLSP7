@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/lukso-network/lsp-bridge-HypLSP7/compare/v0.2.0...v0.2.1) (2025-11-26)
+
+
+### Bug Fixes
+
+* update readme to re-trigger release ([264f575](https://github.com/lukso-network/lsp-bridge-HypLSP7/commit/264f5758e4386086c00cae325bc1baaee8c63496))
+
 ## [0.2.0](https://github.com/lukso-network/lsp-bridge-HypLSP7/compare/v0.1.1...v0.2.0) (2025-11-26)
 
 ### ⚠ BREAKING CHANGES
