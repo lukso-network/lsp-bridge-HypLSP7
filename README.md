@@ -1,13 +1,12 @@
 # LSP7 and LSP8 Token Routers for Hyperlane
 
-[![Open in Gitpod](https://img.shields.io/badge/Gitpod-Open%20in%20Gitpod-FFB45B?logo=gitpod)](https://gitpod.io/#https://github.com/lukso-network/lsp-bridge-HypLSP7)
 [![Github Actions](https://github.com/lukso-network/lsp-bridge-HypLSP7/actions/workflows/ci.yml/badge.svg)](https://github.com/lukso-network/lsp-bridge-HypLSP7/actions)
 [![Foundry](https://img.shields.io/badge/Built%20with-Foundry-FFDB1C.svg)](https://getfoundry.sh/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 ## Overview
 
-This repository provides LSP7 and LSP8 compatible versions of Hyperlane's token routers, specifically adaptations of [`HypERC20`] and [`HypERC20Collateral`] for LSP7, and [`HypERC721`] and [`HypERC721Collateral`] for LSP8 from the `@hyperlane-xyz/core` package. These contracts enable seamless token bridging across chains using the [Hyperlane protocol](https://docs.hyperlane.xyz).
+This repository provides LSP7 and LSP8 compatible versions of Hyperlane's token routers, specifically adaptations of [`HypERC20`] and [`HypERC20Collateral`] for LSP7, and [`HypERC721`] and [`HypERC721Collateral`] for LSP8 from the [`@hyperlane-xyz/core`](https://www.npmjs.com/package/@hyperlane-xyz/core) contracts package. These contracts enable seamless token bridging across chains using the [Hyperlane protocol](https://docs.hyperlane.xyz).
 
 For detailed architecture and bridging flow, refer to the [**documentation**](./docs/README.md).
 
