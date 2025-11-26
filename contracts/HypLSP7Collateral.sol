@@ -9,7 +9,6 @@ import { ValueTransferBridge } from "@hyperlane-xyz/core/contracts/token/interfa
 import { FungibleTokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/FungibleTokenRouter.sol";
 import { MovableCollateralRouter } from "@hyperlane-xyz/core/contracts/token/libs/MovableCollateralRouter.sol";
 import { ValueTransferBridge } from "@hyperlane-xyz/core/contracts/token/interfaces/ValueTransferBridge.sol";
-// solhint-disable-next-line no-unused-import
 import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
 
 // Libraries

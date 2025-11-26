@@ -16,9 +16,10 @@ bytes constant SAMPLE_METADATA_BYTES =
 // - 1 x creator in the creator array
 // - creator's info under the map key
 // - the token metadata
-function generateLSP4DataKeysAndValues() view returns (bytes32[] memory dataKeys, bytes[] memory dataValues) {
+function generateLsp4DataKeysAndValues() view returns (bytes32[] memory dataKeys, bytes[] memory dataValues) {
     dataKeys = new bytes32[](4);
     dataKeys[0] = _LSP4_CREATORS_ARRAY_KEY;
+    // forge-lint: disable-next-line(unsafe-typecast)
     dataKeys[1] = bytes32(abi.encodePacked(bytes16(_LSP4_CREATORS_ARRAY_KEY), bytes16(uint128(0))));
     dataKeys[2] = bytes32(abi.encodePacked(_LSP4_CREATORS_MAP_KEY_PREFIX, bytes2(0), bytes20(msg.sender)));
     dataKeys[3] = _LSP4_METADATA_KEY;

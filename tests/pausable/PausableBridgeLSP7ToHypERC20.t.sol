@@ -112,7 +112,8 @@ contract PausableBridgeLSP7ToHypERC20 is BridgeLSP7ToHypERC20, PausableControlle
 
         // Perform local LSP7 token transfer on destination chain
         vm.prank(BOB);
-        syntheticToken.transfer(recipient, localTransferAmount);
+        bool successfulTransfer = syntheticToken.transfer(recipient, localTransferAmount);
+        assertTrue(successfulTransfer);
 
         assertEq(syntheticToken.balanceOf(BOB), bobSyntheticTokenBalance - localTransferAmount);
         assertEq(syntheticToken.balanceOf(recipient), localTransferAmount);

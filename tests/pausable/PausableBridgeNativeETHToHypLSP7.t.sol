@@ -4,44 +4,55 @@ pragma solidity ^0.8.13;
 import { TransparentUpgradeableProxy } from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 // test utilities
-import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
 import { HypTokenTest } from "../helpers/HypTokenTest.sol";
-import { BridgeERC20ToHypLSP7 } from "../tokens/BridgeERC20ToHypLSP7.t.sol";
+import { BridgeNativeETHToHypLSP7 } from "../native/BridgeNativeETHToHypLSP7.t.sol";
 import { PausableControllerTester } from "../helpers/PausableControllerTester.sol";
+
+/// Hyperlane testing environnement
+/// @dev See https://docs.hyperlane.xyz/docs/guides/developer-tips/unit-testing
+import { TestPostDispatchHook } from "@hyperlane-xyz/core/contracts/test/TestPostDispatchHook.sol";
+import { TestIsm } from "@hyperlane-xyz/core/contracts/test/TestIsm.sol";
+import { TypeCasts } from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
+import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol";
 
 // libraries
 import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMessage.sol";
-import { generateLSP4DataKeysAndValues } from "../helpers/Utils.sol";
+import { generateLsp4DataKeysAndValues } from "../helpers/Utils.sol";
 
-// mocks
-import { ERC20Mock } from "../helpers/ERC20Mock.sol";
-import { TestPostDispatchHook } from "@hyperlane-xyz/core/contracts/test/TestPostDispatchHook.sol";
-import { TestIsm } from "@hyperlane-xyz/core/contracts/test/TestIsm.sol";
-
-// Contracts to test
-import { HypERC20CollateralPausable } from "../../contracts/pausable/HypERC20CollateralPausable.sol";
-import { HypLSP7Pausable } from "../../contracts/pausable/HypLSP7Pausable.sol";
+// Modules to test
 import { HypLSP7 } from "../../contracts/HypLSP7.sol";
+import { HypLSP7Pausable } from "../../contracts/pausable/HypLSP7Pausable.sol";
+import { HypNativePausable } from "../../contracts/pausable/HypNativePausable.sol";
 import { PausableController } from "../../contracts/pausable/PausableController.sol";
 
-contract PausableBridgeERC20ToHypLSP7 is BridgeERC20ToHypLSP7, PausableControllerTester {
+/**
+ * @title Bridge token routes tests from native tokens to `HypERC20`
+ * + testing Pausable features on both ends of the chain
+ *
+ * @dev Hyperlane warp route tests.
+ *  - origin chain: native tokens (LYX) locked in `HypNativePausable`
+ *  - destination chain: synthetic tokens minted as `HypERC20Pausable`
+ */
+contract PausableBridgeNativeETHToHypLSP7 is BridgeNativeETHToHypLSP7, PausableControllerTester {
     using TypeCasts for address;
 
     function setUp() public override {
         ORIGIN_CHAIN_ID = 1; // Ethereum
         DESTINATION_CHAIN_ID = 42; // LUKSO
 
+        REQUIRED_INTERCHAIN_GAS_PAYMENT = 10_000 gwei;
+
         HypTokenTest.setUp();
 
-        token = new ERC20Mock(NAME, SYMBOL, TOTAL_SUPPLY, DECIMALS);
-        token.transfer(ALICE, 100_000 * (10 ** DECIMALS));
+        /// 1. Give some native tokens to Alice to allow her to bridge
+        vm.deal(ALICE, USER_BALANCE);
 
-        // 2. Deploy pausable version of collateral token router
+        // 2. Deploy Pausable version of collateral token router
         originDefaultHook = new TestPostDispatchHook();
         originDefaultIsm = new TestIsm();
 
-        erc20Collateral = new HypERC20CollateralPausable(address(token), SCALE_PARAM, address(originMailbox));
-        erc20Collateral.initialize(address(originDefaultHook), address(originDefaultIsm), WARP_ROUTE_OWNER);
+        nativeCollateral = new HypNativePausable(SCALE_PARAM, address(originMailbox));
+        nativeCollateral.initialize(address(originDefaultHook), address(originDefaultIsm), WARP_ROUTE_OWNER);
 
         // 3. Deploy the synthetic token on the destination chain + initialize it
         destinationDefaultHook = new TestPostDispatchHook();
@@ -68,7 +79,7 @@ contract PausableBridgeERC20ToHypLSP7 is BridgeERC20ToHypLSP7, PausableControlle
 
         // 4. setup the state variable derives from `HypTokenTest` to ensure
         // the internal helper functions can be used
-        originTokenRouter = erc20Collateral;
+        originTokenRouter = nativeCollateral;
         destinationTokenRouter = syntheticToken;
 
         // 5. Connect the collateral with the synthetic contract, and vice versa
@@ -80,7 +91,7 @@ contract PausableBridgeERC20ToHypLSP7 is BridgeERC20ToHypLSP7, PausableControlle
 
         // 6. setup the Pausable versions of the token routers
         // + register the address of the controller that can pause on both chains
-        originPausableTokenRouter = PausableController(address(erc20Collateral));
+        originPausableTokenRouter = PausableController(address(nativeCollateral));
         destinationPausableTokenRouter = PausableController(address(syntheticToken));
 
         vm.prank(WARP_ROUTE_OWNER);
@@ -95,7 +106,7 @@ contract PausableBridgeERC20ToHypLSP7 is BridgeERC20ToHypLSP7, PausableControlle
         // Deployed + Initialized already done in setUp()
 
         // 3. setup the LSP4Metadata with `setDataBatch(...)` on destination chain
-        (bytes32[] memory dataKeys, bytes[] memory dataValues) = generateLSP4DataKeysAndValues();
+        (bytes32[] memory dataKeys, bytes[] memory dataValues) = generateLsp4DataKeysAndValues();
         assertEq(syntheticToken.getDataBatch(dataKeys), new bytes[](dataKeys.length)); // CHECK empty
 
         vm.prank(WARP_ROUTE_OWNER);
@@ -139,9 +150,9 @@ contract PausableBridgeERC20ToHypLSP7 is BridgeERC20ToHypLSP7, PausableControlle
         assertFalse(destinationPausableTokenRouter.paused());
 
         // Bridge tokens to BOB first on destination chain
-        vm.prank(ALICE);
-        token.approve(address(erc20Collateral), TRANSFER_AMOUNT);
-        _performBridgeTxAndCheckSentTransferRemoteEvent(REQUIRED_INTERCHAIN_GAS_PAYMENT, TRANSFER_AMOUNT);
+        _performBridgeTxAndCheckSentTransferRemoteEvent({
+            _msgValue: REQUIRED_INTERCHAIN_GAS_PAYMENT + TRANSFER_AMOUNT, _amount: TRANSFER_AMOUNT
+        });
 
         uint256 bobSyntheticTokenBalance = syntheticToken.balanceOf(BOB);
         assertEq(bobSyntheticTokenBalance, TRANSFER_AMOUNT);
@@ -171,50 +182,51 @@ contract PausableBridgeERC20ToHypLSP7 is BridgeERC20ToHypLSP7, PausableControlle
     // |  Origin -> Destination |
     // ==========================
 
-    function test_BridgeTxRevertsOnOriginWhenPausedOnOrigin() public {
-        uint256 balanceBefore = token.balanceOf(ALICE);
+    function test_BridgeTxSuccessfulWhenNotPausedOnOriginOrDestination() public {
+        _unpauseOrigin();
+        _unpauseDestination();
+
+        assertEq(syntheticToken.balanceOf(BOB), 0);
+
+        uint256 msgValue = REQUIRED_INTERCHAIN_GAS_PAYMENT + TRANSFER_AMOUNT;
 
         vm.prank(ALICE);
-        token.approve(address(erc20Collateral), TRANSFER_AMOUNT);
-
-        assertFalse(originPausableTokenRouter.paused());
-        assertFalse(destinationPausableTokenRouter.paused());
-
-        _pauseOrigin();
-        assertTrue(originPausableTokenRouter.paused());
-
-        vm.prank(ALICE);
-        vm.expectRevert("Pausable: paused");
-        erc20Collateral.transferRemote{ value: REQUIRED_INTERCHAIN_GAS_PAYMENT }(
+        vm.expectEmit({ emitter: address(nativeCollateral) });
+        emit TokenRouter.SentTransferRemote(DESTINATION_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT);
+        nativeCollateral.transferRemote{ value: msgValue }(
             DESTINATION_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT
         );
-        assertEq(token.balanceOf(ALICE), balanceBefore);
-        assertEq(token.balanceOf(address(erc20Collateral)), 0);
-    }
-
-    function test_BridgeTxRevertsOnDestinationWhenPausedOnDestination() public {
-        uint256 balanceBefore = token.balanceOf(ALICE);
-
-        vm.prank(ALICE);
-        token.approve(address(erc20Collateral), TRANSFER_AMOUNT);
-
-        assertFalse(originPausableTokenRouter.paused());
-        assertFalse(destinationPausableTokenRouter.paused());
-
-        _pauseDestination();
-        assertTrue(destinationPausableTokenRouter.paused());
-
-        vm.prank(ALICE);
-        erc20Collateral.transferRemote{ value: REQUIRED_INTERCHAIN_GAS_PAYMENT }(
-            DESTINATION_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT
-        );
-        assertEq(token.balanceOf(ALICE), balanceBefore - TRANSFER_AMOUNT);
-        assertEq(token.balanceOf(address(erc20Collateral)), TRANSFER_AMOUNT);
 
         bytes memory message = HypTokenTest._prepareProcessCall(TRANSFER_AMOUNT);
 
-        vm.expectRevert("Pausable: paused");
         destinationMailbox.process("", message); // we don't need metadata
+        assertEq(syntheticToken.balanceOf(BOB), TRANSFER_AMOUNT);
+    }
+
+    function test_BridgeTxRevertsOnOriginWhenPausedOnOrigin() public {
+        _pauseOrigin();
+
+        uint256 _msgValue = REQUIRED_INTERCHAIN_GAS_PAYMENT + TRANSFER_AMOUNT;
+
+        vm.prank(ALICE);
+        vm.expectRevert("Pausable: paused");
+        nativeCollateral.transferRemote{ value: _msgValue }(
+            DESTINATION_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT
+        );
+    }
+
+    function test_BridgeTxRevertsOnDestinationWhenPausedOnDestination() public {
+        _pauseDestination();
+
+        bytes memory tokenMessage = TokenMessage.format(BOB.addressToBytes32(), TRANSFER_AMOUNT, "");
+
+        vm.expectRevert("Pausable: paused");
+        destinationMailbox.testHandle(
+            ORIGIN_CHAIN_ID,
+            address(nativeCollateral).addressToBytes32(),
+            address(syntheticToken).addressToBytes32(),
+            tokenMessage
+        ); // we don't need metadata
     }
 
     // ==============================
@@ -223,52 +235,52 @@ contract PausableBridgeERC20ToHypLSP7 is BridgeERC20ToHypLSP7, PausableControlle
     // ==============================
 
     function test_BridgeBackTxRevertsOnDestinationWhenPausedOnDestination() public {
-        assertFalse(originPausableTokenRouter.paused());
-        assertFalse(destinationPausableTokenRouter.paused());
+        // first make sure there is synthetic tokens available to ALICE
+        bytes memory _message = TokenMessage.format(ALICE.addressToBytes32(), TRANSFER_AMOUNT, "");
+        destinationMailbox.testHandle(
+            ORIGIN_CHAIN_ID,
+            address(nativeCollateral).addressToBytes32(),
+            address(syntheticToken).addressToBytes32(),
+            _message
+        );
 
         _pauseDestination();
-        assertTrue(destinationPausableTokenRouter.paused());
-
-        vm.expectRevert("Pausable: paused");
         vm.prank(ALICE);
-        syntheticToken.transferRemote{ value: REQUIRED_INTERCHAIN_GAS_PAYMENT }(
-            ORIGIN_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT
-        );
+        vm.expectRevert("Pausable: paused");
+        syntheticToken.transferRemote(ORIGIN_CHAIN_ID, BOB.addressToBytes32(), TRANSFER_AMOUNT);
     }
 
     function test_BridgeBackTxRevertsOnOriginWhenPausedOnOrigin() public {
-        assertFalse(originPausableTokenRouter.paused());
-        assertFalse(destinationPausableTokenRouter.paused());
-
         _pauseOrigin();
-        assertTrue(originPausableTokenRouter.paused());
+        vm.prank(ALICE);
 
-        bytes memory message = TokenMessage.format(BOB.addressToBytes32(), TRANSFER_AMOUNT, "");
+        bytes memory _tokenMessage = TokenMessage.format(BOB.addressToBytes32(), TRANSFER_AMOUNT, "");
+
         vm.expectRevert("Pausable: paused");
         originMailbox.testHandle(
             DESTINATION_CHAIN_ID,
             address(syntheticToken).addressToBytes32(),
-            address(erc20Collateral).addressToBytes32(),
-            message
-        );
+            address(nativeCollateral).addressToBytes32(),
+            _tokenMessage
+        ); // we don't need metadata
     }
 
     function test_CanBridgeBackWhenNoPausableControllerRegistered() public {
         vm.prank(WARP_ROUTE_OWNER);
-        PausableController(address(erc20Collateral))
+        PausableController(address(nativeCollateral))
             .changePausableController(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF);
 
-        // assume some erc20 tokens are locked in the collateral contract
+        // assume some native tokens are locked in the native collateral contract
         // and need to be unlocked to be able to bridge back
-        token.transfer(address(erc20Collateral), TRANSFER_AMOUNT);
-        assertEq(token.balanceOf(address(erc20Collateral)), TRANSFER_AMOUNT);
+        vm.deal(address(nativeCollateral), TRANSFER_AMOUNT);
+        assertEq(address(nativeCollateral).balance, TRANSFER_AMOUNT);
 
         bytes memory _message = TokenMessage.format(BOB.addressToBytes32(), TRANSFER_AMOUNT, "");
 
         originMailbox.testHandle(
             DESTINATION_CHAIN_ID,
             address(syntheticToken).addressToBytes32(),
-            address(erc20Collateral).addressToBytes32(),
+            address(nativeCollateral).addressToBytes32(),
             _message
         );
     }

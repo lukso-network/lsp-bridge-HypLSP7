@@ -35,7 +35,8 @@ abstract contract HypTokenTest is Test {
     // origin chain
     // ---------------------------
     // solhint-disable-next-line var-name-mixedcase
-    uint32 internal ORIGIN_CHAIN_ID;
+    // forge-lint: disable-next-line(mixed-case-variable)
+    uint32 internal ORIGIN_CHAIN_ID; // solhint-disable var-name-mixedcase
     TestMailbox internal originMailbox;
     TestPostDispatchHook internal originMailboxDefaultHook;
     TestPostDispatchHook internal originMailboxRequiredtHook;
@@ -46,7 +47,8 @@ abstract contract HypTokenTest is Test {
     // destination chain
     // ---------------------------
     // solhint-disable-next-line var-name-mixedcase
-    uint32 internal DESTINATION_CHAIN_ID;
+    // forge-lint: disable-next-line(mixed-case-variable)
+    uint32 internal DESTINATION_CHAIN_ID; // solhint-disable var-name-mixedcase
     TestMailbox internal destinationMailbox;
     TestPostDispatchHook internal destinationMailboxDefaultHook;
     TestPostDispatchHook internal destinationMailboxRequiredtHook;
@@ -62,8 +64,8 @@ abstract contract HypTokenTest is Test {
     uint256 internal constant GAS_LIMIT = 10_000;
 
     // Interchain Gas Payment amount required to performed remote transfers (initialized in setUp).
-    // solhint-disable-next-line var-name-mixedcase
-    uint256 internal REQUIRED_INTERCHAIN_GAS_PAYMENT;
+    // forge-lint: disable-next-line(mixed-case-variable)
+    uint256 internal REQUIRED_INTERCHAIN_GAS_PAYMENT; // solhint-disable var-name-mixedcase
 
     // constants used for testing
     // ---------------------------
