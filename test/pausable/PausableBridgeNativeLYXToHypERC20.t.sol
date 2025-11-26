@@ -123,7 +123,8 @@ contract PausableBridgeNativeLYXToHypERC20 is BridgeNativeLYXToHypERC20, Pausabl
 
         // Perform local LSP7 token transfer on destination chain
         vm.prank(BOB);
-        syntheticToken.transfer(recipient, localTransferAmount);
+        bool successfulTransfer = syntheticToken.transfer(recipient, localTransferAmount);
+        assertTrue(successfulTransfer);
 
         assertEq(syntheticToken.balanceOf(BOB), bobSyntheticTokenBalance - localTransferAmount);
         assertEq(syntheticToken.balanceOf(recipient), localTransferAmount);

@@ -168,13 +168,13 @@ contract BridgeLSP7ToHypERC20 is HypTokenTest {
     function test_TotalSupplyOfSyntheticTokenIncreasesAfterBridgeTx(uint256 transferAmount) public {
         uint256 syntheticTokenSupplyBefore = syntheticToken.totalSupply();
 
-        uint256 maxLSP7TokenAmount = token.totalSupply();
+        uint256 maxLsp7TokenAmount = token.totalSupply();
 
         // move all the tokens to Alice to ensure fuzzer can test up to the total supply being transferred
         token.transfer(address(this), ALICE, token.balanceOf(address(this)), true, "");
-        assertEq(token.balanceOf(ALICE), maxLSP7TokenAmount);
+        assertEq(token.balanceOf(ALICE), maxLsp7TokenAmount);
 
-        transferAmount = bound(transferAmount, 1, maxLSP7TokenAmount);
+        transferAmount = bound(transferAmount, 1, maxLsp7TokenAmount);
 
         vm.prank(ALICE);
         token.authorizeOperator(address(lsp7Collateral), transferAmount, "");
@@ -277,8 +277,8 @@ contract BridgeLSP7ToHypERC20 is HypTokenTest {
         });
         assertEq(token.balanceOf(ALICE), tokenBalanceBefore - TRANSFER_AMOUNT);
 
-        uint256 expectedNewLYXBalance = lyxBalanceBefore - REQUIRED_INTERCHAIN_GAS_PAYMENT - gasOverhead;
-        assertEq(ALICE.balance, expectedNewLYXBalance);
+        uint256 expectedNewLyxBalance = lyxBalanceBefore - REQUIRED_INTERCHAIN_GAS_PAYMENT - gasOverhead;
+        assertEq(ALICE.balance, expectedNewLyxBalance);
     }
 
     /// @dev Ensure correct behaviour of `syntheticToken.transfer(from, to, amount, force, data)`
@@ -304,7 +304,8 @@ contract BridgeLSP7ToHypERC20 is HypTokenTest {
         assertEq(syntheticToken.balanceOf(recipient), 0);
 
         vm.prank(BOB);
-        syntheticToken.transfer(recipient, amount);
+        bool successfulTransfer = syntheticToken.transfer(recipient, amount);
+        assertTrue(successfulTransfer);
 
         assertEq(syntheticToken.balanceOf(BOB), bobSyntheticTokenBalanceAfter - amount);
         assertEq(syntheticToken.balanceOf(recipient), amount);

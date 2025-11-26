@@ -149,9 +149,9 @@ contract BridgeNativeETHToHypLSP7 is HypTokenTest {
             _gasOverhead: gasOverhead
         });
 
-        uint256 expectedNewETHBalance =
+        uint256 expectedNewEthBalance =
             ethBalanceBefore - TRANSFER_AMOUNT - REQUIRED_INTERCHAIN_GAS_PAYMENT - gasOverhead;
-        assertEq(ALICE.balance, expectedNewETHBalance);
+        assertEq(ALICE.balance, expectedNewEthBalance);
     }
 
     function test_BridgeTxRevertsIfAmountGreaterThanUserNativeTokenBalance() public {

@@ -152,9 +152,9 @@ contract BridgeNativeLYXToHypERC20 is HypTokenTest {
             _gasOverhead: gasOverhead
         });
 
-        uint256 expectedNewLYXBalance =
+        uint256 expectedNewLyxBalance =
             lyxBalanceBefore - TRANSFER_AMOUNT - REQUIRED_INTERCHAIN_GAS_PAYMENT - gasOverhead;
-        assertEq(ALICE.balance, expectedNewLYXBalance);
+        assertEq(ALICE.balance, expectedNewLyxBalance);
     }
 
     function test_BridgeTxRevertsIfAmountGreaterThanUserNativeTokenBalance() public {

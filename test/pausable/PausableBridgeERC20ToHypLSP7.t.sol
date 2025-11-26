@@ -11,7 +11,7 @@ import { PausableControllerTester } from "../helpers/PausableControllerTester.so
 
 // libraries
 import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMessage.sol";
-import { generateLSP4DataKeysAndValues } from "../helpers/Utils.sol";
+import { generateLsp4DataKeysAndValues } from "../helpers/Utils.sol";
 
 // mocks
 import { ERC20Mock } from "../helpers/ERC20Mock.sol";
@@ -34,7 +34,8 @@ contract PausableBridgeERC20ToHypLSP7 is BridgeERC20ToHypLSP7, PausableControlle
         HypTokenTest.setUp();
 
         token = new ERC20Mock(NAME, SYMBOL, TOTAL_SUPPLY, DECIMALS);
-        token.transfer(ALICE, 100_000 * (10 ** DECIMALS));
+        bool successfulTransfer = token.transfer(ALICE, 100_000 * (10 ** DECIMALS));
+        assertTrue(successfulTransfer);
 
         // 2. Deploy pausable version of collateral token router
         originDefaultHook = new TestPostDispatchHook();
@@ -95,7 +96,7 @@ contract PausableBridgeERC20ToHypLSP7 is BridgeERC20ToHypLSP7, PausableControlle
         // Deployed + Initialized already done in setUp()
 
         // 3. setup the LSP4Metadata with `setDataBatch(...)` on destination chain
-        (bytes32[] memory dataKeys, bytes[] memory dataValues) = generateLSP4DataKeysAndValues();
+        (bytes32[] memory dataKeys, bytes[] memory dataValues) = generateLsp4DataKeysAndValues();
         assertEq(syntheticToken.getDataBatch(dataKeys), new bytes[](dataKeys.length)); // CHECK empty
 
         vm.prank(WARP_ROUTE_OWNER);
@@ -260,7 +261,8 @@ contract PausableBridgeERC20ToHypLSP7 is BridgeERC20ToHypLSP7, PausableControlle
 
         // assume some erc20 tokens are locked in the collateral contract
         // and need to be unlocked to be able to bridge back
-        token.transfer(address(erc20Collateral), TRANSFER_AMOUNT);
+        bool successfulTransfer = token.transfer(address(erc20Collateral), TRANSFER_AMOUNT);
+        assertTrue(successfulTransfer);
         assertEq(token.balanceOf(address(erc20Collateral)), TRANSFER_AMOUNT);
 
         bytes memory _message = TokenMessage.format(BOB.addressToBytes32(), TRANSFER_AMOUNT, "");

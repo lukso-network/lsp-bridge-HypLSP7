@@ -15,7 +15,7 @@ import { IERC725Y } from "@erc725/smart-contracts/contracts/interfaces/IERC725Y.
 import { HypLSP7 } from "../../contracts/HypLSP7.sol";
 
 // utilities
-import { generateLSP4DataKeysAndValues } from "../helpers/Utils.sol";
+import { generateLsp4DataKeysAndValues } from "../helpers/Utils.sol";
 
 // constants
 import { _INTERFACEID_ERC725Y } from "@erc725/smart-contracts/contracts/constants.sol";
@@ -116,9 +116,9 @@ contract HypLSP7Test is Test {
             )
         );
 
-        HypLSP7 hypLSP7Token = HypLSP7(payable(proxy));
+        HypLSP7 hypLsp7Token = HypLSP7(payable(proxy));
 
-        assertEq(hypLSP7Token.decimals(), decimals);
+        assertEq(hypLsp7Token.decimals(), decimals);
     }
 
     function test_IsNonDivisibleInStorageSetToFalse() public view {
@@ -177,9 +177,9 @@ contract HypLSP7Test is Test {
             )
         );
 
-        HypLSP7 syntheticLSP7Token = HypLSP7(payable(proxy));
+        HypLSP7 syntheticLsp7Token = HypLSP7(payable(proxy));
 
-        assertEq(syntheticLSP7Token.totalSupply(), 0);
+        assertEq(syntheticLsp7Token.totalSupply(), 0);
     }
 
     function test_ChangeTokenName_Reverts(bytes memory name) public {
@@ -242,7 +242,7 @@ contract HypLSP7Test is Test {
     }
 
     function test_CanSetLSP4DataKeysToConfigureTokenInfosAndCreatorsEmitRelevantDataChangedEvent() public {
-        (bytes32[] memory dataKeys, bytes[] memory dataValues) = generateLSP4DataKeysAndValues();
+        (bytes32[] memory dataKeys, bytes[] memory dataValues) = generateLsp4DataKeysAndValues();
 
         // CHECK events are emitted for the data keys:
 

@@ -306,15 +306,15 @@ contract HypLSP7CollateralTest is Test {
         ERC20Mock erc20Token = new ERC20Mock("Test Token", "TT", 1_000_000 * (10 ** 18), 18);
         lsp7Collateral = new HypLSP7Collateral(address(erc20Token), SCALE_PARAM, address(mailbox));
 
-        address ALICE = makeAddr("alice");
-        address BOB = makeAddr("bob");
+        address alice = makeAddr("alice");
+        address bob = makeAddr("bob");
         uint256 transferAmount = 10 ether;
 
-        vm.deal(ALICE, 20 ether);
+        vm.deal(alice, 20 ether);
 
-        vm.prank(ALICE);
+        vm.prank(alice);
         // since ERC20 does not have a fallback function, it will be a silent revert (no revert reason)
         vm.expectRevert(bytes(""));
-        lsp7Collateral.transferRemote{ value: 1 ether }(1, BOB.addressToBytes32(), transferAmount);
+        lsp7Collateral.transferRemote{ value: 1 ether }(1, bob.addressToBytes32(), transferAmount);
     }
 }

@@ -69,7 +69,8 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
 
         // 1. Deploy the initial token that we will bridge from the origin chain
         token = new ERC20Mock(NAME, SYMBOL, TOTAL_SUPPLY, DECIMALS);
-        token.transfer(ALICE, 100_000 * (10 ** DECIMALS));
+        bool successfulTransfer = token.transfer(ALICE, 100_000 * (10 ** DECIMALS));
+        assertTrue(successfulTransfer);
 
         // 2. Deploy collateral token router
         // solhint-disable-next-line reentrancy
@@ -170,7 +171,8 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
         uint256 maxERC20TokenAmount = token.totalSupply();
 
         // move all the tokens to Alice to ensure fuzzer can test up to the total supply being transferred
-        token.transfer(ALICE, token.balanceOf(address(this)));
+        bool successfulTransfer = token.transfer(ALICE, token.balanceOf(address(this)));
+        assertTrue(successfulTransfer);
         assertEq(token.balanceOf(ALICE), maxERC20TokenAmount);
 
         transferAmount = bound(transferAmount, 1, maxERC20TokenAmount);
@@ -260,8 +262,8 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
         });
         assertEq(token.balanceOf(ALICE), tokenBalanceBefore - TRANSFER_AMOUNT);
 
-        uint256 expectedNewETHBalance = ethBalanceBefore - REQUIRED_INTERCHAIN_GAS_PAYMENT - gasOverhead;
-        assertEq(ALICE.balance, expectedNewETHBalance);
+        uint256 expectedNewEthBalance = ethBalanceBefore - REQUIRED_INTERCHAIN_GAS_PAYMENT - gasOverhead;
+        assertEq(ALICE.balance, expectedNewEthBalance);
     }
 
     /// @dev Ensure correct behaviour of `syntheticToken.transfer(from, to, amount, force, data)`
@@ -323,7 +325,8 @@ contract BridgeERC20ToHypLSP7 is HypTokenTest {
 
     function test_BenchmarkOverheadGasUsageWhenBridgingBack() public {
         // to transfer from the collateral contract, we assume some tokens have already been locked in there
-        token.transfer(address(erc20Collateral), TRANSFER_AMOUNT);
+        bool successfulTransfer = token.transfer(address(erc20Collateral), TRANSFER_AMOUNT);
+        assertTrue(successfulTransfer);
 
         vm.prank(address(originMailbox));
 

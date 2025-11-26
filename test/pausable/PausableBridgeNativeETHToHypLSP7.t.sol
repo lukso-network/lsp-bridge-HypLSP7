@@ -17,7 +17,7 @@ import { TokenRouter } from "@hyperlane-xyz/core/contracts/token/libs/TokenRoute
 
 // libraries
 import { TokenMessage } from "@hyperlane-xyz/core/contracts/token/libs/TokenMessage.sol";
-import { generateLSP4DataKeysAndValues } from "../helpers/Utils.sol";
+import { generateLsp4DataKeysAndValues } from "../helpers/Utils.sol";
 
 // Modules to test
 import { HypLSP7 } from "../../contracts/HypLSP7.sol";
@@ -106,7 +106,7 @@ contract PausableBridgeNativeETHToHypLSP7 is BridgeNativeETHToHypLSP7, PausableC
         // Deployed + Initialized already done in setUp()
 
         // 3. setup the LSP4Metadata with `setDataBatch(...)` on destination chain
-        (bytes32[] memory dataKeys, bytes[] memory dataValues) = generateLSP4DataKeysAndValues();
+        (bytes32[] memory dataKeys, bytes[] memory dataValues) = generateLsp4DataKeysAndValues();
         assertEq(syntheticToken.getDataBatch(dataKeys), new bytes[](dataKeys.length)); // CHECK empty
 
         vm.prank(WARP_ROUTE_OWNER);
